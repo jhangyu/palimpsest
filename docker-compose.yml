@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: palimpsest-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-palimpsest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-palimpsest}
+      POSTGRES_DB: ${POSTGRES_DB:-palimpsest}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - palimpsest-network
+
+  chrome:
+    image: browserless/chrome:latest
+    container_name: palimpsest-chrome
+    environment:
+      MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-10}
+      CONNECTION_TIMEOUT: ${CHROME_CONNECTION_TIMEOUT:-300000}
+    ports:
+      - "${CHROME_PORT:-3000}:3000"
+    networks:
+      - palimpsest-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: palimpsest-app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-palimpsest}:${POSTGRES_PASSWORD:-palimpsest}@db:5432/${POSTGRES_DB:-palimpsest}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      CHROME_MODE: server
+      CHROME_WS_ENDPOINT: ws://chrome:3000
+      BROWSER_WS_URL: ws://chrome:3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CHROME_HOST: chrome
+      CHROME_PORT: 3000
+      BACKEND_PORT: 8088
+      ASTRO_PORT: 5174
+      PALIMPSEST_LOG_DIR: /app/log
+    volumes:
+      - ./log:/app/log
+    ports:
+      - "${BACKEND_PORT:-8088}:8088"
+      - "${ASTRO_PORT:-5174}:5174"
+    depends_on:
+      db:
+        condition: service_healthy
+      chrome:
+        condition: service_started
+    networks:
+      - palimpsest-network
+
+networks:
+  palimpsest-network:

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.*
+!.env.example
+
+# JavaScript / Node
+node_modules/
+dist/
+.astro/
+.eslintcache
+
+# Logs and databases
+*.log
+log/
+data/
+rss.db
+rss.db-journal
+*.db
+*.db-journal
+
+# Local AI development notes
+docs/
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Local tool/runtime artifacts
+.claw/
+.clawd-todos.json
+.sandbox-home/
+.sandbox-tmp/
+.sisyphus/
+.git_temp/
+backend/debug/

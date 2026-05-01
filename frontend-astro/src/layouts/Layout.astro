@@ -1,0 +1,37 @@
+---
+import Sidebar from '../components/Sidebar.astro';
+import Header from '../components/Header.astro';
+import '../styles/global.css';
+import '../components/Layout.css';
+import '../components/PreviewTable.css';
+import '../components/DashboardOverview.css';
+import '../components/CreateFeedWizard.css';
+import '../components/EditFeedPage.css';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'palimpsest' } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="layout-container">
+      <Sidebar />
+      <div class="main-content">
+        <Header />
+        <main class="page-content">
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,284 @@
+---
+const pathname = Astro.url.pathname;
+
+const navItems = [
+  { href: '/', label: 'Dashboard', icon: 'layout-dashboard' },
+  { href: '/add', label: 'Create Feed', icon: 'plus-circle' },
+  { href: '/edit', label: 'Edit Feed', icon: 'settings' },
+];
+
+const icons = {
+  'box': '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg>',
+  'layout-dashboard': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>',
+  'plus-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>',
+  'settings': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  'menu': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>',
+  'x': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>',
+};
+---
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-container">
+      <span class="logo-icon" set:html={icons['box']} />
+      <span class="logo-text">palimpsest</span>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+      <span set:html={icons['x']} />
+    </button>
+  </div>
+  <nav class="nav-links">
+    {navItems.map(item => (
+      <a
+        href={item.href}
+        class={`nav-item ${pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href)) ? 'active' : ''}`}
+      >
+        <span class="nav-icon" set:html={icons[item.icon]} />
+        <span class="nav-label">{item.label}</span>
+      </a>
+    ))}
+  </nav>
+</aside>
+
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Mobile toggle button -->
+<button class="sidebar-toggle-mobile" id="sidebarToggleMobile" aria-label="Open sidebar">
+  <span set:html={icons['menu']} />
+</button>
+
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  // Check saved state on mobile
+  const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+  if (isCollapsed && window.innerWidth <= 768) {
+    sidebar?.classList.add('collapsed');
+  }
+
+  function toggleSidebar() {
+    sidebar?.classList.toggle('collapsed');
+    const collapsed = sidebar?.classList.contains('collapsed');
+    localStorage.setItem('sidebar-collapsed', String(collapsed));
+  }
+
+  function openSidebar() {
+    sidebar?.classList.remove('collapsed');
+    sidebar?.classList.add('mobile-open');
+    overlay?.classList.add('visible');
+  }
+
+  function closeSidebar() {
+    sidebar?.classList.add('collapsed');
+    sidebar?.classList.remove('mobile-open');
+    overlay?.classList.remove('visible');
+    localStorage.setItem('sidebar-collapsed', 'true');
+  }
+
+  sidebarToggle?.addEventListener('click', closeSidebar);
+  sidebarToggleMobile?.addEventListener('click', openSidebar);
+  overlay?.addEventListener('click', closeSidebar);
+
+  // Handle resize - reset mobile state
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      sidebar?.classList.remove('mobile-open');
+      overlay?.classList.remove('visible');
+    }
+  });
+</script>
+
+<style>
+  .sidebar {
+    width: var(--sidebar-w);
+    height: 100%;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px;
+    transition: width 0.3s ease, transform 0.3s ease, padding 0.3s ease;
+    position: relative;
+    z-index: 100;
+  }
+
+  .sidebar.collapsed {
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+  }
+
+  .sidebar.collapsed .sidebar-header {
+    justify-content: center;
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--text-primary);
+  }
+
+  .logo-icon {
+    display: flex;
+    align-items: center;
+  }
+
+  .sidebar.collapsed .logo-text,
+  .sidebar.collapsed .nav-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+
+  .sidebar.collapsed .logo-container {
+    justify-content: center;
+  }
+
+  .sidebar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+  }
+
+  .sidebar-toggle:hover {
+    color: var(--text-primary);
+  }
+
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .nav-item:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    color: var(--accent-blue);
+  }
+
+  .nav-item.active {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+  }
+
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Mobile toggle button */
+  .sidebar-toggle-mobile {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 99;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  /* Mobile overlay */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+  }
+
+  .sidebar-overlay.visible {
+    display: block;
+  }
+
+  /* Responsive - Portrait/ Mobile */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      width: var(--sidebar-w);
+      transform: translateX(-100%);
+      z-index: 100;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+    }
+
+    .sidebar.mobile-open {
+      transform: translateX(0);
+    }
+
+    .sidebar.collapsed {
+      width: var(--sidebar-w);
+      transform: translateX(-100%);
+    }
+
+    .sidebar.collapsed.mobile-open {
+      transform: translateX(0);
+    }
+
+    .sidebar-toggle {
+      display: block;
+    }
+
+    .sidebar-toggle-mobile {
+      display: block;
+    }
+
+    .sidebar.collapsed .logo-text,
+    .sidebar.collapsed .nav-label {
+      opacity: 1;
+      width: auto;
+    }
+
+    .sidebar.collapsed .nav-item {
+      justify-content: flex-start;
+      padding: 12px 16px;
+    }
+  }
+</style>

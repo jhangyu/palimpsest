@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+databases[postgresql]
+asyncpg
+psycopg2-binary
+httpx
+playwright
+beautifulsoup4
+rfeed
+apscheduler
+python-dotenv
+aiosqlite
