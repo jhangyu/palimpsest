@@ -10,7 +10,7 @@ The current UI is the Astro frontend.
 - Playwright crawler with Browserless Chrome support for JavaScript-rendered pages.
 - MiniMax-powered structure analysis for list pages and article pages.
 - PostgreSQL in Docker, with local host bind mount support.
-- Astro + React Islands dashboard on port `5174`.
+- Astro + React Islands dashboard served by FastAPI in Docker.
 - Optional debug output for crawler and AI analysis workflows.
 
 ## Repository Layout
@@ -20,7 +20,7 @@ The current UI is the Astro frontend.
 ├── backend/                 # FastAPI API, crawler, AI analysis, RSS generation
 ├── frontend-astro/          # Primary Astro dashboard
 ├── tests/                   # Ad hoc/manual test scripts
-├── Dockerfile               # App image: backend + Astro frontend
+├── Dockerfile               # App image: backend + built Astro frontend
 ├── docker-compose.yml       # App + PostgreSQL + Browserless Chrome
 ├── entrypoint.sh            # Container startup script
 ├── restart.sh               # Local non-Docker startup helper
@@ -53,6 +53,12 @@ For local development without Docker:
 
 ## Quick Start With Docker
 
+Published app image:
+
+```bash
+docker pull jhangyu/palimpsest:0.01
+```
+
 1. Create your environment file:
 
 ```bash
@@ -73,8 +79,7 @@ docker compose up --build
 
 4. Open the services:
 
-- Astro dashboard: http://localhost:5174
-- Backend API: http://localhost:8088
+- App dashboard and Backend API: http://localhost:8088
 - Browserless Chrome: http://localhost:3000
 
 PostgreSQL data is mounted to:
@@ -90,13 +95,12 @@ This directory is intentionally ignored by Git.
 If local services already use the default ports, override them at startup:
 
 ```bash
-BACKEND_PORT=18088 ASTRO_PORT=15174 CHROME_PORT=13000 docker compose up --build
+BACKEND_PORT=18088 CHROME_PORT=13000 docker compose up --build
 ```
 
 Then open:
 
-- Astro dashboard: http://localhost:15174
-- Backend API: http://localhost:18088
+- App dashboard and Backend API: http://localhost:18088
 
 ## Local Development
 
@@ -134,8 +138,7 @@ npm run dev -- --host 0.0.0.0 --port 5174
 | `POSTGRES_USER` | `palimpsest` | Docker PostgreSQL user. |
 | `POSTGRES_PASSWORD` | `palimpsest` | Docker PostgreSQL password. |
 | `POSTGRES_DB` | `palimpsest` | Docker PostgreSQL database. |
-| `BACKEND_PORT` | `8088` | Host port for FastAPI. |
-| `ASTRO_PORT` | `5174` | Host port for primary Astro frontend. |
+| `BACKEND_PORT` | `8088` | Host port for the Docker app and FastAPI. |
 | `CHROME_PORT` | `3000` | Host port for Browserless Chrome. |
 | `PALIMPSEST_LOG_DIR` | `/app/log` | Container log/debug artifact directory, bind-mounted from `./log`. |
 | `MAX_CONCURRENT_SESSIONS` | `10` | Browserless Chrome concurrency limit. |

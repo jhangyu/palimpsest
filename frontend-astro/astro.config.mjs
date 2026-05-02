@@ -1,8 +1,6 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 
-import node from '@astrojs/node';
-
 // https://astro.build/config/
 export default defineConfig({
   output: 'static',
@@ -34,9 +32,5 @@ export default defineConfig({
         '/analyze': 'http://localhost:8088'
       }
     }
-  },
-
-  adapter: node({
-    mode: 'standalone'
-  })
+  }
 });

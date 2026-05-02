@@ -6,6 +6,17 @@ const getParsedRules = (rulesStr) => {
     try { return JSON.parse(rulesStr); } catch { return {}; }
 };
 
+const getSiteIdFromLocation = () => {
+    if (typeof window === 'undefined') return null;
+
+    const params = new URLSearchParams(window.location.search);
+    const queryId = params.get('site') || params.get('id');
+    if (queryId) return queryId;
+
+    const pathMatch = window.location.pathname.match(/^\/edit\/(\d+)/);
+    return pathMatch ? pathMatch[1] : null;
+};
+
 const EditFeedPage = ({ initialSiteId = null }) => {
     const previewRef = React.useRef();
 
@@ -34,8 +45,9 @@ const EditFeedPage = ({ initialSiteId = null }) => {
     }, []);
 
     useEffect(() => {
-        if (initialSiteId) {
-            handleEdit(parseInt(initialSiteId));
+        const siteId = initialSiteId || getSiteIdFromLocation();
+        if (siteId) {
+            handleEdit(Number.parseInt(siteId, 10));
         }
     }, [initialSiteId]);
 

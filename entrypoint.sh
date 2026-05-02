@@ -3,7 +3,6 @@ set -euo pipefail
 
 APP_HOST="${APP_HOST:-0.0.0.0}"
 BACKEND_PORT="${BACKEND_PORT:-8088}"
-ASTRO_PORT="${ASTRO_PORT:-5174}"
 
 wait_for_tcp() {
   local host="$1"
@@ -25,9 +24,11 @@ wait_for_tcp() {
 }
 
 shutdown() {
-  echo "Shutting down palimpsest services..."
-  jobs -p | xargs -r kill
-  wait
+  echo "Shutting down palimpsest..."
+  if [[ -n "${BACKEND_PID:-}" ]]; then
+    kill "${BACKEND_PID}" 2>/dev/null || true
+    wait "${BACKEND_PID}" 2>/dev/null || true
+  fi
 }
 trap shutdown SIGINT SIGTERM
 
@@ -44,18 +45,11 @@ cd /app/backend
 python -m uvicorn main:app --host "${APP_HOST}" --port "${BACKEND_PORT}" &
 BACKEND_PID=$!
 
-echo "Starting Astro frontend on ${APP_HOST}:${ASTRO_PORT}..."
-cd /app/frontend-astro
-npm run dev -- --host "${APP_HOST}" --port "${ASTRO_PORT}" &
-ASTRO_PID=$!
-
 echo "palimpsest is running:"
-echo "- Backend API: http://localhost:${BACKEND_PORT}"
-echo "- Astro frontend: http://localhost:${ASTRO_PORT}"
+echo "- App and API: http://localhost:${BACKEND_PORT}"
 
 set +e
-wait -n
+wait "${BACKEND_PID}"
 EXIT_CODE=$?
-echo "A palimpsest service exited with code ${EXIT_CODE}; stopping the rest."
-shutdown
+echo "palimpsest exited with code ${EXIT_CODE}."
 exit "${EXIT_CODE}"

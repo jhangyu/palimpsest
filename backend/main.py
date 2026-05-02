@@ -1,6 +1,7 @@
 # backend/main.py
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import databases
@@ -10,6 +11,7 @@ import json
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env file
@@ -120,6 +122,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+FRONTEND_DIR = Path(
+    os.getenv("PALIMPSEST_FRONTEND_DIR", Path(__file__).resolve().parent.parent / "frontend")
+).resolve()
 
 # --- Helper Functions ---
 def normalize_site_name(name: str) -> str:
@@ -409,6 +415,38 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
     if debug:
         response["debug_dir"] = dw.debug_dir
     return response
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_frontend(full_path: str):
+    """Serve the built Astro frontend when packaged in the Docker image."""
+    if not FRONTEND_DIR.is_dir():
+        raise HTTPException(status_code=404, detail="Frontend not built")
+
+    safe_path = full_path.strip("/")
+    candidates = []
+
+    if safe_path:
+        requested = (FRONTEND_DIR / safe_path).resolve()
+        try:
+            requested.relative_to(FRONTEND_DIR)
+        except ValueError:
+            requested = None
+
+        if requested is not None:
+            candidates.append(requested)
+            candidates.append(requested / "index.html")
+
+        first_segment = safe_path.split("/", 1)[0]
+        if first_segment:
+            candidates.append(FRONTEND_DIR / first_segment / "index.html")
+
+    candidates.append(FRONTEND_DIR / "index.html")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return FileResponse(candidate)
+
+    raise HTTPException(status_code=404, detail="Frontend asset not found")
 
 if __name__ == "__main__":
     import uvicorn
