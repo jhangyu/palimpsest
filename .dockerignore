@@ -18,6 +18,4 @@ docs
 *.md
 !README.md
 backend/debug
-backend/rss.db
-rss.db
 dashboard_sample.webp

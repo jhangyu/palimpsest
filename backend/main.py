@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import databases
 import sqlalchemy
 from typing import Optional
@@ -25,7 +25,7 @@ from core.debug import create_debug_writer
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from rfeed import Item, Feed
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@db:5432/rssdb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://palimpsest:palimpsest@db:5432/palimpsest")
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
@@ -79,33 +79,13 @@ async def scheduled_crawl_job():
 async def lifespan(app: FastAPI):
     await database.connect()
     # Create tables if not exist
-    # Create tables
-    if "sqlite" in DATABASE_URL:
-        # SQLite needs check_same_thread=False for multithreaded access (fastapi)
-        engine = sqlalchemy.create_engine(
-            DATABASE_URL, 
-            connect_args={"check_same_thread": False}
-        )
-    else:
-        # PostgreSQL
-        sync_url = DATABASE_URL.replace("+asyncpg", "").replace("postgresql://", "postgresql://")
-        engine = sqlalchemy.create_engine(sync_url)
+    sync_url = DATABASE_URL.replace("+asyncpg", "").replace("postgresql://", "postgresql://")
+    engine = sqlalchemy.create_engine(sync_url)
         
     metadata.create_all(engine)
-    
-    # Manual migration for SQLite to add new columns if they don't exist
-    if "sqlite" in DATABASE_URL:
-        with engine.connect() as conn:
-            # Check if refresh_frequency exists
-            try:
-                conn.execute(sqlalchemy.text("ALTER TABLE sites ADD COLUMN refresh_frequency INTEGER DEFAULT 60"))
-                print("[Startup] Migrated: Added refresh_frequency column to sites table.")
-            except Exception:
-                # Column likely already exists
-                pass
 
-    # Start scheduler
-    scheduler.add_job(scheduled_crawl_job, 'interval', hours=1)
+    # Start scheduler with stagger to prevent thundering herd
+    scheduler.add_job(scheduled_crawl_job, 'interval', hours=1, jitter=300)
     scheduler.start()
     print("[Startup] Database connected, scheduler started.")
     yield
@@ -124,7 +104,7 @@ app.add_middleware(
 )
 
 FRONTEND_DIR = Path(
-    os.getenv("PALIMPSEST_FRONTEND_DIR", Path(__file__).resolve().parent.parent / "frontend")
+    os.getenv("PALIMPSEST_FRONTEND_DIR", Path(__file__).resolve().parent.parent / "frontend-astro")
 ).resolve()
 
 # --- Helper Functions ---
@@ -165,6 +145,13 @@ class SiteCreate(BaseModel):
     name: str
     refresh_frequency: Optional[int] = 60
 
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v.startswith(('http://', 'https://')):
+            raise ValueError('URL must start with http:// or https://')
+        return v
+
 class SiteUpdate(BaseModel):
     url: Optional[str] = None
     name: Optional[str] = None
@@ -188,7 +175,10 @@ class PreviewRequest(BaseModel):
 
 @app.post("/analyze/list")
 async def analyze_list_structure(url: str, debug: bool = False):
-    """解析網站列表頁結構 (呼叫 AI)"""
+    """Parse website list page structure (calls AI)"""
+    # Disable debug mode in production unless explicitly enabled
+    if debug and os.getenv("DEBUG_MODE") != "enabled":
+        debug = False
     html = await get_page_content(url)
     if not html:
         return {"rules": None, "error": "Failed to fetch page content. The website may be blocking crawlers or taking too long to load."}
@@ -416,6 +406,15 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
         response["debug_dir"] = dw.debug_dir
     return response
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration"""
+    try:
+        await database.execute("SELECT 1")
+        return {"status": "healthy", "db": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "db": str(e)}
+
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_frontend(full_path: str):
     """Serve the built Astro frontend when packaged in the Docker image."""
@@ -423,27 +422,35 @@ async def serve_frontend(full_path: str):
         raise HTTPException(status_code=404, detail="Frontend not built")
 
     safe_path = full_path.strip("/")
+    # Block path traversal before any path resolution
+    if ".." in safe_path:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     candidates = []
 
     if safe_path:
-        requested = (FRONTEND_DIR / safe_path).resolve()
-        try:
-            requested.relative_to(FRONTEND_DIR)
-        except ValueError:
-            requested = None
+        # Validate path components before constructing candidates
+        path_parts = safe_path.split("/")
+        for part in path_parts:
+            if part == ".." or part.startswith("."):
+                raise HTTPException(status_code=403, detail="Forbidden")
 
-        if requested is not None:
+        requested = FRONTEND_DIR / safe_path
+        if requested.is_file():
             candidates.append(requested)
+        if (requested / "index.html").is_file():
             candidates.append(requested / "index.html")
 
         first_segment = safe_path.split("/", 1)[0]
-        if first_segment:
+        if first_segment and (FRONTEND_DIR / first_segment / "index.html").is_file():
             candidates.append(FRONTEND_DIR / first_segment / "index.html")
 
-    candidates.append(FRONTEND_DIR / "index.html")
+    if (FRONTEND_DIR / "index.html").is_file():
+        candidates.append(FRONTEND_DIR / "index.html")
 
     for candidate in candidates:
-        if candidate.is_file():
+        # Final safety check - ensure resolved path is within FRONTEND_DIR
+        if candidate.resolve().is_relative_to(FRONTEND_DIR):
             return FileResponse(candidate)
 
     raise HTTPException(status_code=404, detail="Frontend asset not found")

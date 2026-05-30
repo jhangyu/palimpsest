@@ -30,7 +30,7 @@ The current UI is the Astro frontend.
 
 Ignored local-only directories:
 
-- `data/`: PostgreSQL bind mount and local SQLite archives.
+- `data/`: PostgreSQL bind mount.
 - `log/`: runtime logs, debug output, historical local outputs.
 - `node_modules/`, `.venv/`, `venv/`, `.astro/`, `dist/`: generated dependencies/build output.
 - `docs/` and non-README Markdown files are local AI development notes and are intentionally not published on `main`.
@@ -49,7 +49,7 @@ For local development without Docker:
 - Node.js 20+
 - npm
 - Playwright browser dependencies
-- PostgreSQL or SQLite
+- PostgreSQL
 
 ## Quick Start With Docker
 
@@ -59,25 +59,19 @@ Published app image:
 docker pull jhangyu/palimpsest:0.01
 ```
 
-1. Create your environment file:
+1. Set the MiniMax API key in `docker-compose.yml` or in the Portainer stack editor:
 
-```bash
-cp .env.example .env
+```yaml
+MINIMAX_API_KEY: "your_api_key_here"
 ```
 
-2. Edit `.env` and set:
-
-```bash
-MINIMAX_API_KEY=your_api_key_here
-```
-
-3. Start the stack:
+2. Start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-4. Open the services:
+3. Open the services:
 
 - App dashboard and Backend API: http://localhost:8088
 - Browserless Chrome: http://localhost:3000
@@ -85,17 +79,28 @@ docker compose up --build
 PostgreSQL data is mounted to:
 
 ```text
-./data/postgres
+/Users/jhangyu/project/palimpsest/data/postgres
+```
+
+The app container also mounts the project data directory:
+
+```text
+/Users/jhangyu/project/palimpsest/data -> /app/data
 ```
 
 This directory is intentionally ignored by Git.
+
+The compose file uses explicit defaults instead of `${...}` interpolation and absolute host bind mounts so it can be imported directly into Portainer. If the project is moved, update the host-side paths in `docker-compose.yml`.
 
 ## Port Overrides
 
 If local services already use the default ports, override them at startup:
 
 ```bash
-BACKEND_PORT=18088 CHROME_PORT=13000 docker compose up --build
+# Edit docker-compose.yml:
+# "8088:8088" -> "18088:8088"
+# "3000:3000" -> "13000:3000"
+docker compose up --build
 ```
 
 Then open:

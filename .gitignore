@@ -20,8 +20,6 @@ dist/
 *.log
 log/
 data/
-rss.db
-rss.db-journal
 *.db
 *.db-journal
 
