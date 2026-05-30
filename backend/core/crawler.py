@@ -4,26 +4,20 @@ from bs4 import BeautifulSoup
 import os
 import asyncio
 import json
+import re
+import time
 from datetime import datetime
 from urllib.parse import urljoin
 from hashlib import md5
+
+from core.crawl_utils import normalize_selector, extract_article_info
+from core.vue_parser import extract_vue_json, parse_vue_json
 
 def log_with_time(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 def url_hash(url: str) -> str:
     return md5(url.encode()).hexdigest()[:8]
-
-def normalize_selector(selector: str) -> str:
-    """標準化 CSS 選擇器，修復奇怪的引號"""
-    if not selector:
-        return selector
-    # 替換各種奇怪的引號為標準單引號
-    selector = selector.replace('\u2018', "'")  # LEFT SINGLE QUOTATION MARK
-    selector = selector.replace('\u2019', "'")  # RIGHT SINGLE QUOTATION MARK
-    selector = selector.replace('\u201c', '"')  # LEFT DOUBLE QUOTATION MARK
-    selector = selector.replace('\u201d', '"')  # RIGHT DOUBLE QUOTATION MARK
-    return selector
 
 CHROME_WS = os.getenv("CHROME_WS_ENDPOINT", "ws://chrome:3000")
 FAILURE_THRESHOLD = 3  # 連續失敗次數數閾值，觸發自動修復
@@ -140,7 +134,7 @@ async def get_page_content_on_page(page, url, wait_for_selector=None, fast_mode=
     if wait_for_selector:
         try:
             await page.wait_for_selector(wait_for_selector, timeout=5000 if fast_mode else 10000)
-        except:
+        except TimeoutError:
             pass
     
     # 預覽模式下減少額外等待
@@ -251,7 +245,9 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                             # 不存在，直接新增
                             articles_to_crawl.append({"url": article_url, "title": title})
                         # else: 已存在文章，之後在 fetch_and_save_content 中比對 published_at
-                except: continue
+                except (AttributeError, ValueError) as e:
+                    log_with_time(f"[Crawl] Skip item: {e}")
+                    continue
 
             log_with_time(f"[Crawl] Found {len(articles_to_crawl)} articles to crawl for site {site_id} (force_update={force_update})")
 
@@ -309,7 +305,8 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                                     if k in data and data[k]: pub_date = str(data[k]); break
                                 for k in ['large', 'medium', 'feature_picture']:
                                     if k in data and data[k]: image_url = data[k]; break
-                            except: pass
+                            except (json.JSONDecodeError, KeyError) as e:
+                                log_with_time(f"[Crawl] Vue JSON parse error: {e}")
                     else:
                         c_soup = BeautifulSoup(c_html, 'html.parser')
                         body_el = c_soup.select_one(content_rules.get('body', 'article'))
@@ -430,7 +427,9 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
                         if not title:
                             title = link_el.get_text(strip=True) or "No Title"
                         new_articles.append({"url": article_url, "title": title})
-                    except: continue
+                    except (AttributeError, ValueError) as e:
+                        log_with_time(f"[Preview] Skip item: {e}")
+                        continue
 
                 if debug_writer is not None:
                     debug_writer.save("02", "list_items.json", json.dumps(new_articles, ensure_ascii=False, indent=2))
@@ -484,7 +483,8 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
                                 if date_key in data and data[date_key]:
                                     pub_date = str(data[date_key])
                                     break
-                        except: pass
+                        except (json.JSONDecodeError, KeyError) as e:
+                            log_with_time(f"[Preview] Vue JSON parse error: {e}")
                 else:
                     c_soup = BeautifulSoup(c_html, 'html.parser')
                     body_selector = normalize_selector(content_rules.get('body', 'article'))
