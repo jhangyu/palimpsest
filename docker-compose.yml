@@ -29,9 +29,6 @@ services:
 
   app:
     image: jhangyu/palimpsest:0.01
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: palimpsest-app
     environment:
       DATABASE_URL: postgresql://palimpsest:palimpsest@db:5432/palimpsest
