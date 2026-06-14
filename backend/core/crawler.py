@@ -324,8 +324,11 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                     if force_update:
                         # 手動重爬模式：直接用最新內容覆蓋（INSERT OR REPLACE）
                         await db.execute("""
-                            INSERT OR REPLACE INTO articles (site_id, title, url, content, image_url, published_at)
+                            INSERT INTO articles (site_id, title, url, content, image_url, published_at)
                             VALUES (:sid, :title, :url, :content, :image_url, :pub_date)
+                            ON CONFLICT (url) DO UPDATE SET
+                                site_id = :sid, title = :title, content = :content,
+                                image_url = :image_url, published_at = :pub_date
                         """, values={"sid": site_id, "title": title, "url": a_url, "content": content_text, "image_url": image_url, "pub_date": pub_date})
                         log_with_time(f"[Crawl] Force updated: {title[:30]}...")
                         crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
@@ -389,7 +392,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
             if browser_choice == "local":
                 browser = await browser_type.launch(headless=True)
             else:
-                browser = await browser_type.connect(os.getenv("BROWSER_WS_URL", "ws://chrome:3000"))
+                browser = await browser_type.connect_over_cdp(CHROME_WS)
 
             # --- LIST MODE ---
             new_articles = []

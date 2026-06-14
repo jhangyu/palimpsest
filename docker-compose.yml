@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: palimpsest
       POSTGRES_DB: palimpsest
     volumes:
-      - /Users/jhangyu/project/palimpsest/data/postgres:/var/lib/postgresql/data
+      - /Users/jhangyu/docker/palimpsest/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U palimpsest -d palimpsest"]
       interval: 10s
@@ -28,10 +28,11 @@ services:
       - palimpsest-network
 
   app:
-    image: jhangyu/palimpsest:0.01
+    image: jhangyu/palimpsest:0.02
     container_name: palimpsest-app
     environment:
       DATABASE_URL: postgresql://palimpsest:palimpsest@db:5432/palimpsest
+      # Required: set your MiniMax API key here
       MINIMAX_API_KEY: ""
       CHROME_MODE: server
       CHROME_WS_ENDPOINT: ws://chrome:3000
@@ -44,8 +45,8 @@ services:
       PALIMPSEST_DATA_DIR: /app/data
       PALIMPSEST_LOG_DIR: /app/log
     volumes:
-      - /Users/jhangyu/project/palimpsest/data:/app/data
-      - /Users/jhangyu/project/palimpsest/log:/app/log
+      - /Users/jhangyu/docker/palimpsest/data:/app/data
+      - /Users/jhangyu/docker/palimpsest/log:/app/log
     ports:
       - "8088:8088"
     depends_on:

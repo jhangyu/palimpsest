@@ -535,8 +535,11 @@ async def analyze_structure(html_content: str, mode: str = "list", debug_writer=
     if debug_writer is not None:
         debug_writer.save("03", "ai_prompt.txt", prompt)
     log_with_time(f"Prompt length: {len(prompt)} chars")
-    api_key = os.getenv("MINIMAX_API_KEY")
-    log_with_time(f"API Key loaded: {'Yes' if api_key else 'NO'}")
+    api_key = os.getenv("MINIMAX_API_KEY", "").strip()
+    log_with_time(f"API Key loaded: {'Yes (' + api_key[:8] + '...)' if api_key else 'NO — MINIMAX_API_KEY is empty'}")
+    if not api_key:
+        log_with_time("[AI] !!!!! ERROR !!!!! : MINIMAX_API_KEY environment variable is not set")
+        return {}
 
     try:
         log_with_time("[AI] Calling MiniMax API...")
@@ -553,7 +556,8 @@ async def analyze_structure(html_content: str, mode: str = "list", debug_writer=
             ]
         }
 
-        response = httpx.post(MINIMAX_API_URL, headers=headers, json=payload, timeout=180.0)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(MINIMAX_API_URL, headers=headers, json=payload, timeout=180.0)
         response.raise_for_status()
 
         result_data = response.json()
