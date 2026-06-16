@@ -1,0 +1,13 @@
+---
+// Logo component for the sidebar
+import { getAssetPrefix, getPathPrefix } from '../../../../../utils/path.js'
+---
+
+<a href={getPathPrefix('/dashboard')} class="sidebar-brand">
+  <img
+    src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+    alt="AsteroAdmin Logo"
+    class="brand-image"
+  />
+  <span class="mb-0 opacity-80">Astero Admin</span>
+</a>

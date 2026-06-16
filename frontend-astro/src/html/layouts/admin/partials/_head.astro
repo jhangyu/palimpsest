@@ -1,0 +1,115 @@
+---
+// TODO:
+// - Add a favicon
+// - ogimage
+import { getAssetPrefix } from '../../../../utils/path.js'
+import ComponentPreviewCSS from '../../../components/component-preview/_css_component-preview.astro'
+
+interface Props {
+  title?: string
+  description?: string
+  author?: string
+  ogImage?: string
+  enableComponentPreview?: boolean
+  pageCss?: string
+  isRtl?: boolean
+}
+
+const {
+  title = 'Astero Admin', // Default title
+  description = 'Admin dashboard for managing your application', // Default description
+  author = 'Astero Digital',
+  ogImage = '/src/assets/img/og-image.png',
+  enableComponentPreview = false,
+  pageCss,
+  isRtl = false
+} = Astro.props
+
+// Construct full title
+const fullTitle = title ? `${title} | Astero Admin` : 'Astero Admin'
+
+function getCSS() {
+  const isDev = import.meta.env.DEV
+  return isDev ? `/dist/css/style.css` : `/css/style.min.css`
+}
+
+function getSkinCSS() {
+  const isDev = import.meta.env.DEV
+  return isDev ? `/dist/assets/vendor/css/skin.css` : `/assets/vendor/css/skin.css`
+}
+
+function getRtlCSS() {
+  const isDev = import.meta.env.DEV
+  return isDev ? `/dist/css/style.rtl.css` : `/css/style.rtl.min.css`
+}
+---
+
+<!-- Resource Hints --><!-- Preconnect to external domains -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+
+<meta charset="UTF-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover"
+/>
+
+<title>{fullTitle}</title>
+
+<!-- SEO Meta Tags -->
+<meta name="description" content={description} />
+<meta name="author" content={author} />
+
+<!-- Open Graph Meta Tags -->
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:type" content="website" />
+
+<!-- Favicon -->
+<link rel="icon" href={getAssetPrefix('/favicon.ico')} sizes="32x32" />
+<link rel="icon" href={getAssetPrefix('/icon.svg')} type="image/svg+xml" />
+<link rel="apple-touch-icon" href={getAssetPrefix('/apple-touch-icon.png')} />
+<link rel="manifest" href={getAssetPrefix('/manifest.webmanifest')} />
+
+<!-- Astero Admin CSS -->
+{isRtl ? <link href={getRtlCSS()} rel="stylesheet" /> : <link href={getCSS()} rel="stylesheet" />}
+<link href={getSkinCSS()} rel="stylesheet" />
+
+<!-- Remix Icons -->
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+
+<script is:inline>
+  const theme = localStorage.getItem('theme')
+  if (theme) document.documentElement.setAttribute('data-bs-theme', theme)
+</script>
+
+<!-- Source Sans 3 from Google Fonts -->
+<link
+  href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+  rel="stylesheet"
+/>
+
+<!-- Page CSS -->
+{pageCss && <Fragment set:html={pageCss} />}
+
+<!-- Component CSS -->
+{
+  enableComponentPreview && (
+    <>
+      <ComponentPreviewCSS />
+    </>
+  )
+}
+
+<style>
+  /* You can also set custom colors inline in head */
+  /* :root,
+  [data-bs-theme='light'] {
+    --bs-primary: #7533f9;
+    --bs-primary-rgb: 117, 51, 249;
+    --bs-secondary: #efb907;
+    --bs-secondary-rgb: 239, 185, 7;
+  } */
+</style>

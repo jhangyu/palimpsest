@@ -1,0 +1,143 @@
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.unordered-list {
+  padding-left: 0;
+  list-style-type: none;
+
+  li {
+    position: relative;
+    padding-left: 20px;
+
+    &::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: var(--bs-primary);
+      content: '\2022'; /* Unicode character for a bullet */
+    }
+  }
+
+  &.primary li::before {
+    color: var(--bs-primary);
+  }
+
+  &.secondary li::before {
+    color: var(--bs-secondary);
+  }
+
+  &.success li::before {
+    color: var(--bs-success);
+  }
+
+  &.info li::before {
+    color: var(--bs-info);
+  }
+
+  &.warning li::before {
+    color: var(--bs-warning);
+  }
+
+  &.danger li::before {
+    color: var(--bs-danger);
+  }
+
+  &.light li::before {
+    color: var(--bs-light);
+  }
+
+  &.dark li::before {
+    color: var(--bs-dark);
+  }
+}
+
+.icon-list {
+  padding-left: 0;
+  list-style-type: none;
+
+  li {
+    position: relative;
+    padding-left: 30px;
+
+    &::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: var(--bs-primary);
+      content: '\2794';
+    }
+  }
+
+  &.primary li::before {
+    color: var(--bs-primary);
+  }
+
+  &.secondary li::before {
+    color: var(--bs-secondary);
+  }
+
+  &.success li::before {
+    color: var(--bs-success);
+  }
+
+  &.info li::before {
+    color: var(--bs-info);
+  }
+
+  &.warning li::before {
+    color: var(--bs-warning);
+  }
+
+  &.danger li::before {
+    color: var(--bs-danger);
+  }
+
+  &.light li::before {
+    color: var(--bs-light);
+  }
+
+  &.dark li::before {
+    color: var(--bs-dark);
+  }
+}
+
+.dropcap::first-letter {
+  float: left;
+  margin-right: 10px;
+  font-size: 3em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dropcap.primary::first-letter {
+  color: var(--bs-primary);
+}
+
+.dropcap.secondary::first-letter {
+  color: var(--bs-secondary);
+}
+
+.dropcap.success::first-letter {
+  color: var(--bs-success);
+}
+
+.dropcap.info::first-letter {
+  color: var(--bs-info);
+}
+
+.dropcap.warning::first-letter {
+  color: var(--bs-warning);
+}
+
+.dropcap.danger::first-letter {
+  color: var(--bs-danger);
+}
+
+.dropcap.dark::first-letter {
+  color: var(--bs-dark);
+}
+
+.dropcap.light::first-letter {
+  color: var(--bs-light);
+}

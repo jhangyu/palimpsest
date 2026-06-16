@@ -1,0 +1,15 @@
+/* ==========================================================================
+     Mixins
+     ========================================================================== */
+
+@mixin transition($property...) {
+  transition-timing-function: ease-in-out;
+  transition-duration: 0.3s;
+  transition-property: $property;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

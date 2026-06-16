@@ -1,0 +1,206 @@
+// ==========================================================================
+//   Form Control Variables
+// ==========================================================================
+
+// Use shared button/input padding for consistency
+$form-control-padding: $input-btn-padding-y $input-btn-padding-x !default;
+$form-control-textarea-padding: 0.5rem !default;
+
+// ==========================================================================
+//   Form Control Base
+// ==========================================================================
+
+.form-control {
+  box-sizing: border-box;
+  height: $input-btn-minheight;
+  padding: $form-control-padding;
+  line-height: 1.2;
+  border: 1px solid var(--bs-border-color);
+  transition: border-color 0.15s ease-in-out;
+
+  &:not(:disabled):not([readonly]):not(:focus):hover {
+    border-color: var(--bs-gray-500);
+  }
+
+  &:disabled,
+  &[readonly] {
+    cursor: not-allowed;
+    background-color: var(--bs-secondary-bg);
+    opacity: 0.65;
+  }
+
+  &:focus {
+    border-color: var(--bs-primary);
+  }
+}
+
+// ==========================================================================
+//   Form Control Size Mixins
+// ==========================================================================
+
+@mixin form-control-size($height, $padding, $font-size, $line-height: 1.2) {
+  height: $height;
+  padding: $padding;
+  font-size: $font-size;
+  line-height: $line-height;
+}
+
+@mixin color-input-size($height) {
+  height: $height;
+  padding: $form-control-padding;
+}
+
+@mixin file-input-button($padding, $font-size, $height, $margin-left: null) {
+  &::-webkit-file-upload-button,
+  &::file-selector-button {
+    // stylelint-disable-next-line function-disallowed-list
+    height: calc(#{$height} - 2px); // calc() needed for mixed units (rem - px)
+    padding: 0 nth($padding, 2);
+    margin: -#{nth($padding, 1)} 0 -#{nth($padding, 1)} -#{nth($padding, 2)};
+    margin-right: nth($padding, 2);
+    font-size: $font-size;
+    line-height: 1.2;
+    @if $margin-left {
+      margin-left: $margin-left;
+    }
+  }
+}
+
+// ==========================================================================
+//   Form Control Sizes
+// ==========================================================================
+
+.form-control-xs {
+  @include form-control-size(
+    $input-btn-minheight-xs,
+    $input-btn-padding-xs,
+    $input-btn-font-size-xs
+  );
+}
+
+.form-control-sm {
+  @include form-control-size(
+    $input-btn-minheight-sm,
+    $input-btn-padding-sm,
+    $input-btn-font-size-sm
+  );
+}
+
+.form-control-lg {
+  @include form-control-size(
+    $input-btn-minheight-lg,
+    $input-btn-padding-lg,
+    $input-btn-font-size-lg
+  );
+}
+
+.form-control-xl {
+  @include form-control-size(
+    $input-btn-minheight-xl,
+    $input-btn-padding-xl,
+    $input-btn-font-size-xl
+  );
+}
+
+// ==========================================================================
+//   Textarea Variants
+// ==========================================================================
+
+textarea.form-control {
+  height: auto;
+  min-height: $input-btn-minheight;
+  padding: $form-control-textarea-padding;
+  line-height: $line-height-base;
+}
+
+textarea.form-control-xs {
+  min-height: $input-btn-minheight-xs;
+  line-height: $line-height-xs;
+}
+
+textarea.form-control-sm {
+  min-height: $input-btn-minheight-sm;
+  line-height: $line-height-sm;
+}
+
+textarea.form-control-lg {
+  min-height: $input-btn-minheight-lg;
+  line-height: $line-height-lg;
+}
+
+textarea.form-control-xl {
+  min-height: $input-btn-minheight-xl;
+  line-height: $line-height-xl;
+}
+
+// ==========================================================================
+//   Color Input Variants
+// ==========================================================================
+
+.form-control-color.form-control-xs {
+  @include color-input-size($input-btn-minheight-xs);
+}
+
+.form-control-color.form-control-sm {
+  @include color-input-size($input-btn-minheight-sm);
+}
+
+.form-control-color.form-control-lg {
+  @include color-input-size($input-btn-minheight-lg);
+}
+
+.form-control-color.form-control-xl {
+  @include color-input-size($input-btn-minheight-xl);
+}
+
+// ==========================================================================
+//   File Input Variants
+// ==========================================================================
+
+.form-control[type='file'] {
+  @include file-input-button(
+    $input-btn-padding-y $input-btn-padding-x,
+    $input-btn-font-size,
+    $input-btn-minheight
+  );
+}
+
+.form-control[type='file'].form-control-xs {
+  @include file-input-button(
+    $input-btn-padding-xs,
+    $input-btn-font-size-xs,
+    $input-btn-minheight-xs
+  );
+}
+
+.form-control[type='file'].form-control-sm {
+  @include file-input-button(
+    $input-btn-padding-sm,
+    $input-btn-font-size-sm,
+    $input-btn-minheight-sm
+  );
+}
+
+.form-control[type='file'].form-control-lg {
+  @include file-input-button(
+    $input-btn-padding-lg,
+    $input-btn-font-size-lg,
+    $input-btn-minheight-lg
+  );
+}
+
+.form-control[type='file'].form-control-xl {
+  @include file-input-button(
+    $input-btn-padding-xl,
+    $input-btn-font-size-xl,
+    $input-btn-minheight-xl
+  );
+}
+
+// ==========================================================================
+//   Form Typography
+// ==========================================================================
+
+.form-label {
+  font-weight: 500;
+}

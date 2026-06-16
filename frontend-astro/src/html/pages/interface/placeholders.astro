@@ -1,0 +1,263 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation
+const placeholderPageHeader = {
+  title: 'Placeholders',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Interface', href: getPathPrefix('/interface') },
+    { label: 'Placeholders', class: 'active' }
+  ]
+}
+
+// Card placeholder example with image and content skeleton
+const cardPlaceholderExample = `<div class="card w-50" aria-hidden="true">
+  <img src="${getAssetPrefix('/assets/img/placeholder-images/placeholder-image-300x140.png')}" class="card-img-top" alt="Loading image placeholder">
+  <div class="card-body">
+    <h5 class="card-title placeholder-glow">
+      <span class="placeholder col-6"></span>
+    </h5>
+    <p class="card-text placeholder-glow">
+      <span class="placeholder col-7"></span>
+      <span class="placeholder col-4"></span>
+      <span class="placeholder col-4"></span>
+      <span class="placeholder col-6"></span>
+      <span class="placeholder col-8"></span>
+    </p>
+    <a class="btn btn-primary disabled placeholder col-6" aria-disabled="true"></a>
+  </div>
+</div>
+`
+
+// Basic placeholder elements example
+const basicPlaceholderExample = `<p class="mb-4" aria-hidden="true">
+  <span class="placeholder col-6"></span>
+</p>
+
+<a class="btn btn-primary disabled placeholder col-4" aria-disabled="true"></a>
+`
+
+// Width variations example
+const widthPlaceholderExample = `<div class="placeholder-examples">
+  <span class="placeholder col-6 mb-2"></span>
+  <span class="placeholder w-75 mb-2"></span>
+  <span class="placeholder" style="width: 25%;"></span>
+</div>
+`
+
+// Color variations example
+const colorPlaceholderExample = `<div class="placeholder-colors">
+  <span class="placeholder col-12 mb-2"></span>
+  <span class="placeholder col-12 bg-primary mb-2"></span>
+  <span class="placeholder col-12 bg-secondary mb-2"></span>
+  <span class="placeholder col-12 bg-success mb-2"></span>
+  <span class="placeholder col-12 bg-danger mb-2"></span>
+  <span class="placeholder col-12 bg-warning mb-2"></span>
+  <span class="placeholder col-12 bg-info mb-2"></span>
+  <span class="placeholder col-12 bg-light mb-2"></span>
+  <span class="placeholder col-12 bg-dark mb-2"></span>
+</div>
+`
+
+// Size variations example
+const sizePlaceholderExample = `<div class="placeholder-sizes">
+  <span class="placeholder col-12 placeholder-lg mb-3"></span>
+  <span class="placeholder col-12 mb-3"></span>
+  <span class="placeholder col-12 placeholder-sm mb-3"></span>
+  <span class="placeholder col-12 placeholder-xs"></span>
+</div>
+`
+
+// Animation variations example
+const animationPlaceholderExample = `<div class="placeholder-animations">
+  <p class="placeholder-glow mb-4">
+    <span class="placeholder col-12"></span>
+  </p>
+
+  <p class="placeholder-wave mb-0">
+    <span class="placeholder col-12"></span>
+  </p>
+</div>
+`
+
+// Loading state example with multiple elements
+const loadingStatePlaceholderExample = `<div class="content-placeholder" aria-hidden="true">
+  <div class="placeholder-glow mb-4">
+    <h3 class="placeholder col-8 mb-3"></h3>
+    <p class="mb-2">
+      <span class="placeholder col-4"></span>
+      <span class="placeholder col-7"></span>
+      <span class="placeholder col-5"></span>
+    </p>
+    <div class="d-flex gap-2">
+      <span class="placeholder col-2"></span>
+      <span class="placeholder col-2"></span>
+    </div>
+  </div>
+</div>
+`
+---
+
+<AdminLayout
+  title="Placeholders"
+  description="Modern loading state placeholders for enhanced user experience"
+  currentPath="interface/placeholders"
+  enableComponentPreview={true}
+>
+  <PageHeader {...placeholderPageHeader} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Placeholders provide visual feedback during content loading states, enhancing user
+            experience by reducing perceived loading times. These customizable components simulate
+            the layout and structure of content before it's fully loaded, maintaining visual
+            consistency and preventing layout shifts.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="example">Card Example</h3>
+            <p class="py-2">
+              This example demonstrates a common use case for placeholders within a card component.
+              The <code>placeholder-glow</code>
+              animation creates a subtle loading effect, while placeholder elements maintain the expected
+              content structure. The <code>aria-hidden="true"</code> attribute ensures proper accessibility
+              by hiding these elements from screen readers.
+            </p>
+
+            <ComponentPreview
+              title="Card with Placeholders"
+              height="500px"
+              component={cardPlaceholderExample}
+              htmlCode={cardPlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="loading-state">Loading State</h3>
+            <p class="py-2">
+              Create realistic loading states by combining multiple placeholder elements to mimic
+              your content's structure. This pattern helps maintain visual hierarchy and provides
+              users with a clear indication of the upcoming content layout.
+            </p>
+
+            <ComponentPreview
+              title="Content Loading State"
+              height="200px"
+              component={loadingStatePlaceholderExample}
+              htmlCode={loadingStatePlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="basic-usage">Basic Usage</h3>
+            <p class="py-2">
+              Placeholders can be applied to any element using the <code>placeholder</code> class. Combine
+              with Bootstrap's grid classes (<code>col-*</code>) to control width and create
+              realistic content representations during loading states.
+            </p>
+
+            <ComponentPreview
+              title="Basic Placeholders"
+              height="150px"
+              component={basicPlaceholderExample}
+              htmlCode={basicPlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="width">Width Options</h3>
+            <p class="py-2">
+              Control placeholder widths using Bootstrap's grid classes (<code>col-*</code>),
+              utility classes (<code>w-*</code>), or custom CSS. This flexibility allows you to
+              create accurate representations of your content's layout.
+            </p>
+
+            <ComponentPreview
+              title="Width Variations"
+              height="150px"
+              component={widthPlaceholderExample}
+              htmlCode={widthPlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="color">Color Variations</h3>
+            <p class="py-2">
+              Customize placeholder colors using Bootstrap's background utility classes (<code
+                >bg-*</code
+              >). This allows you to maintain your application's color scheme or create visual
+              hierarchies in loading states.
+            </p>
+
+            <ComponentPreview
+              title="Color Options"
+              height="300px"
+              component={colorPlaceholderExample}
+              htmlCode={colorPlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="sizing">Size Options</h3>
+            <p class="py-2">
+              Adjust placeholder sizes using the <code>placeholder-lg</code>, <code
+                >placeholder-sm</code
+              >, or
+              <code>placeholder-xs</code> classes. These modifiers help match your placeholder sizes with
+              your application's typography scale.
+            </p>
+
+            <ComponentPreview
+              title="Size Variations"
+              height="200px"
+              component={sizePlaceholderExample}
+              htmlCode={sizePlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="animation">Animation Effects</h3>
+            <p class="py-2">
+              Add movement to your placeholders with <code>placeholder-glow</code> for a subtle pulsing
+              effect or
+              <code>placeholder-wave</code> for a smooth wave animation. These animations provide visual
+              feedback without being distracting.
+            </p>
+
+            <ComponentPreview
+              title="Animation Styles"
+              height="150px"
+              component={animationPlaceholderExample}
+              htmlCode={animationPlaceholderExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

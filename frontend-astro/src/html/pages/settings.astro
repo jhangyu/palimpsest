@@ -1,0 +1,325 @@
+---
+import AdminLayout from '../layouts/admin/admin-layout.astro'
+import PageHeader from '../components/common/page-header.astro'
+import { getPathPrefix } from '../../utils/path.js'
+
+// Configuration for the page header with title and breadcrumb navigation
+const settingsPageHeader = {
+  title: 'System Settings',
+  backLink: '',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'System Settings', class: 'active' }
+  ]
+}
+
+const address = `123 Business Avenue Corporate Plaza, Suite 100 New York, NY 10001, United States`
+
+// Client-side JavaScript for form validation and tab navigation
+const settingsPageScript = `
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Initialize Bootstrap form validation
+    const settingsForms = document.querySelectorAll('.needs-validation');
+    Array.from(settingsForms).forEach(form => {
+      form.addEventListener('submit', event => {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+
+    // Custom tab navigation implementation
+    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabElements.forEach(tabElement => {
+      tabElement.addEventListener('click', event => {
+        event.preventDefault();
+        const targetId = event.currentTarget.getAttribute('href');
+        const targetPane = document.querySelector(targetId);
+        const tabContainer = targetPane.closest('.tab-content');
+        const currentActiveTab = tabContainer.querySelector('.tab-pane.show.active');
+
+        // Toggle tab visibility
+        currentActiveTab.classList.remove('show', 'active');
+        targetPane.classList.add('show', 'active');
+
+        // Update navigation menu active state
+        document.querySelectorAll('.nav-item').forEach(navItem => {
+          navItem.classList.remove('active');
+        });
+        event.currentTarget.closest('.nav-item').classList.add('active');
+      });
+    });
+  });
+</script>
+`
+---
+
+<AdminLayout
+  title="System Settings"
+  description="Manage your system configuration and preferences"
+  currentPath="settings"
+  pageScript={settingsPageScript}
+>
+  <PageHeader {...settingsPageHeader} />
+
+  <div class="row g-4">
+    <!-- Settings Navigation Menu -->
+    <div class="col-lg-3">
+      <div class="card p-3">
+        <div class="card-body">
+          <nav class="nav-tree">
+            <ul class="list-unstyled">
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Configuration</span>
+              </li>
+              <li class="nav-item active">
+                <a class="nav-link" href="#general-section" data-bs-toggle="tab">
+                  <i class="ri-settings-4-line"></i>
+                  <span>General Settings</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#company-section" data-bs-toggle="tab">
+                  <i class="ri-building-4-line"></i>
+                  <span>Company Profile</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#localization-section" data-bs-toggle="tab">
+                  <i class="ri-earth-line"></i>
+                  <span>Regional Settings</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Forms Container -->
+    <div class="col-lg-9">
+      <div class="tab-content">
+        <!-- General Settings Panel -->
+        <div class="tab-pane fade show active" id="general-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="d-flex align-items-center">
+                <i class="ri-settings-4-line me-2"></i>
+                <h5 class="card-title mb-0">General Configuration</h5>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="general-form" class="needs-validation" novalidate>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label required">Application Name</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      placeholder="Enter application name"
+                      value="Admin Dashboard"
+                      required
+                    />
+                    <div class="invalid-feedback">Application name is required</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Application URL</label>
+                    <input
+                      type="url"
+                      class="form-control"
+                      placeholder="https://yourdomain.com"
+                      value="https://admin.example.com"
+                      required
+                    />
+                    <div class="invalid-feedback">
+                      Please enter a valid URL (e.g., https://yourdomain.com)
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Administrator Email</label>
+                    <input
+                      type="email"
+                      class="form-control"
+                      placeholder="admin@yourdomain.com"
+                      value="admin@example.com"
+                      autocomplete="username"
+                      required
+                    />
+                    <div class="invalid-feedback">Please enter a valid email address</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Default Language</label>
+                    <select class="form-select" required>
+                      <option value="">Choose language</option>
+                      <option value="en" selected>English (US)</option>
+                      <option value="es">Español (Spanish)</option>
+                      <option value="fr">Français (French)</option>
+                      <option value="de">Deutsch (German)</option>
+                      <option value="pt">Português (Portuguese)</option>
+                    </select>
+                    <div class="invalid-feedback">Please select a default language</div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-end py-3">
+              <button type="submit" class="btn btn-primary" form="general-form">
+                <i class="ri-save-3-line me-1"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Information Panel -->
+        <div class="tab-pane fade" id="company-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="d-flex align-items-center">
+                <i class="ri-building-4-line me-2"></i>
+                <h5 class="card-title mb-0">Company Profile</h5>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="company-form" class="needs-validation" novalidate>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label required">Legal Company Name</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      placeholder="Enter company name"
+                      value="Example Corporation"
+                      required
+                    />
+                    <div class="invalid-feedback">Legal company name is required</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Business Registration Number</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      placeholder="Enter registration number"
+                      value="CRN987654321"
+                      required
+                    />
+                    <div class="invalid-feedback">Registration number is required</div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label required">Business Address</label>
+                    <textarea
+                      class="form-control"
+                      rows="3"
+                      placeholder="Enter complete business address"
+                      required>{address}</textarea
+                    >
+                    <div class="invalid-feedback">Business address is required</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Tax Identification Number</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      placeholder="Enter tax ID"
+                      value="EIN456789012"
+                      required
+                    />
+                    <div class="invalid-feedback">Tax ID is required</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Contact Phone</label>
+                    <input
+                      type="tel"
+                      class="form-control"
+                      placeholder="+1 (XXX) XXX-XXXX"
+                      value="+1 (212) 555-0123"
+                      required
+                    />
+                    <div class="invalid-feedback">Valid contact phone number is required</div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-end py-3">
+              <button type="submit" class="btn btn-primary" form="company-form">
+                <i class="ri-save-3-line me-1"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regional Settings Panel -->
+        <div class="tab-pane fade" id="localization-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="d-flex align-items-center">
+                <i class="ri-earth-line me-2"></i>
+                <h5 class="card-title mb-0">Regional Settings</h5>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="localization-form" class="needs-validation" novalidate>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label required">Time Zone</label>
+                    <select class="form-select" required>
+                      <option value="">Select time zone</option>
+                      <option value="America/Los_Angeles" selected>Pacific Time (PT)</option>
+                      <option value="America/New_York">Eastern Time (ET)</option>
+                      <option value="UTC">Coordinated Universal Time (UTC)</option>
+                      <option value="Europe/London">British Time (GMT/BST)</option>
+                      <option value="Europe/Paris">Central European Time (CET)</option>
+                      <option value="Asia/Tokyo">Japan Time (JST)</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your time zone</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Date Format</label>
+                    <select class="form-select" required>
+                      <option value="">Choose format</option>
+                      <option value="MM/DD/YYYY" selected>MM/DD/YYYY (US)</option>
+                      <option value="DD/MM/YYYY">DD/MM/YYYY (UK/EU)</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                      <option value="DD.MM.YYYY">DD.MM.YYYY (DE)</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your preferred date format</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Default Currency</label>
+                    <select class="form-select" required>
+                      <option value="">Select currency</option>
+                      <option value="USD" selected>USD - US Dollar ($)</option>
+                      <option value="EUR">EUR - Euro (€)</option>
+                      <option value="GBP">GBP - British Pound (£)</option>
+                      <option value="JPY">JPY - Japanese Yen (¥)</option>
+                      <option value="CNY">CNY - Chinese Yuan (¥)</option>
+                      <option value="AUD">AUD - Australian Dollar ($)</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your default currency</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label required">Number Format</label>
+                    <select class="form-select" required>
+                      <option value="">Choose format</option>
+                      <option value="en-US" selected>1,234.56 (US/UK)</option>
+                      <option value="de-DE">1.234,56 (EU)</option>
+                      <option value="fr-FR">1 234,56 (FR)</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your preferred number format</div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-end py-3">
+              <button type="submit" class="btn btn-primary" form="localization-form">
+                <i class="ri-save-3-line me-1"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

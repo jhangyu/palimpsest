@@ -1,0 +1,225 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+
+const headerProps = {
+  title: 'Create New Feed',
+  breadcrumbs: [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Feeds', href: '/dashboard' },
+    { label: 'Add', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Back',
+      href: '/dashboard',
+      type: 'link' as const,
+      variant: 'btn-outline-secondary' as const,
+      icon: 'ri-arrow-left-line'
+    }
+  ]
+}
+---
+
+<AdminLayout
+  currentPath="feeds/add"
+  title="Create New Feed"
+  description="Add a new website feed with AI-powered extraction rules"
+>
+  <PageHeader {...headerProps} />
+
+  <div id="feed-wizard">
+    <div class="row g-4">
+      <!-- Left column: Form -->
+      <div class="col-12" id="form-col">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title mb-1">Feed Configuration</h5>
+            <p class="text-muted small mb-4">
+              Provide the website details and let AI figure out the extraction rules.
+            </p>
+
+            <!-- URL + Name -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-8">
+                <label for="wizard-url" class="form-label">Target Website URL</label>
+                <input
+                  type="url"
+                  class="form-control"
+                  id="wizard-url"
+                  placeholder="https://example.com/blog"
+                />
+              </div>
+              <div class="col-md-4">
+                <label for="wizard-name" class="form-label">Site Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="wizard-name"
+                  placeholder="Example Blog"
+                />
+              </div>
+            </div>
+
+            <hr />
+
+            <!-- Step 1: List Rules -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0 fw-semibold">1. List Rules (AI Generation)</label>
+                <div class="d-flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    id="btn-test-list"
+                    type="button"
+                    title="Test list extraction"
+                  >
+                    <i class="ri-file-list-line me-1"></i> Test List
+                  </button>
+                  <button class="btn btn-sm btn-primary" id="btn-analyze-list" type="button">
+                    <i class="ri-brain-line me-1"></i> Analyze List
+                  </button>
+                </div>
+              </div>
+              <p class="text-muted small mb-0">
+                Click Analyze to automatically extract list selectors from the Target URL above.
+              </p>
+            </div>
+
+            <hr />
+
+            <!-- Step 2: Content Rules -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0 fw-semibold">2. Content Rules (AI Generation)</label>
+                <div class="d-flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    id="btn-test-content"
+                    type="button"
+                    title="Test content extraction with sample URL"
+                  >
+                    <i class="ri-article-line me-1"></i> Test Content
+                  </button>
+                  <button class="btn btn-sm btn-primary" id="btn-analyze-content" type="button">
+                    <i class="ri-brain-line me-1"></i> Analyze Content
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2">
+                <input
+                  type="url"
+                  class="form-control"
+                  id="wizard-sample-url"
+                  placeholder="Sample Article URL (e.g. https://example.com/blog/post-1)"
+                />
+              </div>
+            </div>
+
+            <hr />
+
+            <!-- Toggle Rules + Footer -->
+            <div class="d-flex justify-content-between align-items-center">
+              <button class="btn btn-sm btn-outline-secondary" id="btn-toggle-rules" type="button">
+                <i class="ri-code-line me-1"></i> Show Rules JSON
+              </button>
+
+              <div class="d-flex align-items-center gap-3">
+                <!-- Debug toggle (Bootstrap switch) -->
+                <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                  <input class="form-check-input" type="checkbox" role="switch" id="wizard-debug" />
+                  <label
+                    class="form-check-label d-flex align-items-center gap-1"
+                    for="wizard-debug"
+                  >
+                    <i class="ri-bug-line"></i> Debug
+                  </label>
+                </div>
+
+                <!-- Test Both -->
+                <button class="btn btn-sm btn-outline-info" id="btn-test-both" type="button">
+                  <i class="ri-file-list-line me-1"></i> Test Both
+                </button>
+
+                <!-- Save -->
+                <button class="btn btn-success" id="btn-save" type="button">
+                  <i class="ri-rocket-line me-1"></i> Start Crawling
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Rules JSON editors (hidden by default) -->
+      <div class="col-lg-6 d-none" id="rules-panel">
+        <div class="card bg-dark text-light">
+          <div class="card-body">
+            <h5 class="card-title text-light mb-1">Rules Preview JSON</h5>
+            <p class="text-secondary small mb-4">
+              You can manually tweak the rules here before saving.
+            </p>
+
+            <div class="mb-3">
+              <label class="form-label text-info fw-semibold">List Rules</label>
+              <textarea
+                class="form-control bg-dark text-info font-monospace border-secondary"
+                id="wizard-list-rules"
+                rows="8"
+                spellcheck="false"></textarea>
+            </div>
+
+            <div>
+              <label class="form-label fw-semibold" style="color: var(--bs-success)"
+                >Content Rules</label
+              >
+              <textarea
+                class="form-control bg-dark font-monospace border-secondary"
+                id="wizard-content-rules"
+                rows="10"
+                spellcheck="false"
+                style="color: var(--bs-success)"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Section (hidden until test) -->
+    <div class="card mt-4 d-none" id="preview-section">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+          <i class="ri-eye-line me-1"></i> Live Crawl Preview
+        </h5>
+      </div>
+      <div class="card-body">
+        <!-- Debug banner -->
+        <div class="alert alert-warning d-none d-flex align-items-center gap-2" id="debug-banner">
+          <i class="ri-bug-line"></i>
+          <span>Debug artifacts saved to:</span>
+          <code id="debug-banner-path"></code>
+        </div>
+
+        <!-- Error -->
+        <div class="alert alert-danger d-none" id="preview-error"></div>
+
+        <!-- Loading -->
+        <div class="text-center py-4 d-none" id="preview-loading">
+          <div class="spinner-border text-primary mb-2" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted preview-loading-text">Crawling and analyzing...</p>
+        </div>
+
+        <!-- Results table -->
+        <div id="preview-body"></div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initFeedWizard } from '@/scripts/feed-wizard'
+
+  document.addEventListener('astro:page-load', () => initFeedWizard())
+</script>

@@ -1,0 +1,314 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+
+const notificationSettingsConfig: PageHeaderProps = {
+  title: 'Notification Settings',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Users', href: getPathPrefix('/users'), class: '' },
+    { label: 'Notifications', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Notification Preferences"
+  description="Manage your notification and alert preferences"
+  currentPath="users/notifications"
+>
+  <PageHeader {...notificationSettingsConfig} />
+  <div class="row g-4">
+    <!-- User Profile Sidebar -->
+    <div class="col-lg-3">
+      <div class="card p-3">
+        <div class="card-header text-center pt-3">
+          <div class="position-relative d-inline-block mb-4">
+            <img
+              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+              alt="User Avatar"
+              class="rounded-circle"
+              width="120"
+              height="120"
+              style="object-fit: cover;"
+            />
+            <button
+              class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
+              title="Change Profile Picture"
+            >
+              <i class="ri-camera-line"></i>
+            </button>
+          </div>
+          <h5 class="mb-1">Amara Evans</h5>
+          <p class="text-muted mb-0">
+            <i class="ri-mail-line me-1"></i>amara@example.com
+          </p>
+        </div>
+        <div class="card-body">
+          <!-- Navigation Menu -->
+          <nav class="nav-tree">
+            <ul class="list-unstyled">
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Personal</span>
+              </li>
+              <!-- Profile -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/profile')}>
+                  <i class="ri-user-line"></i>
+                  <span>Profile</span>
+                </a>
+              </li>
+              <!-- Notifications -->
+              <li class="nav-item active">
+                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+                  <i class="ri-notification-4-line"></i>
+                  <span>Notifications</span>
+                </a>
+              </li>
+              <!-- Security -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/security')}>
+                  <i class="ri-shield-check-line"></i>
+                  <span>Security</span>
+                </a>
+              </li>
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Other</span>
+              </li>
+              <!-- Billing -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/billing')}>
+                  <i class="ri-bank-card-line"></i>
+                  <span>Billing</span>
+                </a>
+              </li>
+              <!-- Team -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/team')}>
+                  <i class="ri-group-line"></i>
+                  <span>Team</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Settings -->
+    <div class="col-lg-9">
+      <!-- Mobile Notifications -->
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-smartphone-line me-2"></i>
+            <h5 class="card-title mb-0">Mobile Notifications</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <!-- SMS Notifications -->
+            <div class="list-group-item d-flex justify-content-between align-items-center border-0">
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-message-2-line me-2 text-primary"></i>
+                  <span class="fw-medium">SMS Notifications</span>
+                </div>
+                <div class="text-muted">
+                  Receive important updates and security alerts via SMS on your mobile device.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="smsNotification"
+                  checked
+                  title="Toggle SMS notifications"
+                />
+              </div>
+            </div>
+            <!-- Pop-up Notifications -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-notification-3-line me-2 text-primary"></i>
+                  <span class="fw-medium">Browser Notifications</span>
+                </div>
+                <div class="text-muted">
+                  Show desktop notifications when important events occur while browsing.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="popupNotification"
+                  checked
+                  title="Toggle browser notifications"
+                />
+              </div>
+            </div>
+            <!-- Push Notifications -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-notification-badge-line me-2 text-primary"></i>
+                  <span class="fw-medium">Mobile Push Notifications</span>
+                </div>
+                <div class="text-muted">
+                  Get instant notifications on your mobile device for critical updates.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="pushNotification"
+                  title="Toggle push notifications"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email Notification Settings -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-mail-settings-line me-2"></i>
+            <h5 class="card-title mb-0">Email Communication Preferences</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <!-- Account Activity -->
+            <div class="list-group-item d-flex justify-content-between align-items-center border-0">
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-user-follow-line me-2 text-primary"></i>
+                  <span class="fw-medium">Account Security Alerts</span>
+                </div>
+                <div class="text-muted">
+                  Important notifications about your account security and activity.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="accountActivityEmail"
+                  checked
+                  title="Toggle account alerts"
+                />
+              </div>
+            </div>
+            <!-- Promotional Emails -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-gift-line me-2 text-primary"></i>
+                  <span class="fw-medium">Special Offers & Promotions</span>
+                </div>
+                <div class="text-muted">
+                  Stay updated with exclusive deals, discounts, and promotional offers.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="promoEmail"
+                  title="Toggle promotional emails"
+                />
+              </div>
+            </div>
+            <!-- Newsletter -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-newspaper-line me-2 text-primary"></i>
+                  <span class="fw-medium">Monthly Newsletter</span>
+                </div>
+                <div class="text-muted">
+                  Receive our monthly newsletter with industry insights and tips.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="newsletterEmail"
+                  checked
+                  title="Toggle newsletter subscription"
+                />
+              </div>
+            </div>
+            <!-- Security Updates -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-shield-check-line me-2 text-primary"></i>
+                  <span class="fw-medium">Security & Privacy Updates</span>
+                </div>
+                <div class="text-muted">
+                  Important notifications about security patches and privacy policy changes.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="securityAlertEmail"
+                  title="Toggle security updates"
+                />
+              </div>
+            </div>
+            <!-- Product Updates -->
+            <div
+              class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+            >
+              <div>
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ri-rocket-line me-2 text-primary"></i>
+                  <span class="fw-medium">Product & Feature Updates</span>
+                </div>
+                <div class="text-muted">
+                  Stay informed about new features, improvements, and product releases.
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="productUpdateEmail"
+                  title="Toggle product updates"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent">
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-primary">
+              <i class="ri-save-line me-1"></i>Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

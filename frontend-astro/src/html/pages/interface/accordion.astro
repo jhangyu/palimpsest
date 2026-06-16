@@ -1,0 +1,1543 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with navigation breadcrumbs
+const pageHeaderConfig = {
+  title: 'Accordion',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Interface', href: getPathPrefix('/interface') },
+    { label: 'Accordion', class: 'active' }
+  ]
+}
+
+// FAQ Accordion with real-world questions and comprehensive answers
+const faqAccordionExample = `<div class="accordion" id="faqAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true" aria-controls="faq1">
+        <i class="ri-question-line me-2"></i>How do I integrate this component into my project?
+      </button>
+    </h2>
+    <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        <strong>Getting started is simple!</strong> Copy the HTML structure and ensure Bootstrap 5 is included in your project. The accordion requires Bootstrap's JavaScript for collapse functionality.
+        <div class="mt-3">
+          <h6>Quick Setup:</h6>
+          <ol>
+            <li>Include Bootstrap 5 CSS and JS</li>
+            <li>Copy the accordion HTML structure</li>
+            <li>Customize the content and styling as needed</li>
+            <li>Test accessibility with keyboard navigation</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
+        <i class="ri-settings-3-line me-2"></i>Can I customize the appearance and behavior?
+      </button>
+    </h2>
+    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        <strong>Absolutely!</strong> Accordions are highly customizable through CSS classes and data attributes.
+        <div class="alert alert-info mt-3">
+          <h6>Customization Options:</h6>
+          <ul class="mb-0">
+            <li><strong>Colors:</strong> Use <code>bg-*</code> and <code>border-*</code> utility classes</li>
+            <li><strong>Icons:</strong> Add custom icons to headers for better visual hierarchy</li>
+            <li><strong>Animation:</strong> Modify collapse transition speed with CSS</li>
+            <li><strong>Multiple Open:</strong> Remove <code>data-bs-parent</code> to allow multiple panels</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+        <i class="ri-smartphone-line me-2"></i>Is it responsive and mobile-friendly?
+      </button>
+    </h2>
+    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        <strong>Yes, it's fully responsive!</strong> Accordions automatically adapt to different screen sizes and provide excellent touch interaction on mobile devices.
+        <div class="row mt-3">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-body text-center">
+                <i class="ri-smartphone-line text-primary" style="font-size: 2rem;"></i>
+                <p class="mb-0 mt-2">Mobile Optimized</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-body text-center">
+                <i class="ri-computer-line text-success" style="font-size: 2rem;"></i>
+                <p class="mb-0 mt-2">Desktop Ready</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
+        <i class="ri-code-s-slash-line me-2"></i>How do I handle JavaScript events?
+      </button>
+    </h2>
+    <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        <strong>Easy event handling!</strong> Bootstrap accordion provides comprehensive event hooks for show, shown, hide, and hidden states.
+        <div class="mt-3">
+          <code class="d-block bg-light p-2 small">
+            document.getElementById('myAccordion').addEventListener('shown.bs.collapse', function(e) {<br>
+            &nbsp;&nbsp;console.log('Panel opened:', e.target.id);<br>
+            });
+          </code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Interactive accordion with JavaScript controls
+const interactiveAccordionExample = `<div class="mb-3">
+  <div class="d-flex gap-2 mb-3">
+    <button class="btn btn-primary btn-sm" onclick="openAll()">
+      <i class="ri-expand-up-down-line me-1"></i>Open All
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="closeAll()">
+      <i class="ri-collapse-vertical-line me-1"></i>Close All
+    </button>
+    <button class="btn btn-outline-info btn-sm" onclick="togglePanel(2)">
+      <i class="ri-refresh-line me-1"></i>Toggle Panel 2
+    </button>
+  </div>
+</div>
+
+<div class="accordion" id="interactiveAccordion">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interactive1" aria-expanded="false" aria-controls="interactive1">
+        <i class="ri-server-line me-2"></i>Server Configuration
+      </button>
+    </h2>
+    <div id="interactive1" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Configure your server settings:</strong>
+        <div class="mt-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="ssl">
+            <label class="form-check-label" for="ssl">Enable SSL/TLS</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="cache">
+            <label class="form-check-label" for="cache">Enable Caching</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="compression">
+            <label class="form-check-label" for="compression">Enable Compression</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interactive2" aria-expanded="false" aria-controls="interactive2">
+        <i class="ri-database-2-line me-2"></i>Database Settings
+      </button>
+    </h2>
+    <div id="interactive2" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Database configuration options:</strong>
+        <div class="mt-3">
+          <div class="mb-3">
+            <label for="dbHost" class="form-label">Database Host</label>
+            <input type="text" class="form-control" id="dbHost" placeholder="localhost">
+          </div>
+          <div class="mb-3">
+            <label for="dbPort" class="form-label">Port</label>
+            <input type="number" class="form-control" id="dbPort" placeholder="3306">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interactive3" aria-expanded="false" aria-controls="interactive3">
+        <i class="ri-shield-check-line me-2"></i>Security Options
+      </button>
+    </h2>
+    <div id="interactive3" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Security and authentication settings:</strong>
+        <div class="alert alert-warning mt-3">
+          <i class="ri-error-warning-line me-2"></i>
+          <strong>Warning:</strong> Changes to security settings require server restart.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interactive4" aria-expanded="false" aria-controls="interactive4">
+        <i class="ri-notification-3-line me-2"></i>Notification Settings
+      </button>
+    </h2>
+    <div id="interactive4" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Configure system notifications:</strong>
+        <div class="mt-3">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="emailNotifs">
+            <label class="form-check-label" for="emailNotifs">Email Notifications</label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="smsNotifs">
+            <label class="form-check-label" for="smsNotifs">SMS Alerts</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`
+
+const interactiveAccordionJS = `function openAll() {
+  const accordionItems = document.querySelectorAll('#interactiveAccordion .accordion-collapse');
+  const buttons = document.querySelectorAll('#interactiveAccordion .accordion-button');
+
+  accordionItems.forEach((item, index) => {
+    if (!item.classList.contains('show')) {
+      const bsCollapse = new bootstrap.Collapse(item, { show: true });
+      buttons[index].classList.remove('collapsed');
+      buttons[index].setAttribute('aria-expanded', 'true');
+    }
+  });
+}
+
+function closeAll() {
+  const accordionItems = document.querySelectorAll('#interactiveAccordion .accordion-collapse');
+  const buttons = document.querySelectorAll('#interactiveAccordion .accordion-button');
+
+  accordionItems.forEach((item, index) => {
+    if (item.classList.contains('show')) {
+      const bsCollapse = new bootstrap.Collapse(item, { hide: true });
+      buttons[index].classList.add('collapsed');
+      buttons[index].setAttribute('aria-expanded', 'false');
+    }
+  });
+}
+
+function togglePanel(panelNumber) {
+  const targetId = 'interactive' + panelNumber;
+  const target = document.getElementById(targetId);
+  const button = document.querySelector(\`[data-bs-target="#\${targetId}"]\`);
+
+  if (target && button) {
+    const bsCollapse = new bootstrap.Collapse(target, { toggle: true });
+
+    // Update button state
+    button.classList.toggle('collapsed');
+    const isExpanded = !button.classList.contains('collapsed');
+    button.setAttribute('aria-expanded', isExpanded.toString());
+  }
+}`
+
+// Product feature accordion for e-commerce or SaaS
+const productFeaturesExample = `<div class="accordion" id="productFeatures" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#feature1" aria-expanded="true" aria-controls="feature1">
+        <i class="ri-flashlight-line me-2 text-warning"></i>
+        <div class="d-flex flex-column align-items-start">
+          <span>Advanced Analytics Dashboard</span>
+          <small class="text-muted">Real-time insights and reporting</small>
+        </div>
+      </button>
+    </h2>
+    <div id="feature1" class="accordion-collapse collapse show" data-bs-parent="#productFeatures">
+      <div class="accordion-body">
+        <div class="row">
+          <div class="col-md-8">
+            <strong>Transform your data into actionable insights</strong> with our comprehensive analytics platform. Monitor key metrics, track user behavior, and generate detailed reports.
+            <ul class="mt-3">
+              <li>Real-time data visualization</li>
+              <li>Custom dashboard creation</li>
+              <li>Automated report generation</li>
+              <li>Advanced filtering and segmentation</li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <i class="ri-line-chart-line text-success" style="font-size: 3rem;"></i>
+                <p class="mb-0 mt-2">Interactive Charts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#feature2" aria-expanded="false" aria-controls="feature2">
+        <i class="ri-shield-check-line me-2 text-success"></i>
+        <div class="d-flex flex-column align-items-start">
+          <span>Enterprise Security</span>
+          <small class="text-muted">Bank-level encryption and compliance</small>
+        </div>
+      </button>
+    </h2>
+    <div id="feature2" class="accordion-collapse collapse" data-bs-parent="#productFeatures">
+      <div class="accordion-body">
+        <strong>Security you can trust.</strong> Our platform implements industry-leading security measures to protect your data and ensure compliance with global standards.
+        <div class="row mt-3">
+          <div class="col-sm-6">
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-checkbox-circle-line text-success me-2"></i>
+              <span>256-bit AES encryption</span>
+            </div>
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-checkbox-circle-line text-success me-2"></i>
+              <span>SOC 2 Type II certified</span>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-checkbox-circle-line text-success me-2"></i>
+              <span>GDPR compliant</span>
+            </div>
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-checkbox-circle-line text-success me-2"></i>
+              <span>Multi-factor authentication</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#feature3" aria-expanded="false" aria-controls="feature3">
+        <i class="ri-team-line me-2 text-primary"></i>
+        <div class="d-flex flex-column align-items-start">
+          <span>Team Collaboration Tools</span>
+          <small class="text-muted">Work together seamlessly</small>
+        </div>
+      </button>
+    </h2>
+    <div id="feature3" class="accordion-collapse collapse" data-bs-parent="#productFeatures">
+      <div class="accordion-body">
+        <strong>Enhance team productivity</strong> with integrated collaboration features designed for modern workflows.
+        <div class="alert alert-info mt-3">
+          <div class="row">
+            <div class="col-md-6">
+              <h6>Communication</h6>
+              <ul class="mb-0">
+                <li>Real-time messaging</li>
+                <li>Video conferencing</li>
+                <li>Comment threads</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h6>Project Management</h6>
+              <ul class="mb-0">
+                <li>Task assignment</li>
+                <li>Progress tracking</li>
+                <li>Deadline management</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#feature4" aria-expanded="false" aria-controls="feature4">
+        <i class="ri-global-line me-2 text-info"></i>
+        <div class="d-flex flex-column align-items-start">
+          <span>Global Integrations</span>
+          <small class="text-muted">Connect with 100+ third-party tools</small>
+        </div>
+      </button>
+    </h2>
+    <div id="feature4" class="accordion-collapse collapse" data-bs-parent="#productFeatures">
+      <div class="accordion-body">
+        <strong>Seamlessly connect with your existing tools.</strong> Our platform offers extensive integrations with popular business applications and APIs.
+        <div class="mt-3">
+          <div class="row">
+            <div class="col-4 text-center mb-2">
+              <i class="ri-google-line" style="font-size: 2rem;"></i>
+              <div class="small">Google Workspace</div>
+            </div>
+            <div class="col-4 text-center mb-2">
+              <i class="ri-microsoft-line" style="font-size: 2rem;"></i>
+              <div class="small">Microsoft 365</div>
+            </div>
+            <div class="col-4 text-center mb-2">
+              <i class="ri-slack-line" style="font-size: 2rem;"></i>
+              <div class="small">Slack</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// API Documentation accordion
+const apiDocumentationExample = `<div class="accordion" id="apiDocs" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#auth" aria-expanded="true" aria-controls="auth">
+        <span class="badge bg-success me-2">GET</span>
+        <span>/api/auth/login</span>
+        <small class="text-muted ms-auto">Authenticate user</small>
+      </button>
+    </h2>
+    <div id="auth" class="accordion-collapse collapse show" data-bs-parent="#apiDocs">
+      <div class="accordion-body">
+        <p><strong>Authenticate a user and return an access token.</strong></p>
+
+        <h6>Parameters:</h6>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>email</code></td>
+                <td>string</td>
+                <td>Yes</td>
+                <td>User's email address</td>
+              </tr>
+              <tr>
+                <td><code>password</code></td>
+                <td>string</td>
+                <td>Yes</td>
+                <td>User's password</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h6>Example Response:</h6>
+        <pre class="bg-light p-3"><code>{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 123,
+    "email": "user@example.com"
+  }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#users" aria-expanded="false" aria-controls="users">
+        <span class="badge bg-primary me-2">GET</span>
+        <span>/api/users</span>
+        <small class="text-muted ms-auto">Get all users</small>
+      </button>
+    </h2>
+    <div id="users" class="accordion-collapse collapse" data-bs-parent="#apiDocs">
+      <div class="accordion-body">
+        <p><strong>Retrieve a list of all users with pagination support.</strong></p>
+
+        <div class="alert alert-warning">
+          <i class="ri-error-warning-line me-2"></i>
+          <strong>Authentication required:</strong> This endpoint requires a valid JWT token.
+        </div>
+
+        <h6>Query Parameters:</h6>
+        <ul>
+          <li><code>page</code> (optional) - Page number (default: 1)</li>
+          <li><code>limit</code> (optional) - Items per page (default: 10, max: 100)</li>
+          <li><code>search</code> (optional) - Search by name or email</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#createUser" aria-expanded="false" aria-controls="createUser">
+        <span class="badge bg-warning me-2">POST</span>
+        <span>/api/users</span>
+        <small class="text-muted ms-auto">Create new user</small>
+      </button>
+    </h2>
+    <div id="createUser" class="accordion-collapse collapse" data-bs-parent="#apiDocs">
+      <div class="accordion-body">
+        <p><strong>Create a new user account.</strong></p>
+
+        <h6>Request Body:</h6>
+        <pre class="bg-light p-3"><code>{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securePassword123",
+  "role": "user"
+}</code></pre>
+
+        <h6>Validation Rules:</h6>
+        <ul>
+          <li>Email must be unique and valid format</li>
+          <li>Password must be at least 8 characters</li>
+          <li>Name is required and must be 2-50 characters</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteUser" aria-expanded="false" aria-controls="deleteUser">
+        <span class="badge bg-danger me-2">DELETE</span>
+        <span>/api/users/{id}</span>
+        <small class="text-muted ms-auto">Delete user account</small>
+      </button>
+    </h2>
+    <div id="deleteUser" class="accordion-collapse collapse" data-bs-parent="#apiDocs">
+      <div class="accordion-body">
+        <p><strong>Permanently delete a user account and all associated data.</strong></p>
+
+        <div class="alert alert-danger">
+          <i class="ri-delete-bin-line me-2"></i>
+          <strong>Caution:</strong> This action is irreversible. All user data will be permanently deleted.
+        </div>
+
+        <h6>Path Parameters:</h6>
+        <ul>
+          <li><code>id</code> (required) - User ID to delete</li>
+        </ul>
+
+        <h6>Response:</h6>
+        <pre class="bg-light p-3"><code>{
+  "success": true,
+  "message": "User account deleted successfully"
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Settings panel accordion for admin interfaces
+const settingsPanelExample = `<div class="accordion" id="settingsPanel">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#generalSettings" aria-expanded="true" aria-controls="generalSettings">
+        <i class="ri-settings-3-line me-2"></i>General Settings
+      </button>
+    </h2>
+    <div id="generalSettings" class="accordion-collapse collapse show">
+      <div class="accordion-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="siteName" class="form-label">Site Name</label>
+              <input type="text" class="form-control" id="siteName" value="My Awesome Site">
+            </div>
+            <div class="mb-3">
+              <label for="siteUrl" class="form-label">Site URL</label>
+              <input type="url" class="form-control" id="siteUrl" value="https://example.com">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="timezone" class="form-label">Timezone</label>
+              <select class="form-select" id="timezone">
+                <option selected>UTC</option>
+                <option>America/New_York</option>
+                <option>Europe/London</option>
+                <option>Asia/Tokyo</option>
+              </select>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="maintenanceMode">
+              <label class="form-check-label" for="maintenanceMode">
+                Enable maintenance mode
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#emailSettings" aria-expanded="false" aria-controls="emailSettings">
+        <i class="ri-mail-line me-2"></i>Email Configuration
+      </button>
+    </h2>
+    <div id="emailSettings" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <div class="alert alert-info">
+          <i class="ri-information-line me-2"></i>
+          Configure SMTP settings for system emails
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="smtpHost" class="form-label">SMTP Host</label>
+              <input type="text" class="form-control" id="smtpHost" placeholder="smtp.example.com">
+            </div>
+            <div class="mb-3">
+              <label for="smtpPort" class="form-label">SMTP Port</label>
+              <input type="number" class="form-control" id="smtpPort" placeholder="587">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="smtpUser" class="form-label">Username</label>
+              <input type="text" class="form-control" id="smtpUser">
+            </div>
+            <div class="mb-3">
+              <label for="smtpPass" class="form-label">Password</label>
+              <input type="password" class="form-control" id="smtpPass">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-outline-primary btn-sm">
+          <i class="ri-send-plane-line me-1"></i>Test Connection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#securitySettings" aria-expanded="false" aria-controls="securitySettings">
+        <i class="ri-shield-keyhole-line me-2"></i>Security Settings
+      </button>
+    </h2>
+    <div id="securitySettings" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="twoFactor" checked>
+              <label class="form-check-label" for="twoFactor">
+                Two-Factor Authentication
+              </label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="sessionTimeout">
+              <label class="form-check-label" for="sessionTimeout">
+                Auto Session Timeout
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="passwordPolicy" class="form-label">Password Policy</label>
+              <select class="form-select" id="passwordPolicy">
+                <option>Standard (8+ chars)</option>
+                <option selected>Strong (12+ chars, mixed case)</option>
+                <option>Enterprise (16+ chars, complex)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#backupSettings" aria-expanded="false" aria-controls="backupSettings">
+        <i class="ri-archive-line me-2"></i>Backup & Recovery
+      </button>
+    </h2>
+    <div id="backupSettings" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <div class="alert alert-success">
+          <i class="ri-checkbox-circle-line me-2"></i>
+          Last backup: Today at 3:00 AM (Successful)
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="backupFreq" class="form-label">Backup Frequency</label>
+              <select class="form-select" id="backupFreq">
+                <option>Hourly</option>
+                <option selected>Daily</option>
+                <option>Weekly</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="retentionDays" class="form-label">Retention Period (days)</label>
+              <input type="number" class="form-control" id="retentionDays" value="30">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm me-2">
+          <i class="ri-download-cloud-line me-1"></i>Create Backup Now
+        </button>
+        <button class="btn btn-outline-secondary btn-sm">
+          <i class="ri-history-line me-1"></i>View Backup History
+        </button>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Flush accordion example without borders for a cleaner look
+const flushAccordionExample = `<div class="accordion accordion-flush" id="accordionFlushExample" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" aria-expanded="false" aria-controls="flush-collapseOne">
+        <i class="ri-layout-line me-2"></i>Clean Design: Borderless Style
+      </button>
+    </h2>
+    <div id="flush-collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+      <div class="accordion-body">
+        <strong>Experience the flush design variant.</strong> This style removes borders between items, creating a seamless, modern appearance. Perfect for interfaces where you want the accordion to blend naturally with the surrounding content.
+        <div class="alert alert-light mt-2">
+          <i class="ri-lightbulb-line me-2"></i>Note: The flush style works best against plain backgrounds and in content-focused interfaces.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseTwo" aria-expanded="false" aria-controls="flush-collapseTwo">
+        <i class="ri-stack-line me-2"></i>Content Organization: Layout Tips
+      </button>
+    </h2>
+    <div id="flush-collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+      <div class="accordion-body">
+        <strong>Optimize your content layout.</strong> The flush accordion style is particularly effective for content-heavy sections where visual separation isn't necessary. Consider using this style for:
+        <ul class="mt-2">
+          <li>Documentation sections and knowledge bases</li>
+          <li>Product descriptions and specifications</li>
+          <li>Feature lists and capability overviews</li>
+          <li>User profile settings and preferences</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseThree" aria-expanded="false" aria-controls="flush-collapseThree">
+        <i class="ri-smartphone-line me-2"></i>Responsive Behavior: Mobile Optimization
+      </button>
+    </h2>
+    <div id="flush-collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+      <div class="accordion-body">
+        <strong>Ensure great mobile experience.</strong> The flush accordion automatically adapts to different screen sizes, maintaining its clean appearance across devices. Use appropriate spacing and font sizes for optimal readability on mobile devices.
+        <div class="mt-3">
+          <i class="ri-checkbox-circle-line text-success me-2"></i>Best for touch interfaces where clean tap targets are essential.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseFour" aria-expanded="false" aria-controls="flush-collapseFour">
+        <i class="ri-paint-brush-line me-2"></i>Styling Customization: Theme Integration
+      </button>
+    </h2>
+    <div id="flush-collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+      <div class="accordion-body">
+        <strong>Seamlessly integrate with your design system.</strong> The flush style provides the perfect foundation for custom theming and brand integration without interfering with your existing visual hierarchy.
+        <div class="mt-2">
+          <span class="badge bg-primary me-2">CSS Custom Properties</span>
+          <span class="badge bg-success me-2">Utility Classes</span>
+          <span class="badge bg-info">Theme Variables</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Accordion example where multiple panels can remain open simultaneously
+const multiPanelAccordionExample = `<div class="accordion" id="accordionPanelsStayOpenExample" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseOne" aria-expanded="true" aria-controls="panelsStayOpen-collapseOne">
+        <i class="ri-layout-column-line me-2"></i>Multi-Panel Support: Independent Sections
+      </button>
+    </h2>
+    <div id="panelsStayOpen-collapseOne" class="accordion-collapse collapse show">
+      <div class="accordion-body">
+        <strong>Multiple panels can stay open simultaneously.</strong> This variant allows users to view multiple content sections at once, perfect for comparison or reference purposes. Each panel operates independently, giving users more control over their content viewing experience.
+        <div class="alert alert-success mt-2">
+          <i class="ri-checkbox-circle-line me-2"></i>Ideal for complex interfaces where users need to reference multiple sections at once.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseTwo" aria-expanded="false" aria-controls="panelsStayOpen-collapseTwo">
+        <i class="ri-cursor-line me-2"></i>Interactive Features: Enhanced Navigation
+      </button>
+    </h2>
+    <div id="panelsStayOpen-collapseTwo" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Navigate content efficiently.</strong> Users can:
+        <ul class="mt-2">
+          <li>Open multiple sections simultaneously for comparison</li>
+          <li>Maintain context across different content areas</li>
+          <li>Preserve their view state while browsing the interface</li>
+          <li>Interact with multiple content sections without losing their place</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseThree" aria-expanded="false" aria-controls="panelsStayOpen-collapseThree">
+        <i class="ri-code-s-slash-line me-2"></i>Implementation Guide: Technical Details
+      </button>
+    </h2>
+    <div id="panelsStayOpen-collapseThree" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Key technical considerations:</strong>
+        <div class="alert alert-info mt-2">
+          <ul class="mb-0">
+            <li><i class="ri-check-line me-1"></i>Omits the data-bs-parent attribute to prevent auto-closing</li>
+            <li><i class="ri-check-line me-1"></i>Maintains individual panel state independently</li>
+            <li><i class="ri-check-line me-1"></i>Supports dynamic content loading within panels</li>
+            <li><i class="ri-check-line me-1"></i>Works with both static and dynamically generated content</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseFour" aria-expanded="false" aria-controls="panelsStayOpen-collapseFour">
+        <i class="ri-settings-2-line me-2"></i>Advanced Configuration: Customization Options
+      </button>
+    </h2>
+    <div id="panelsStayOpen-collapseFour" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        <strong>Customize behavior for your specific needs:</strong>
+        <div class="mt-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="rememberState" checked>
+            <label class="form-check-label" for="rememberState">
+              Remember panel states on page reload
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="smoothScroll">
+            <label class="form-check-label" for="smoothScroll">
+              Auto-scroll to opened panels
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="closeOthers">
+            <label class="form-check-label" for="closeOthers">
+              Limit maximum open panels
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Custom styled accordion with enhanced design
+const customStyledAccordionExample = `<div class="accordion" id="customStyledAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item border-primary">
+    <h2 class="accordion-header">
+      <button class="accordion-button bg-primary bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#customStyleOne" aria-expanded="true" aria-controls="customStyleOne">
+        <i class="ri-palette-line me-2"></i>Custom Styling: Color Variations
+      </button>
+    </h2>
+    <div id="customStyleOne" class="accordion-collapse collapse show" data-bs-parent="#customStyledAccordion">
+      <div class="accordion-body">
+        <strong>Enhance visual hierarchy with custom styling.</strong> Accordions can be styled with different colors to indicate categories, importance, or to match your brand guidelines.
+        <div class="mt-3">
+          <span class="badge bg-primary me-2">Primary Theme</span>
+          <span class="badge bg-success me-2">Success State</span>
+          <span class="badge bg-warning me-2">Warning Alert</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border-success">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed bg-success bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#customStyleTwo" aria-expanded="false" aria-controls="customStyleTwo">
+        <i class="ri-check-line me-2"></i>Brand Integration: Design System
+      </button>
+    </h2>
+    <div id="customStyleTwo" class="accordion-collapse collapse" data-bs-parent="#customStyledAccordion">
+      <div class="accordion-body">
+        <strong>Seamlessly integrate with your brand identity.</strong> Use custom CSS variables and utility classes to match your organization's design system and maintain consistency across all components.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border-info">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed bg-info bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#customStyleThree" aria-expanded="false" aria-controls="customStyleThree">
+        <i class="ri-information-line me-2"></i>Theme Variations: Dark Mode Support
+      </button>
+    </h2>
+    <div id="customStyleThree" class="accordion-collapse collapse" data-bs-parent="#customStyledAccordion">
+      <div class="accordion-body">
+        <strong>Support multiple themes and color schemes.</strong> The accordion automatically adapts to dark mode and other theme variations while maintaining readability and accessibility standards.
+      </div>
+    </div>
+  </div>
+</div>`
+
+const simpleAccordion = `<div class="accordion accordion-flush" id="simpleAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none p-3" type="button" data-bs-toggle="collapse" data-bs-target="#simple1" aria-expanded="false" aria-controls="simple1">
+        <i class="ri-brush-line me-2"></i>Clean Design: Elegant Simplicity
+      </button>
+    </h2>
+    <div id="simple1" class="accordion-collapse collapse" data-bs-parent="#simpleAccordion">
+      <div class="accordion-body p-3">
+        <strong>Streamlined interface design.</strong> This clean approach removes visual clutter while maintaining full functionality and accessibility.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none p-3" type="button" data-bs-toggle="collapse" data-bs-target="#simple2" aria-expanded="false" aria-controls="simple2">
+        <i class="ri-layout-4-line me-2"></i>Minimal Structure: Content Focus
+      </button>
+    </h2>
+    <div id="simple2" class="accordion-collapse collapse" data-bs-parent="#simpleAccordion">
+      <div class="accordion-body p-3">
+        <strong>Content-first approach.</strong> The minimal design puts emphasis on your content while providing intuitive navigation patterns.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none p-3" type="button" data-bs-toggle="collapse" data-bs-target="#simple3" aria-expanded="false" aria-controls="simple3">
+        <i class="ri-speed-line me-2"></i>Performance: Lightweight Solution
+      </button>
+    </h2>
+    <div id="simple3" class="accordion-collapse collapse" data-bs-parent="#simpleAccordion">
+      <div class="accordion-body p-3">
+        <strong>Optimized for speed.</strong> Minimal markup and styling ensure fast loading and smooth animations across all devices.
+      </div>
+    </div>
+  </div>
+</div>`
+
+const accordionWithBackground = `<div class="accordion accordion-flush" id="bgAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#bg1" aria-expanded="false" aria-controls="bg1">
+        <i class="ri-image-line me-2"></i>Background Styling: Visual Enhancement
+      </button>
+    </h2>
+    <div id="bg1" class="accordion-collapse collapse" data-bs-parent="#bgAccordion">
+      <div class="accordion-body">
+        <strong>Enhanced visual presentation.</strong> The background styling provides clear section boundaries and improved visual hierarchy for better content organization.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#bg2" aria-expanded="false" aria-controls="bg2">
+        <i class="ri-contrast-2-line me-2"></i>Visual Separation: Clear Boundaries
+      </button>
+    </h2>
+    <div id="bg2" class="accordion-collapse collapse" data-bs-parent="#bgAccordion">
+      <div class="accordion-body">
+        <strong>Improved content organization.</strong> Background borders create distinct visual sections that help users navigate complex information structures.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#bg3" aria-expanded="false" aria-controls="bg3">
+        <i class="ri-focus-3-line me-2"></i>User Experience: Enhanced Readability
+      </button>
+    </h2>
+    <div id="bg3" class="accordion-collapse collapse" data-bs-parent="#bgAccordion">
+      <div class="accordion-body">
+        <strong>Focused reading experience.</strong> The bordered design helps users focus on individual sections while maintaining the overall interface structure.
+      </div>
+    </div>
+  </div>
+</div>`
+
+const accordionWithoutArrow = `<div class="accordion accordion-flush accordion-without-arrow" id="noArrowAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#noArrow1" aria-expanded="false" aria-controls="noArrow1">
+        <i class="ri-subtract-line me-2"></i>Minimal Interface: No Arrow Design
+      </button>
+    </h2>
+    <div id="noArrow1" class="accordion-collapse collapse" data-bs-parent="#noArrowAccordion">
+      <div class="accordion-body">
+        <strong>Ultra-clean interface design.</strong> Removing visual indicators creates a more streamlined appearance while maintaining full accordion functionality.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#noArrow2" aria-expanded="false" aria-controls="noArrow2">
+        <i class="ri-eye-close-line me-2"></i>Subtle Interaction: Implicit Navigation
+      </button>
+    </h2>
+    <div id="noArrow2" class="accordion-collapse collapse" data-bs-parent="#noArrowAccordion">
+      <div class="accordion-body">
+        <strong>Intuitive user interaction.</strong> Users rely on hover states and cursor changes to understand interactive elements, creating a cleaner aesthetic.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#noArrow3" aria-expanded="false" aria-controls="noArrow3">
+        <i class="ri-focus-line me-2"></i>Content Priority: Information First
+      </button>
+    </h2>
+    <div id="noArrow3" class="accordion-collapse collapse" data-bs-parent="#noArrowAccordion">
+      <div class="accordion-body">
+        <strong>Content-focused approach.</strong> By removing visual distractions, the design emphasizes the actual content and information hierarchy.
+      </div>
+    </div>
+  </div>
+</div>`
+
+const accordionWithIcon = `<div class="accordion accordion-flush accordion-icon" id="iconAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#icon1" aria-expanded="false" aria-controls="icon1">
+        <i class="ri-layout-2-line me-2"></i>Icon Enhancement: Visual Context
+      </button>
+    </h2>
+    <div id="icon1" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+      <div class="accordion-body">
+        <strong>Enhanced visual communication.</strong> Icons provide immediate context and help users quickly identify different content sections and categories.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#icon2" aria-expanded="false" aria-controls="icon2">
+        <i class="ri-star-line me-2"></i>User Experience: Improved Navigation
+      </button>
+    </h2>
+    <div id="icon2" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+      <div class="accordion-body">
+        <strong>Intuitive content discovery.</strong> Icons serve as visual cues that help users scan and locate specific information more efficiently.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#icon3" aria-expanded="false" aria-controls="icon3">
+        <i class="ri-tools-line me-2"></i>Customization: Brand Integration
+      </button>
+    </h2>
+    <div id="icon3" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+      <div class="accordion-body">
+        <strong>Brand consistency.</strong> Custom icons can reinforce your brand identity while maintaining the functional benefits of visual categorization.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item border rounded mb-3">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed rounded shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#icon4" aria-expanded="false" aria-controls="icon4">
+        <i class="ri-palette-line me-2"></i>Accessibility: Universal Design
+      </button>
+    </h2>
+    <div id="icon4" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+      <div class="accordion-body">
+        <strong>Inclusive design approach.</strong> Icons complement text content and support users with different learning styles and accessibility needs.
+      </div>
+    </div>
+  </div>
+</div>`
+
+const indicatorAccordion = `<div class="accordion indicator-accordion" id="indicatorAccordion" role="tablist" aria-multiselectable="true">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button shadow-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#indicator1" aria-expanded="false" aria-controls="indicator1">
+        <i class="ri-add-circle-line me-2"></i>Indicator Design: Plus/Minus Icons
+        <span class="accordion-icon"></span>
+      </button>
+    </h2>
+    <div id="indicator1" class="accordion-collapse collapse" data-bs-parent="#indicatorAccordion">
+      <div class="accordion-body">
+        <strong>Clear visual feedback.</strong> Plus and minus indicators provide intuitive visual cues about panel states and user interactions.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button shadow-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#indicator2" aria-expanded="false" aria-controls="indicator2">
+        <i class="ri-user-line me-2"></i>User Interface: Familiar Patterns
+        <span class="accordion-icon"></span>
+      </button>
+    </h2>
+    <div id="indicator2" class="accordion-collapse collapse" data-bs-parent="#indicatorAccordion">
+      <div class="accordion-body">
+        <strong>Recognizable interaction patterns.</strong> Users immediately understand the expand/collapse functionality through familiar plus/minus iconography.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button shadow-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#indicator3" aria-expanded="false" aria-controls="indicator3">
+        <i class="ri-settings-line me-2"></i>Implementation: Custom Styling
+        <span class="accordion-icon"></span>
+      </button>
+    </h2>
+    <div id="indicator3" class="accordion-collapse collapse" data-bs-parent="#indicatorAccordion">
+      <div class="accordion-body">
+        <strong>Flexible customization options.</strong> The indicator style can be easily modified to match your design system requirements and brand guidelines.
+      </div>
+    </div>
+  </div>
+</div>`
+
+// Shared preview configuration for consistent component display
+const previewConfig = {
+  cssCode: '',
+  jsCode: ''
+}
+---
+
+<AdminLayout
+  title="Accordion"
+  description="Interactive accordion components for organized content display"
+  currentPath="interface/accordion"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Accordions are powerful UI components that help organize and present complex information
+            in collapsible sections. They enhance user experience by implementing progressive
+            disclosure, allowing users to focus on specific content while reducing cognitive load.
+            Accordions are particularly effective for FAQs, product details, settings panels, and
+            any interface where space optimization is important.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 id="faq-example">FAQ Accordion</h3>
+            <p class="py-2">
+              Create developer-friendly FAQ sections with comprehensive answers and practical
+              guidance. This example demonstrates real-world questions developers ask when
+              implementing accordions, complete with setup instructions, customization options, and
+              responsive design considerations.
+            </p>
+
+            <ComponentPreview
+              title="FAQ Accordion with Developer Guidelines"
+              height="550px"
+              component={faqAccordionExample}
+              htmlCode={faqAccordionExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="interactive-accordion">Interactive Accordion</h3>
+            <p class="py-2">
+              Build dynamic accordions with JavaScript controls for programmatic manipulation. This
+              example shows how to create open/close all functionality, individual panel controls,
+              and integrate form elements within accordion panels for real admin interfaces.
+            </p>
+
+            <ComponentPreview
+              title="Interactive Accordion with Controls"
+              height="550px"
+              component={interactiveAccordionExample}
+              htmlCode={interactiveAccordionExample}
+              cssCode={``}
+              jsCode={`<script>${interactiveAccordionJS}</script>`}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="product-features">Product Features Showcase</h3>
+            <p class="py-2">
+              Design compelling product feature presentations with rich content, visual elements,
+              and structured information. Perfect for SaaS landing pages, e-commerce product
+              details, or service descriptions where you need to present complex features in an
+              organized manner.
+            </p>
+
+            <ComponentPreview
+              title="Product Features Accordion"
+              height="550px"
+              component={productFeaturesExample}
+              htmlCode={productFeaturesExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="api-documentation">API Documentation</h3>
+            <p class="py-2">
+              Create comprehensive API documentation with organized endpoints, parameters, and
+              examples. This pattern is ideal for technical documentation where developers need
+              quick access to different API methods while maintaining a clean, searchable interface.
+            </p>
+
+            <ComponentPreview
+              title="API Documentation Accordion"
+              height="550px"
+              component={apiDocumentationExample}
+              htmlCode={apiDocumentationExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="settings-panel">Admin Settings Panel</h3>
+            <p class="py-2">
+              Build comprehensive admin interfaces with organized settings sections. This example
+              shows how to structure configuration panels with form elements, validation alerts, and
+              logical grouping of related settings for better user experience.
+            </p>
+
+            <ComponentPreview
+              title="Admin Settings Accordion"
+              height="550px"
+              component={settingsPanelExample}
+              htmlCode={settingsPanelExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="flush">Flush Style</h3>
+            <p class="py-2">
+              The flush style accordion (<code>.accordion-flush</code>) removes borders and
+              background colors, creating a minimalist appearance. This variant is ideal for clean,
+              modern interfaces where the accordion needs to blend seamlessly with the surrounding
+              design elements. The flush style reduces visual noise and works particularly well in
+              content-focused layouts where the emphasis should be on the information rather than
+              the UI components.
+            </p>
+
+            <ComponentPreview
+              title="Flush Accordion Example"
+              height="550px"
+              component={flushAccordionExample}
+              htmlCode={flushAccordionExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="always-open">Multi-Panel Support</h3>
+            <p class="py-2">
+              This variant allows multiple panels to remain open simultaneously by omitting the
+              <code>data-bs-parent</code> attribute. It's particularly useful for comparison scenarios
+              or when users need to reference multiple sections at once. Each panel maintains its state
+              independently, providing a more flexible user experience. This approach is ideal for complex
+              interfaces where users need to view multiple pieces of information simultaneously.
+            </p>
+
+            <ComponentPreview
+              title="Multi-Panel Accordion Example"
+              height="550px"
+              component={multiPanelAccordionExample}
+              htmlCode={multiPanelAccordionExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="custom-styled">Custom Styled Accordion</h3>
+            <p class="py-2">
+              Accordions can be customized with different colors, borders, and background styles to
+              match your design system or to create visual hierarchy. This example demonstrates how
+              to use utility classes to create custom-styled accordions with color-coded sections
+              and integrated icons. Custom styling can help users quickly identify different
+              categories of information or highlight important sections.
+            </p>
+
+            <ComponentPreview
+              title="Custom Styled Accordion Example"
+              height="550px"
+              component={customStyledAccordionExample}
+              htmlCode={customStyledAccordionExample}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="simple-accordion">Simple Accordion</h3>
+            <p class="py-2">
+              The simple accordion offers a clean, collapsible layout with arrow indicators that
+              guide users through expanding and collapsing sections.
+            </p>
+
+            <ComponentPreview
+              title="Simple Accordion"
+              height="550px"
+              component={simpleAccordion}
+              htmlCode={simpleAccordion}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="accordion-with-background">Accordion with Background</h3>
+            <p class="py-2">
+              This accordion variant features a bordered background that visually separates each
+              panel, enhancing readability and structure.
+            </p>
+
+            <ComponentPreview
+              title="Accordion with Background Example"
+              height="550px"
+              component={accordionWithBackground}
+              htmlCode={accordionWithBackground}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="accordion-without-arrow">Accordion without Arrow</h3>
+            <p class="py-2">
+              Designed for minimal interfaces, the accordion without arrow removes toggle icons
+              while retaining full expand-and-collapse functionality.
+            </p>
+
+            <ComponentPreview
+              title="Accordion without Arrow Example"
+              height="550px"
+              component={accordionWithoutArrow}
+              htmlCode={accordionWithoutArrow}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="accordion-with-icon">Accordion with Icon</h3>
+            <p class="py-2">
+              Each section in the icon-enhanced accordion includes a relevant icon beside the title,
+              adding visual context to the content within.
+            </p>
+
+            <ComponentPreview
+              title="Accordion with Icon Example"
+              height="550px"
+              component={accordionWithIcon}
+              htmlCode={accordionWithIcon}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="accordion-with-indicator">Accordion with Indicator</h3>
+            <p class="py-2">
+              Designed for intuitive interaction, the accordion with indicator replaces traditional
+              arrows with plus and minus icons that reflect the open or closed state of each
+              section.
+            </p>
+
+            <ComponentPreview
+              title="Accordion with Indicator"
+              height="550px"
+              component={indicatorAccordion}
+              htmlCode={indicatorAccordion}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="developer-tips">Developer Tips & Best Practices</h3>
+            <div class="alert alert-info">
+              <h4 class="alert-heading">
+                <i class="ri-lightbulb-line me-2"></i>
+                Pro Tips for Accordions
+              </h4>
+              <ul class="mb-0">
+                <li>
+                  <strong>Accessibility:</strong> Always include proper ARIA attributes (<code
+                    >role</code
+                  >, <code>aria-expanded</code>, <code>aria-controls</code>)
+                </li>
+                <li>
+                  <strong>Performance:</strong> Use <code>data-bs-parent</code> for single-open behavior
+                  to manage memory efficiently
+                </li>
+                <li>
+                  <strong>UX:</strong> Keep accordion headers descriptive and scannable for quick content
+                  identification
+                </li>
+                <li>
+                  <strong>Responsive:</strong> Test touch interactions on mobile - ensure adequate tap
+                  target sizes
+                </li>
+                <li>
+                  <strong>Content:</strong> Structure content logically within panels, use headings and
+                  lists for better organization
+                </li>
+                <li>
+                  <strong>Animation:</strong> Customize collapse transitions with CSS for smoother user
+                  experience
+                </li>
+              </ul>
+            </div>
+
+            <div class="alert alert-warning">
+              <h4 class="alert-heading">
+                <i class="ri-error-warning-line me-2"></i>
+                Common Pitfalls to Avoid
+              </h4>
+              <ul class="mb-0">
+                <li>Don't nest accordions deeply - it creates confusing navigation</li>
+                <li>Avoid having too many panels (&gt;7) without search/filter functionality</li>
+                <li>
+                  Don't use accordions for critical information that should be immediately visible
+                </li>
+                <li>
+                  Never hide essential navigation or call-to-action buttons inside collapsed panels
+                </li>
+                <li>
+                  Don't forget to handle keyboard navigation (Enter/Space to toggle, Arrow keys to
+                  navigate)
+                </li>
+              </ul>
+            </div>
+
+            <div class="alert alert-success">
+              <h4 class="alert-heading">
+                <i class="ri-code-s-slash-line me-2"></i>
+                JavaScript Integration Example
+              </h4>
+              <p class="mb-2">Here's a reusable accordion manager class for your projects:</p>
+              <pre><code>{`class AccordionManager {
+  constructor(accordionId) {
+    this.accordion = document.getElementById(accordionId);
+    this.items = this.accordion.querySelectorAll('.accordion-collapse');
+    this.buttons = this.accordion.querySelectorAll('.accordion-button');
+  }
+
+  openAll() {
+    this.items.forEach((item, index) => {
+      if (!item.classList.contains('show')) {
+        new bootstrap.Collapse(item, { show: true });
+        this.buttons[index].classList.remove('collapsed');
+        this.buttons[index].setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
+
+  closeAll() {
+    this.items.forEach((item, index) => {
+      if (item.classList.contains('show')) {
+        new bootstrap.Collapse(item, { hide: true });
+        this.buttons[index].classList.add('collapsed');
+        this.buttons[index].setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  toggle(index) {
+    const item = this.items[index];
+    const button = this.buttons[index];
+    if (item && button) {
+      new bootstrap.Collapse(item, { toggle: true });
+      button.classList.toggle('collapsed');
+      button.setAttribute('aria-expanded',
+        !button.classList.contains('collapsed'));
+    }
+  }
+}`}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>
+
+<script>
+  // Interactive Accordion Functions - these are referenced by onclick handlers in the HTML
+
+  // Extend window interface for TypeScript
+  declare global {
+    interface Window {
+      openAll: () => void
+      closeAll: () => void
+      togglePanel: (panelNumber: number) => void
+    }
+  }
+
+  window.openAll = function () {
+    const accordionItems = document.querySelectorAll('#interactiveAccordion .accordion-collapse')
+    const buttons = document.querySelectorAll('#interactiveAccordion .accordion-button')
+
+    accordionItems.forEach((item, index) => {
+      if (!item.classList.contains('show')) {
+        new (window as any).bootstrap.Collapse(item, { show: true })
+        buttons[index].classList.remove('collapsed')
+        buttons[index].setAttribute('aria-expanded', 'true')
+      }
+    })
+  }
+
+  window.closeAll = function () {
+    const accordionItems = document.querySelectorAll('#interactiveAccordion .accordion-collapse')
+    const buttons = document.querySelectorAll('#interactiveAccordion .accordion-button')
+
+    accordionItems.forEach((item, index) => {
+      if (item.classList.contains('show')) {
+        new (window as any).bootstrap.Collapse(item, { hide: true })
+        buttons[index].classList.add('collapsed')
+        buttons[index].setAttribute('aria-expanded', 'false')
+      }
+    })
+  }
+
+  window.togglePanel = function (panelNumber: number) {
+    const targetId = 'interactive' + panelNumber
+    const target = document.getElementById(targetId)
+    const button = document.querySelector(`[data-bs-target="#${targetId}"]`) as HTMLElement
+
+    if (target && button) {
+      new (window as any).bootstrap.Collapse(target, { toggle: true })
+
+      // Update button state
+      button.classList.toggle('collapsed')
+      const isExpanded = !button.classList.contains('collapsed')
+      button.setAttribute('aria-expanded', isExpanded.toString())
+    }
+  }
+</script>

@@ -1,0 +1,56 @@
+---
+import ComponentPreviewScripts from '../../../components/component-preview/_scripts_component_preview.astro'
+
+interface Props {
+  enableComponentPreview?: boolean
+  pageScript?: string
+}
+
+const { enableComponentPreview = false, pageScript } = Astro.props
+
+function getJS(filename: string) {
+  const isDev = import.meta.env.DEV
+  return isDev ? `/dist/js/${filename}.js` : `/js/${filename}.min.js`
+}
+---
+
+<script is:inline>
+  // Handle sidebar collapsed state - removed localStorage loading
+  const sidebarElement = document.querySelector('.sidebar')
+  const mainContentElement = document.querySelector('.main-content')
+
+  // Handle sidebar-mini state
+  const sidebarMini = localStorage.getItem('sidebar-mini')
+  if (sidebarMini == 'true') {
+    sidebarElement.classList.add('sidebar-mini')
+    mainContentElement.classList.add('expanded-mini')
+
+    // Change the toggle-mini button icon
+    const toggleMiniButton = document.getElementById('toggle-mini-button')
+    toggleMiniButton.innerHTML = '<i class="ri-arrow-right-double-line opacity-75"></i>'
+
+    const navItems = document.querySelectorAll('.nav-tree .has-submenu.open')
+    navItems.forEach((item) => {
+      item.classList.remove('open')
+      // Find .ri-arrow-right-s-line and remove its inline transform style
+      const chevron = item.querySelector('.ri-arrow-right-s-line')
+      if (chevron) {
+        chevron.style.transform = '' // Reset the 'transform' style
+      }
+    })
+  }
+</script>
+
+<!-- Main JS -->
+<script src={getJS('main')} type="module" is:inline></script>
+
+<!-- Page Script -->{pageScript && <Fragment set:html={pageScript} />}
+
+<!-- Component JS -->
+{
+  enableComponentPreview && (
+    <>
+      <ComponentPreviewScripts />
+    </>
+  )
+}

@@ -1,0 +1,99 @@
+---
+import { getAssetPrefix } from '../../../utils/path.js'
+---
+
+<!-- CodeMirror Core Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js" is:inline
+></script>
+
+<!-- Essential CodeMirror Modes -->
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"
+  is:inline></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/css/css.min.js" is:inline
+></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/xml/xml.min.js" is:inline
+></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/htmlmixed/htmlmixed.min.js"
+  is:inline></script>
+
+<!-- Component Preview Scripts -->
+<script src={getAssetPrefix('/assets/vendor/js/component-preview/codemirror-editor.js')} is:inline
+></script>
+<script src={getAssetPrefix('/assets/vendor/js/component-preview/preview-manager.js')} is:inline
+></script>
+<script src={getAssetPrefix('/assets/vendor/js/component-preview/ui-controls-manager.js')} is:inline
+></script>
+
+<!-- JSZip for download functionality -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" is:inline></script>
+
+<!-- Iframe Loader Script -->
+<script is:inline>
+  // Function to handle iframe loading
+  function setupIframeLoaders() {
+    const iframes = document.querySelectorAll('.preview-iframe')
+
+    iframes.forEach((iframe) => {
+      const loaderContainer = iframe.closest('.preview-container').querySelector('.iframe-loader')
+
+      // Show loader initially
+      if (loaderContainer) {
+        loaderContainer.classList.remove('hidden')
+      }
+
+      // Hide loader when iframe is loaded
+      iframe.addEventListener('load', () => {
+        if (loaderContainer) {
+          loaderContainer.classList.add('hidden')
+        }
+      })
+
+      // For iframes that might already be loaded
+      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        if (loaderContainer) {
+          loaderContainer.classList.add('hidden')
+        }
+      }
+    })
+  }
+</script>
+
+<!-- Simple Initialization -->
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize CodeMirror
+    if (typeof window.CodeMirrorManager !== 'undefined') {
+      window.CodeMirrorManager.init()
+    }
+
+    // Initialize Preview Manager
+    if (typeof window.PreviewManager !== 'undefined') {
+      window.PreviewManager.init()
+    }
+
+    // Initialize UI Controls
+    if (typeof window.UIControlsManager !== 'undefined') {
+      window.UIControlsManager.setupUIControls()
+    }
+
+    // Initialize tooltips if Bootstrap is available
+    if (typeof bootstrap !== 'undefined') {
+      const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      tooltips.forEach((tooltip) => {
+        new bootstrap.Tooltip(tooltip)
+      })
+    }
+
+    // Setup iframe loaders
+    setupIframeLoaders()
+
+    // Handle dynamically loaded iframes (e.g., in modals)
+    document.addEventListener('shown.bs.modal', function (event) {
+      if (event.target.classList.contains('preview-modal')) {
+        setupIframeLoaders()
+      }
+    })
+  })
+</script>

@@ -1,0 +1,369 @@
+/* ==========================================================================
+     Sidebar Component
+     ========================================================================== */
+
+// ==========================================================================
+//   Sidebar Variables
+// ==========================================================================
+
+$sidebar-z-index: 1000 !default;
+$sidebar-brand-font-size: 1.1rem !default;
+$sidebar-brand-icon-size: 1.6rem !default;
+$sidebar-brand-icon-margin: 0.5rem !default;
+
+$sidebar-nav-item-margin: 0.3rem !default;
+$sidebar-nav-link-height: 2.5rem !default;
+$sidebar-nav-link-padding: 0.5rem !default;
+$sidebar-nav-link-font-size: 1rem !default;
+$sidebar-nav-icon-size: 1.3rem !default;
+$sidebar-nav-icon-width: 1.5rem !default;
+$sidebar-nav-icon-margin: 0.5rem !default;
+
+$sidebar-section-font-size: 0.9rem !default;
+$sidebar-overlay-bg: rgb(0, 0, 0, 0.5) !default;
+
+.sidebar {
+  position: fixed;
+  z-index: $sidebar-z-index;
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  height: 100vh;
+  color: var(--sidebar-color);
+  background: var(--sidebar-bg);
+  @include transition(
+    transform 0.3s ease,
+    width 0.3s ease,
+    background-color 0.3s ease
+  );
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    height: var(--topbar-height);
+    font-size: $sidebar-brand-font-size;
+    text-decoration: none;
+
+    span {
+      overflow: hidden;
+      color: var(--sidebar-color);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    img {
+      width: $sidebar-brand-icon-size;
+      margin-right: $sidebar-brand-icon-margin;
+    }
+  }
+
+  &.collapsed {
+    transform: translateX(-100%);
+    .toggle-mini {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* Mini Sidebar Styles */
+  &.sidebar-mini {
+    width: var(--sidebar-mini-width);
+    @include transition(width);
+    .sidebar-header {
+      .sidebar-brand {
+        span {
+          display: none;
+        }
+        img {
+          margin-right: 0;
+        }
+      }
+
+      .toggle-mini{
+        display: none;
+      }
+    }
+
+    .sidebar-footer {
+      i,
+      .user-info {
+        display: none !important;
+      }
+    }
+
+    .nav-link {
+      span,
+      .ri-arrow-right-s-line {
+        display: none;
+      }
+    }
+
+    /* Hover Effects for Expanding Mini Sidebar */
+    &.open {
+      width: var(--sidebar-width);
+      .nav-link {
+        span {
+          display: block;
+        }
+        .ri-arrow-right-s-line {
+          display: flex;
+        }
+      }
+      .sidebar-header {
+        .sidebar-brand {
+          span {
+            display: block;
+          }
+          img {
+            margin-right: $sidebar-brand-icon-margin;
+          }
+        }
+        .toggle-mini{
+          display: block;
+        }
+      }
+      .sidebar-footer {
+        i,
+        .user-info {
+          display: flex !important;
+          flex-direction: column;
+        }
+      }
+    }
+
+    /* not hover effect for mini sidebar */
+    &:not(.open) {
+      .nav-link {
+        justify-content: center;
+        i {
+          margin-right: 0;
+        }
+      }
+    }
+  }
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 1rem 0.7rem 1rem 1rem;
+  background: var(--sidebar-bg);
+}
+
+/* Sidebar Content */
+.sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  position: sticky;
+  bottom: 0;
+  min-height: var(--footer-height);
+  padding: $sidebar-nav-link-padding;
+  background: var(--sidebar-bg);
+  .user-info {
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: $sidebar-z-index - 1;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  background: $sidebar-overlay-bg;
+  opacity: 0;
+  @include transition(opacity 0.3s ease, visibility 0.3s ease);
+
+  &.show {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+     Navigation Tree Component
+     ========================================================================== */
+.nav-tree {
+  padding: $sidebar-nav-link-padding;
+  margin: 0;
+  list-style: none;
+
+  /* Nav Section Styles */
+  .nav-section {
+    .nav-section-text {
+      font-size: $sidebar-section-font-size;
+      color: var(--nav-section-text-color);
+    }
+  }
+
+  // Hide nav-section text in mini sidebar
+  .sidebar-mini & {
+    .nav-section {
+      .nav-section-text {
+        display: none;
+      }
+    }
+  }
+
+  // Show nav-section text when mini sidebar is hovered
+  .sidebar-mini:hover & {
+    .nav-section {
+      .nav-section-text {
+        display: block;
+      }
+    }
+  }
+
+  /* Navigation Item */
+  .nav-item {
+    position: relative;
+    width: 100%;
+    margin: $sidebar-nav-item-margin 0;
+  }
+
+  /* Common Link Styles */
+  .nav-link {
+    display: flex;
+    align-items: center;
+    height: $sidebar-nav-link-height;
+    padding: $sidebar-nav-link-padding;
+    font-size: $sidebar-nav-link-font-size;
+    color: var(--nav-link-color);
+    text-decoration: none;
+    background-color: var(--nav-link-bg);
+    @include border-radius($border-radius);
+    @include transition(all 0.3s ease);
+    &:hover {
+      background: var(--nav-link-hover-bg);
+    }
+
+    /* Icon in Sidebar Styles */
+    i {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: $sidebar-nav-icon-width;
+      margin-right: $sidebar-nav-icon-margin;
+      font-size: $sidebar-nav-icon-size;
+      &.ri-arrow-right-s-line {
+        margin-right: 0;
+        margin-left: auto;
+        opacity: 0.5;
+        @include transition(transform 0.3s ease);
+      }
+    }
+  }
+
+  /* Submenu Handling */
+  .submenu {
+    position: relative;
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    margin-left: 1.2rem;
+    overflow: hidden;
+    list-style: none;
+    border-left: 1px solid var(--bs-border-color);
+    @include transition(width);
+    .nav-link {
+      height: 2.25rem;
+      padding-left: 0.75rem;
+      margin-left: 0.5rem;
+    }
+  }
+
+  /* Submenu Open State */
+  .has-submenu.open {
+    > .nav-link {
+      color: var(--has-submenu-open-color);
+      background: var(--has-submenu-open-bg);
+    }
+
+    > .submenu {
+      max-height: 2500px;
+      overflow: visible;
+      @include transition(all ease-in-out 0.5s);
+    }
+
+    > .nav-link i.ri-arrow-right-s-line {
+      opacity: 1;
+      transform: rotate(90deg);
+    }
+  }
+
+  // Submenu that is open and active
+  .has-submenu.active.open {
+    > .nav-link {
+      color: var(--has-submenu-active-color);
+      background: var(--has-submenu-active-bg);
+    }
+  }
+
+  // For top level nav link
+  .nav-item.active > .nav-link {
+    color: var(--nav-link-active-color);
+    background-color: var(--nav-link-active-bg);
+  }
+
+  // For top level nav link having submenu [open active and is parent]
+  .nav-item.has-submenu.parent.active.open > .nav-link {
+    color: var(--nav-link-active-color);
+    background-color: var(--nav-link-active-bg);
+  }
+
+  // Active nav link inside submenu
+  .submenu .nav-item.active:not(.open) > .nav-link {
+    color: var(--submenu-active-color);
+    background: var(--submenu-active-bg);
+  }
+
+  // nav link inside submenu
+  .submenu .nav-item:not(.open) > .nav-link {
+    color: var(--nav-link-color);
+    background: var(--nav-link-bg);
+    &:hover {
+      color: var(--submenu-hover-color);
+      background: var(--submenu-hover-bg);
+    }
+  }
+
+  /* Active indicator for submenu nav-link */
+  .submenu .nav-item.active:not(.open) > .nav-link::before {
+    position: absolute;
+    top: 50%;
+    left: -2px;
+    width: 3px;
+    height: 55%;
+    content: '';
+    background-color: var(--bs-primary);
+    @include border-radius(2px);
+    transform: translateY(-50%);
+  }
+}
+
+/* Responsive Utilities */
+@media (max-width: 1200px) {
+  .sidebar {
+    transform: translateX(calc(-1 * var(--sidebar-width))); // stylelint-disable-line function-disallowed-list
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+  .toggle-mini {
+    display: none !important;
+  }
+}

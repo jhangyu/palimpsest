@@ -1,0 +1,97 @@
+---
+interface FileNode {
+  name: string
+  type: 'folder' | 'file'
+  size?: string
+  modified?: string
+  children?: FileNode[]
+}
+
+interface Props {
+  rootFolder?: { name: string; children: Array<FileNode> }
+}
+
+const { rootFolder } = Astro.props
+const rootData = rootFolder ? JSON.stringify(rootFolder) : ''
+---
+
+<div class="file-manager card" data-root-folder={rootData}>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="fm-breadcrumb"></div>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary active" data-view="grid" title="Grid view">
+        <i class="ri-grid-fill"></i>
+      </button>
+      <button class="btn btn-outline-secondary" data-view="list" title="List view">
+        <i class="ri-list-unordered"></i>
+      </button>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="row g-0">
+      <div class="col-md-3 border-end">
+        <div class="fm-tree p-3" style="min-height:400px;overflow-y:auto"></div>
+      </div>
+      <div class="col-md-9">
+        <div class="fm-content p-3" style="min-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .fm-tree :global(.tree-item) {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    gap: 4px;
+    font-size: 0.875rem;
+  }
+
+  .fm-tree :global(.tree-item:hover) {
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+  }
+
+  .fm-tree :global(.tree-item.active) {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+    color: var(--bs-primary-text-emphasis, #084298);
+  }
+
+  .fm-tree :global(.tree-children) {
+    padding-left: 16px;
+  }
+
+  .fm-tree :global(.tree-chevron) {
+    font-size: 0.75rem;
+    transition: transform 0.15s ease;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .fm-tree :global(.tree-chevron.rotate-90) {
+    transform: rotate(90deg);
+  }
+
+  .fm-content :global(.file-item) {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+  }
+
+  .fm-content :global(.card.file-item:hover) {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  }
+
+  .fm-content :global(tr.file-item:hover) {
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+  }
+</style>
+
+<script>
+  import { initFileManager } from '@/scripts/file-manager'
+
+  document.addEventListener('astro:page-load', () => initFileManager())
+</script>

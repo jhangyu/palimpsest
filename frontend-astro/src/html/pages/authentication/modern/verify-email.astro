@@ -1,0 +1,68 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="Verify Email"
+  description="Verify email example"
+  currentPath="authentication/modern/verify-email"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <a
+      href={getPathPrefix('/')}
+      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
+    >
+      Back
+    </a>
+    <a
+      href={getPathPrefix('/authentication/modern/register')}
+      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
+    >
+      Create Account
+    </a>
+    <div class="text-center w-100" style="max-width: 500px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-2">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="AsteroAdmin Logo"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-2 fs-4">Verify Your Email Address</h4>
+          <p class="text-muted mb-2">
+            Enter the verification code sent to your email to complete the process.
+          </p>
+          <!-- Verification Code Form -->
+          <form class="text-start mb-3">
+            <div class="mb-3">
+              <label for="verification-code" class="form-label">Enter the verification code</label>
+              <input
+                type="text"
+                class="form-control"
+                id="verification-code"
+                placeholder="Verification Code"
+                required
+                maxlength="6"
+                pattern="[0-9]{6}"
+              />
+            </div>
+            <button type="submit" class="btn btn-primary w-100"> Verify Email </button>
+          </form>
+          <div class="mb-2">
+            Didn't receive the code?
+            <a
+              href={getPathPrefix('/authentication/modern/verify-email')}
+              class="text-decoration-none text-center">Resend</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

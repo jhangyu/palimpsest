@@ -1,0 +1,155 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../utils/path.js'
+
+const pageHeaderProps = {
+  title: 'Access Control',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Users', href: getPathPrefix('/users') },
+    { label: 'Permissions', href: getPathPrefix('/users/permissions') },
+    { label: 'Access Control', class: 'active' } // No href means it's the current page
+  ]
+}
+---
+
+<AdminLayout
+  title="Access"
+  description="User access permissions"
+  currentPath="users/permissions/access"
+>
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col">
+      <!-- Role Management -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="card-title mb-0">User Roles</h5>
+            <button class="btn btn-primary btn-sm">
+              <i class="ri-add-line me-1"></i> Add New Role
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Role Name</th>
+                  <th>Users</th>
+                  <th>Created</th>
+                  <th>Permissions</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Administrator</td>
+                  <td>3</td>
+                  <td>2024-01-15</td>
+                  <td>
+                    <span class="badge bg-primary me-1">Full Access</span>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary">
+                        <i class="ri-edit-line"></i>
+                      </button>
+                      <button class="btn btn-outline-danger">
+                        <i class="ri-delete-bin-line"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Editor</td>
+                  <td>8</td>
+                  <td>2024-01-20</td>
+                  <td>
+                    <span class="badge bg-info me-1">Content</span>
+                    <span class="badge bg-info">Media</span>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary">
+                        <i class="ri-edit-line"></i>
+                      </button>
+                      <button class="btn btn-outline-danger">
+                        <i class="ri-delete-bin-line"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Viewer</td>
+                  <td>15</td>
+                  <td>2024-01-25</td>
+                  <td>
+                    <span class="badge bg-secondary">Read Only</span>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary">
+                        <i class="ri-edit-line"></i>
+                      </button>
+                      <button class="btn btn-outline-danger">
+                        <i class="ri-delete-bin-line"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Permission Matrix -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title mb-4">Permission Matrix</h5>
+
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Permission</th>
+                  <th class="text-center">Administrator</th>
+                  <th class="text-center">Editor</th>
+                  <th class="text-center">Viewer</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>View Dashboard</td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                </tr>
+                <tr>
+                  <td>Manage Users</td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-close-circle-fill text-danger"></i></td>
+                  <td class="text-center"><i class="ri-close-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                  <td>Edit Content</td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-close-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                  <td>System Settings</td>
+                  <td class="text-center"><i class="ri-checkbox-circle-fill text-success"></i></td>
+                  <td class="text-center"><i class="ri-close-circle-fill text-danger"></i></td>
+                  <td class="text-center"><i class="ri-close-circle-fill text-danger"></i></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

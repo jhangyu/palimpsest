@@ -1,0 +1,235 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+
+const headerProps = {
+  title: 'Feed Editor',
+  breadcrumbs: [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Feeds', href: '/feeds/edit' },
+    { label: 'Edit', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  currentPath="feeds/edit"
+  title="Feed Editor"
+  description="Manage and configure RSS feed sources"
+>
+  <PageHeader {...headerProps} />
+
+  <div id="feed-edit-root">
+    <!-- ================================================================= -->
+    <!-- Section 1: Feed Management Table                                  -->
+    <!-- ================================================================= -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Feed Management</h5>
+        <button id="btn-refresh-table" class="btn btn-sm btn-outline-secondary" type="button">
+          <i class="ri-refresh-line me-1"></i> Refresh Table
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <!-- Loading spinner -->
+        <div id="feed-table-loading" class="text-center py-5 text-muted">
+          <span
+            class="spinner-border spinner-border-sm mb-2 d-block mx-auto"
+            style="width:1.5rem;height:1.5rem;"
+            role="status"></span>
+          Loading feeds...
+        </div>
+        <!-- Table -->
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Feed Name</th>
+                <th>Target URL</th>
+                <th>Refresh</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feed-table-body"> </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- Section 2: Detail Editor (hidden until a feed is selected)        -->
+    <!-- ================================================================= -->
+    <div id="editor-section" class="card mb-4 d-none">
+      <div class="card-header">
+        <h5 class="card-title mb-0 d-flex align-items-center gap-2">
+          <i class="ri-pencil-line"></i>
+          <span id="editor-title">Editing</span>
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <!-- Left column: form -->
+          <div class="col-12" id="editor-form-col">
+            <!-- URL -->
+            <div class="mb-3">
+              <label for="input-url" class="form-label">Target Website URL</label>
+              <input
+                id="input-url"
+                type="text"
+                class="form-control"
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <!-- Name -->
+            <div class="mb-3">
+              <label for="input-name" class="form-label">Site Name</label>
+              <input id="input-name" type="text" class="form-control" />
+            </div>
+
+            <!-- Refresh Frequency -->
+            <div class="mb-3 d-flex align-items-center gap-3">
+              <label for="input-freq" class="form-label mb-0">Refresh Frequency (minutes)</label>
+              <input
+                id="input-freq"
+                type="number"
+                class="form-control"
+                style="width:100px"
+                min="5"
+                max="1440"
+              />
+              <small class="text-muted">Range: 5 - 1440 (1 day)</small>
+            </div>
+
+            <hr />
+
+            <!-- AI Analysis: List Rules -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0">1. List Rules (AI Generation)</label>
+                <div class="d-flex gap-2">
+                  <button
+                    id="btn-test-list"
+                    class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    title="Test only list extraction"
+                  >
+                    <i class="ri-file-list-line me-1"></i> Test List
+                  </button>
+                  <button id="btn-analyze-list" class="btn btn-sm btn-primary" type="button">
+                    <i class="ri-brain-line me-1"></i> Analyze List
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Analysis: Content Rules -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0">2. Content Rules (AI Generation)</label>
+                <div class="d-flex gap-2">
+                  <button
+                    id="btn-test-content"
+                    class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    title="Test content extraction with sample URL"
+                  >
+                    <i class="ri-article-line me-1"></i> Test Content
+                  </button>
+                  <button id="btn-analyze-content" class="btn btn-sm btn-primary" type="button">
+                    <i class="ri-brain-line me-1"></i> Analyze Content
+                  </button>
+                </div>
+              </div>
+              <input
+                id="input-sample-url"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Sample Article URL for testing"
+              />
+            </div>
+
+            <!-- Toggle Rules JSON -->
+            <div class="d-flex justify-content-end mb-3">
+              <button id="btn-toggle-rules" class="btn btn-sm btn-outline-secondary" type="button">
+                <i class="ri-code-line me-1"></i> Show Rules
+              </button>
+            </div>
+
+            <!-- Rules JSON Panel (hidden by default) -->
+            <div id="rules-panel" class="d-none mb-3">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="textarea-list-rules" class="form-label">List Rules JSON</label>
+                  <textarea
+                    id="textarea-list-rules"
+                    class="form-control font-monospace"
+                    rows="10"
+                    spellcheck="false"></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label for="textarea-content-rules" class="form-label">Content Rules JSON</label>
+                  <textarea
+                    id="textarea-content-rules"
+                    class="form-control font-monospace"
+                    rows="10"
+                    spellcheck="false"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer: Save / Crawl / Debug -->
+            <div class="d-flex align-items-center gap-3">
+              <button id="btn-save" class="btn btn-success flex-grow-1" type="button">
+                <i class="ri-save-line me-1"></i> Save Changes
+              </button>
+              <button
+                id="btn-crawl-editor"
+                class="btn btn-dark"
+                type="button"
+                title="Trigger Crawl"
+              >
+                <i class="ri-play-line"></i>
+              </button>
+              <label
+                id="debug-label"
+                class="d-flex align-items-center gap-1 text-muted"
+                style="cursor:pointer"
+                title="Enable debug mode to save intermediate artifacts"
+              >
+                <i class="ri-bug-line"></i>
+                <small>Debug</small>
+                <div class="form-check form-switch mb-0 ms-1">
+                  <input
+                    id="debug-checkbox"
+                    class="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                  />
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- Section 3: Preview Table (hidden until tests are run)             -->
+    <!-- ================================================================= -->
+    <div id="preview-section" class="card mb-4 d-none">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Live Crawl Preview</h5>
+        <button id="btn-test-both" class="btn btn-sm btn-primary" type="button">
+          <i class="ri-play-circle-line me-1"></i> Test Both List &amp; Content Crawl
+        </button>
+      </div>
+      <div class="card-body" id="preview-body"></div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initFeedEdit } from '@/scripts/feed-edit'
+  document.addEventListener('astro:page-load', () => initFeedEdit())
+</script>

@@ -1,0 +1,313 @@
+/* ========================================
+   BOOTSTRAP THEME CUSTOMIZATION
+   ======================================== */
+
+/* ========================================
+   COLOR VARIABLES
+   ======================================== */
+:root,
+[data-bs-theme='light'] {
+  /* Derived primary colors - automatically calculated from --bs-primary */
+  --bs-primary-text-emphasis: color-mix(in srgb, var(--bs-primary) 70%, #000);
+  --bs-primary-bg-subtle: color-mix(in srgb, var(--bs-primary) 10%, #fff);
+  --bs-primary-border-subtle: color-mix(in srgb, var(--bs-primary) 30%, #fff);
+
+  /* Derived secondary colors - automatically calculated from --bs-secondary */
+  --bs-secondary-text-emphasis: color-mix(in srgb, var(--bs-secondary) 70%, #000);
+  --bs-secondary-bg-subtle: color-mix(in srgb, var(--bs-secondary) 10.2%, #fff);
+  --bs-secondary-border-subtle: color-mix(in srgb, var(--bs-secondary) 30%, #fff);
+
+  /* LINK COLORS */
+  --bs-link-color: var(--bs-primary);
+  --bs-link-color-rgb: var(--bs-primary-rgb);
+  --bs-link-hover-color: color-mix(in srgb, var(--bs-primary) 80%, #000);
+  --bs-link-hover-color-rgb: var(--bs-primary-rgb);
+
+  /* FOCUS & FORM COLORS */
+  --bs-focus-ring-color: color-mix(in srgb, var(--bs-primary) 25%, transparent);
+  --bs-form-focus-border-color: var(--bs-primary);
+
+  /* ACCORDION ICON POINTER VARIABLES */
+
+  /* These tell JavaScript which CSS variables to use for accordion icon colors */
+  --skin-accordion-default-icon-color-source: --bs-body-color;
+  --skin-accordion-active-icon-color-source: --bs-primary;
+}
+
+/* ========================================
+   DARK THEME OVERRIDES
+   ======================================== */
+[data-bs-theme='dark'] {
+  /* Derived primary colors for dark theme */
+  --bs-primary-text-emphasis: color-mix(in srgb, var(--bs-primary) 60%, #fff);
+  --bs-primary-bg-subtle: color-mix(in srgb, var(--bs-primary) 20%, #000);
+  --bs-primary-border-subtle: color-mix(in srgb, var(--bs-primary) 60%, #000);
+
+  /* Derived secondary colors for dark theme */
+  --bs-secondary-text-emphasis: color-mix(in srgb, var(--bs-secondary) 60%, #fff);
+  --bs-secondary-bg-subtle: color-mix(in srgb, var(--bs-secondary) 20%, #000);
+  --bs-secondary-border-subtle: color-mix(in srgb, var(--bs-secondary) 60%, #000);
+
+  /* LINK COLORS */
+  --bs-link-color: color-mix(in srgb, var(--bs-primary) 60%, #fff);
+  --bs-link-color-rgb: var(--bs-primary-rgb);
+  --bs-link-hover-color: color-mix(in srgb, var(--bs-primary) 48%, #fff);
+  --bs-link-hover-color-rgb: var(--bs-primary-rgb);
+
+  /* FOCUS & FORM COLORS */
+  --bs-focus-ring-color: color-mix(in srgb, var(--bs-primary) 25%, transparent);
+  --bs-form-focus-border-color: color-mix(in srgb, var(--bs-primary) 60%, #fff);
+
+  /* ACCORDION ICON POINTER VARIABLES - Dark Theme */
+
+  /* These tell JavaScript which CSS variables to use for accordion icon colors in dark mode */
+  --skin-accordion-default-icon-color-source: --bs-body-color;
+  --skin-accordion-active-icon-color-source: --bs-primary;
+}
+
+/* ========================================
+   LINK STYLES
+   ======================================== */
+a:hover {
+  color: var(--bs-link-hover-color);
+}
+
+/* Hover and Focus Link Colors */
+
+.link-primary:hover,
+.link-primary:focus {
+  color: rgb(var(--bs-primary-rgb-darker), var(--bs-link-opacity, 1)) !important;
+  text-decoration-color:
+    rgb(
+      var(--bs-primary-rgb-darker),
+      var(--bs-link-underline-opacity, 1)
+    ) !important;
+}
+
+.link-secondary:hover,
+.link-secondary:focus {
+  color: rgb(var(--bs-secondary-rgb-darker), var(--bs-link-opacity, 1)) !important;
+  text-decoration-color:
+    rgb(
+      var(--bs-secondary-rgb-darker),
+      var(--bs-link-underline-opacity, 1)
+    ) !important;
+}
+
+/* ========================================
+   FORM CONTROLS
+   ======================================== */
+
+/* Form Input Focus States */
+.form-control:focus {
+  border-color: var(--bs-form-focus-border-color);
+}
+
+.form-select:focus {
+  border-color: var(--bs-form-focus-border-color);
+}
+
+/* Form Check Controls */
+.form-check-input:focus {
+  border-color: var(--bs-form-focus-border-color) !important;
+  box-shadow: 0 0 0 0.25rem rgb(var(--bs-primary-rgb), 0.25) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input[type='checkbox']:indeterminate {
+  --bs-form-check-bg-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3E%3C/svg%3E");
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+/* Form Range Controls */
+.form-range::-webkit-slider-thumb {
+  background-color: var(--bs-primary);
+}
+
+.form-range::-moz-range-thumb {
+  background-color: var(--bs-primary);
+}
+
+/* ========================================
+   BUTTON COMPONENTS
+   ======================================== */
+
+/* PRIMARY BUTTONS */
+.btn-primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: color-mix(in srgb, var(--bs-primary) 75%, #000);
+  --bs-btn-hover-border-color: var(--bs-link-hover-color);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: color-mix(in srgb, var(--bs-primary) 75%, #000);
+  --bs-btn-active-border-color: var(--bs-link-hover-color);
+  --bs-btn-active-shadow: inset 0 3px 5px rgb(0, 0, 0, 0.125);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--bs-primary);
+  --bs-btn-disabled-border-color: var(--bs-primary);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--bs-primary);
+  --bs-btn-hover-border-color: var(--bs-primary);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--bs-primary);
+  --bs-btn-active-border-color: var(--bs-primary);
+  --bs-btn-active-shadow: inset 0 3px 5px rgb(0, 0, 0, 0.125);
+  --bs-btn-disabled-color: var(--bs-primary);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--bs-primary);
+  --bs-gradient: none;
+}
+
+/* SECONDARY BUTTONS */
+.btn-secondary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--bs-secondary);
+  --bs-btn-border-color: var(--bs-secondary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: color-mix(in srgb, var(--bs-secondary) 75%, #000);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--bs-secondary) 80%, #000);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: color-mix(in srgb, var(--bs-secondary) 75%, #000);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--bs-secondary) 80%, #000);
+  --bs-btn-active-shadow: inset 0 3px 5px rgb(0, 0, 0, 0.125);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--bs-secondary);
+  --bs-btn-disabled-border-color: var(--bs-secondary);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--bs-secondary);
+  --bs-btn-border-color: var(--bs-secondary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--bs-secondary);
+  --bs-btn-hover-border-color: var(--bs-secondary);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--bs-secondary);
+  --bs-btn-active-border-color: var(--bs-secondary);
+  --bs-btn-active-shadow: inset 0 3px 5px rgb(0, 0, 0, 0.125);
+  --bs-btn-disabled-color: var(--bs-secondary);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--bs-secondary);
+  --bs-gradient: none;
+}
+
+/* Close Button */
+.btn-close {
+  --bs-btn-close-focus-shadow: 0 0 0 0.25rem rgb(var(--bs-primary-rgb), 0.25);
+}
+
+/* ========================================
+   NAVIGATION COMPONENTS
+   ======================================== */
+
+/* Dropdown Menus */
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: var(--bs-primary);
+}
+
+.dropdown-menu-dark {
+  --bs-dropdown-link-active-bg: var(--bs-primary);
+}
+
+/* Navigation Links */
+.nav-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.25rem rgb(var(--bs-primary-rgb), 0.25);
+}
+
+/* Navigation Pills */
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--bs-primary);
+}
+
+/* Pagination */
+.pagination {
+  --bs-pagination-hover-color: var(--bs-primary);
+  --bs-pagination-hover-bg: var(--bs-primary-bg-subtle);
+  --bs-pagination-hover-border-color: transparent;
+  --bs-pagination-focus-color: var(--bs-primary);
+  --bs-pagination-focus-bg: var(--bs-primary-bg-subtle);
+  --bs-pagination-active-bg: var(--bs-primary);
+  --bs-pagination-active-border-color: var(--bs-primary);
+}
+
+/* ========================================
+   CONTENT COMPONENTS
+   ======================================== */
+
+/* Progress Bars */
+.progress,
+.progress-stacked {
+  --bs-progress-bar-bg: var(--bs-primary);
+}
+
+/* List Groups */
+.list-group {
+  --bs-list-group-active-bg: var(--bs-primary);
+  --bs-list-group-active-border-color: var(--bs-primary);
+}
+
+/* Alerts */
+.alert-secondary {
+  --bs-alert-color: var(--bs-secondary-text-emphasis);
+  --bs-alert-bg: var(--bs-secondary-bg-subtle);
+  --bs-alert-border-color: var(--bs-secondary-border-subtle);
+  --bs-alert-link-color: var(--bs-secondary-text-emphasis);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Badges */
+.badge.text-bg-secondary {
+  color: #fff !important;
+  background-color: var(--bs-secondary) !important;
+}
+
+/* Text Colors */
+.text-secondary {
+  --bs-text-opacity: 1;
+  color: rgb(var(--bs-secondary-rgb), var(--bs-text-opacity)) !important;
+}
+
+/* Background Colors */
+.bg-secondary {
+  --bs-bg-opacity: 1;
+  background-color: rgb(var(--bs-secondary-rgb), var(--bs-bg-opacity)) !important;
+}
+
+/* Border Colors */
+.border-secondary {
+  --bs-border-opacity: 1;
+  border-color: rgb(var(--bs-secondary-rgb), var(--bs-border-opacity)) !important;
+}
+
+/* Accordion Button Icons */
+.accordion-button:not(.collapsed)::after {
+  background-image: var(--skin-accordion-btn-active-icon);
+}
+
+.accordion-button::after {
+  background-image: var(--skin-accordion-btn-icon);
+}
+
+.form-switch .form-check-input:focus {
+  --bs-form-switch-bg: var(--skin-form-switch-bg);
+}

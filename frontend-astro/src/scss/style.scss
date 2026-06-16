@@ -1,0 +1,78 @@
+// ==========================================================================
+//   Core Configuration & Dependencies
+// ==========================================================================
+
+// Design Bridge Layer (gentelella tokens -> Bootstrap overrides)
+// Must come BEFORE variables/index so non-!default values take precedence
+@import 'custom/variables-bridge';
+
+// Core Variables & Configuration
+@import 'variables/index';
+
+// Bootstrap Framework
+@import '../../node_modules/bootstrap/scss/bootstrap';
+
+// Core Utilities & Mixins
+@import 'core/mixins';
+@import 'core/utilities';
+
+// Theme Configuration
+@import 'variables/theme';
+
+// ==========================================================================
+//   Base & Typography
+// ==========================================================================
+
+@import 'base/typography';
+
+// ==========================================================================
+//  Utilities
+// ==========================================================================
+
+@import 'utilities/index';
+
+// ==========================================================================
+//   UI Components
+// ==========================================================================
+
+@import 'components/index';
+
+// ==========================================================================
+//   Layout Components
+// ==========================================================================
+
+// Main Layout
+@import 'layout/base';
+@import 'layout/main-content';
+@import 'layout/footer/footer';
+
+// Header Components
+@import 'layout/header/topbar';
+@import 'layout/header/search-modal';
+@import 'layout/header/notifications';
+@import 'layout/page-header';
+
+// Sidebar Components
+@import 'layout/sidebar/sidebar';
+@import 'layout/sidebar/user-profile';
+
+// ==========================================================================
+//   Page-Specific Styles
+// ==========================================================================
+
+@import 'pages/index';
+
+// ==========================================================================
+//   gentelella Supplement Styles
+// ==========================================================================
+
+@import 'gentelella/index';
+
+// Overides for Skin
+@import 'skin';
+
+// ==========================================================================
+//   Project Overrides (final layer)
+// ==========================================================================
+
+@import 'custom/overrides';

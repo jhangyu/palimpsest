@@ -1,0 +1,25 @@
+{
+  "name": "Palimpsest Admin",
+  "short_name": "Palimpsest",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1abb9c",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Dashboard", "url": "/dashboard" },
+    { "name": "Inbox", "url": "/apps/inbox" },
+    { "name": "Calendar", "url": "/apps/calendar" }
+  ]
+}

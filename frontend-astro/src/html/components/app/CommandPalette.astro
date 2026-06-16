@@ -1,0 +1,61 @@
+---
+/**
+ * CommandPalette - A keyboard-driven command palette (Cmd+K / Ctrl+K)
+ * Designed to be included in the main layout.
+ * Uses Bootstrap styling, Remix Icons, and Astro ViewTransitions lifecycle.
+ */
+---
+
+<div id="cmdk-palette" style="display:none">
+  <div
+    class="cmdk-backdrop position-fixed top-0 start-0 w-100 h-100"
+    style="background:rgba(0,0,0,.5);z-index:1055"
+  >
+  </div>
+  <div
+    class="cmdk-dialog position-fixed top-0 start-50 translate-middle-x mt-5 bg-body rounded-3 shadow-lg border"
+    style="z-index:1060;width:100%;max-width:560px"
+  >
+    <div class="p-3 border-bottom">
+      <div class="input-group">
+        <span class="input-group-text bg-transparent border-0">
+          <i class="ri-search-line text-muted"></i>
+        </span>
+        <input
+          type="text"
+          class="cmdk-input form-control border-0 shadow-none"
+          placeholder="Search pages and actions..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="input-group-text bg-transparent border-0">
+          <kbd class="bg-body-tertiary border px-2 py-1 rounded small">ESC</kbd>
+        </span>
+      </div>
+    </div>
+    <div class="cmdk-results list-group list-group-flush" style="max-height:360px;overflow-y:auto">
+    </div>
+    <div
+      class="p-2 border-top bg-body-tertiary rounded-bottom-3 d-flex gap-3 justify-content-center"
+    >
+      <small class="text-muted"
+        ><kbd class="bg-body border px-1 rounded">&uarr;</kbd>
+        <kbd class="bg-body border px-1 rounded">&darr;</kbd> navigate</small
+      >
+      <small class="text-muted"><kbd class="bg-body border px-1 rounded">Enter</kbd> select</small>
+      <small class="text-muted"><kbd class="bg-body border px-1 rounded">Esc</kbd> close</small>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { initCommandPalette, destroyCommandPalette } from '../../../scripts/cmdk'
+
+  document.addEventListener('astro:page-load', () => {
+    initCommandPalette()
+  })
+
+  document.addEventListener('astro:before-swap', () => {
+    destroyCommandPalette()
+  })
+</script>

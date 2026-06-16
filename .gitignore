@@ -36,6 +36,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local scripts and tests
+scripts/
+tests/
+
 # Local tool/runtime artifacts
 .claw/
 .clawd-todos.json

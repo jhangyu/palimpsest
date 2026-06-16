@@ -1,0 +1,29 @@
+/* ==========================================================================
+    Permissions
+     ========================================================================== */
+.permission-group .card {
+  border: 1px solid #dee2e6;
+}
+
+.permission-group .card-header {
+  background-color: transparent;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.permission-item {
+  margin-bottom: 0.5rem;
+}
+
+.permission-item:last-child {
+  margin-bottom: 0;
+}
+
+.toggle-permissions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  padding: 7px !important;
+  margin-bottom: 0.125rem;
+}

@@ -1,0 +1,306 @@
+---
+import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import ConfirmationModal from '../../components/common/confirmation-modal.astro'
+
+// External Dependencies: DataTables CSS
+const dataTableStyles = `
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.7/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css">
+`
+
+// External Dependencies: Required JavaScript libraries
+const dataTableScripts = `
+<!-- jQuery Core Library -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+<!-- DataTables Core and Initialization -->
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.7/js/jquery.dataTables.min.js"></script>
+
+<!-- Custom DataTables Configuration -->
+<script src="${getAssetPrefix('/assets/vendor/datatables/datatables.init.js')}"></script>
+<script type="module" src="${getAssetPrefix('/assets/js/pages/users/list.js')}"></script>
+`
+
+// Page Header Configuration
+const userListHeaderConfig = {
+  title: 'Users Management',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Users' },
+    { label: 'User List', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Add User',
+      href: getPathPrefix('/users/add'),
+      icon: 'ri-user-add-line',
+      class: 'btn btn-primary'
+    }
+  ]
+}
+---
+
+<AdminLayout
+  title="User Management"
+  description="Manage and monitor user accounts"
+  currentPath="users/list"
+  pageScript={dataTableScripts}
+  pageCss={dataTableStyles}
+>
+  <PageHeader {...userListHeaderConfig} />
+  <!-- User Management Table Section -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="astero-table">
+            <!-- User Status Filter Navigation -->
+            <nav class="navbar navbar-expand overflow-auto p-0 mb-4">
+              <div class="navbar-nav gap-3">
+                <a
+                  href="javascript:void(0)"
+                  data-table-filter="status"
+                  data-type="navbar"
+                  data-value="all"
+                  class="nav-link fw-medium px-1 active border-bottom border-2 border-dark d-flex align-items-start"
+                  aria-current="page"
+                >
+                  <i class="ri-group-line me-1"></i> All Users <span
+                    class="badge bg-primary-subtle text-primary ms-1">40</span
+                  >
+                </a>
+                <a
+                  href="javascript:void(0)"
+                  data-table-filter="status"
+                  data-type="navbar"
+                  data-value="active"
+                  class="nav-link fw-medium px-1 d-flex align-items-start"
+                >
+                  <i class="ri-user-follow-line me-1"></i> Active Users <span
+                    class="badge bg-success-subtle text-success ms-1">28</span
+                  >
+                </a>
+                <a
+                  href="javascript:void(0)"
+                  data-table-filter="status"
+                  data-type="navbar"
+                  data-value="inactive"
+                  class="nav-link fw-medium px-1 d-flex align-items-start"
+                >
+                  <i class="ri-user-unfollow-line me-1"></i> Inactive Users <span
+                    class="badge bg-warning-subtle text-warning ms-1">8</span
+                  >
+                </a>
+                <a
+                  href="javascript:void(0)"
+                  data-table-filter="status"
+                  data-value="blocked"
+                  data-type="navbar"
+                  class="nav-link fw-medium px-1 d-flex align-items-start"
+                >
+                  <i class="ri-user-forbid-line me-1"></i> Blocked Users <span
+                    class="badge bg-danger-subtle text-danger ms-1">4</span
+                  >
+                </a>
+              </div>
+            </nav>
+            <!-- Search and Filter Controls -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+              <!-- Search Input -->
+              <div class="search-wrapper">
+                <i class="ri-search-line search-icon"></i>
+                <input
+                  type="text"
+                  class="form-control search-input"
+                  data-table-filter="search"
+                  placeholder="Search by name, email, or role..."
+                />
+                <button type="button" class="btn-clear search-clear" style="display: none;">
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+              <!-- Table Toolbar Actions -->
+              <div class="d-flex gap-2 flex-wrap">
+                <!-- Filter Button -->
+                <button
+                  class="btn btn-outline-primary gap-1"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#filterDrawer"
+                  data-table-toolbar="filter"
+                >
+                  <i class="ri-filter-3-line"></i> Filters
+                </button>
+                <!-- Filter Drawer Panel -->
+                <div
+                  class="offcanvas offcanvas-end filter-drawer datatable-filters"
+                  tabindex="-1"
+                  id="filterDrawer"
+                  aria-labelledby="filterDrawerLabel"
+                  data-table-toolbar="filter"
+                >
+                  <div class="offcanvas-header border-bottom">
+                    <h5 class="offcanvas-title" id="filterDrawerLabel">Filter Options</h5>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="offcanvas"
+                      aria-label="Close"></button>
+                  </div>
+                  <div class="offcanvas-body p-0">
+                    <div data-table-filter-form="form" class="filter-form h-100 d-flex flex-column">
+                      <div class="filter-form-fields p-4">
+                        <!-- User Role Filter -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">User Role</label>
+                          <select
+                            class="form-select"
+                            id="role"
+                            name="role"
+                            data-table-filter="role"
+                            data-type="select"
+                            data-label="Role"
+                          >
+                            <option value="">All Access Roles</option>
+                            <option value="admin" data-title="Admin">Administrator</option>
+                            <option value="manager" data-title="Manager">Manager</option>
+                            <option value="editor" data-title="Editor">Content Editor</option>
+                            <option value="user" data-title="User">Standard User</option>
+                          </select>
+                        </div>
+
+                        <!-- Account Status Filter -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">Account Status</label>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="active"
+                              id="statusActive"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Active"
+                            />
+                            <label class="form-check-label" for="statusActive">
+                              <i class="ri-checkbox-circle-line text-success me-1"></i>
+                              <span class="badge bg-success-subtle text-success">Active</span>
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="inactive"
+                              id="statusInactive"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Inactive"
+                            />
+                            <label class="form-check-label" for="statusInactive">
+                              <i class="ri-error-warning-line text-warning me-1"></i>
+                              <span class="badge bg-warning-subtle text-warning">Inactive</span>
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="blocked"
+                              id="statusBlocked"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Blocked"
+                            />
+                            <label class="form-check-label" for="statusBlocked">
+                              <i class="ri-forbid-line text-danger me-1"></i>
+                              <span class="badge bg-danger-subtle text-danger">Blocked</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Filter Action Buttons -->
+                      <div class="border-top p-3 mt-auto">
+                        <div class="d-flex gap-2">
+                          <button
+                            type="submit"
+                            class="btn btn-primary flex-grow-1"
+                            data-table-filter-btn="filter"
+                          >
+                            <i class="ri-filter-3-line me-1"></i> Apply Filters
+                          </button>
+                          <button type="button" class="btn btn-light" data-table-filter-btn="reset">
+                            <i class="ri-refresh-line me-1"></i> Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bulk Actions Section -->
+                <div class="bulk-actions-div d-none" data-table-toolbar="bulk_selected">
+                  <span class="selected-count me-2">
+                    <i class="ri-checkbox-multiple-line me-1"></i>
+                    <span data-table-select="selected_count"></span> users selected
+                  </span>
+                  <button
+                    class="btn btn-light-danger shadow-none align-items-center gap-2 bulk-delete"
+                    data-table-select="delete_selected"
+                  >
+                    <i class="ri-delete-bin-2-line"></i> Delete Selected Users
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="table-container">
+              <!-- Active Filters Display -->
+              <div
+                class="d-none flex-column flex-lg-row justify-content-start filter-datas mb-3"
+                data-filters
+              >
+                <strong class="fs-6 me-2 text-primary">Active Filters:</strong>
+                <div class="d-flex flex-row flex-wrap align-items-center" data-filters-data></div>
+              </div>
+
+              <!-- Users Data Table -->
+              <div class="table-responsive border-0">
+                <table class="table table-row-dashed mb-0" id="table_users">
+                  <thead>
+                    <tr>
+                      <th class="checkbox-column fs-6" style="width: 20px">
+                        <div class="form-check">
+                          <input
+                            class="form-check-input select-all-checkbox"
+                            type="checkbox"
+                            data-table-select="select_all"
+                          />
+                        </div>
+                      </th>
+                      <th style="width: 350px">USER DETAILS</th>
+                      <th>ACCESS ROLE</th>
+                      <th>LAST ACTIVE</th>
+                      <th>ACCOUNT STATUS</th>
+                      <th>REGISTRATION DATE</th>
+                      <th class="text-end pe-3">MANAGE</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ConfirmationModal />
+</AdminLayout>

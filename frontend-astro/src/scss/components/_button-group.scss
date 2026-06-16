@@ -1,0 +1,236 @@
+/* ==========================================================================
+   Button Group Base Styles
+   ========================================================================== */
+
+.btn-group {
+  display: inline-flex;
+  vertical-align: middle;
+
+  > .btn {
+    position: relative;
+    flex: 0 1 auto;
+
+    &:hover,
+    &:focus,
+    &:active,
+    &.active {
+      z-index: 1;
+    }
+
+    // Fix for double borders between buttons
+    &:not(:first-child) {
+      margin-left: -1px; // Negative margin to overlap borders
+    }
+
+    // Fix for outline buttons specifically - handle all outline variants
+    &[class*='btn-outline-']:not(:last-child) {
+      border-right-color: transparent;
+    }
+
+    &[class*='btn-outline-']:not(:first-child):not(:last-child) {
+      border-right-color: transparent;
+    }
+
+    // Ensure the left border of the last button is visible
+    &[class*='btn-outline-']:last-child {
+      border-left-color: inherit;
+    }
+
+    // Special handling for single button in a group
+    &:only-child {
+      @include border-radius(var(--bs-border-radius));
+    }
+  }
+
+  // Fix for nested button groups (dropdown toggles)
+  > .btn-group {
+    margin-left: -1px;
+
+    > .btn {
+      @include border-start-radius(0);
+
+      &.dropdown-toggle {
+        @include border-end-radius(var(--bs-border-radius));
+      }
+    }
+  }
+
+  // Special handling for checkbox and radio button groups
+  .btn-check + .btn {
+    &:not(:first-of-type) {
+      margin-left: -1px;
+      border-left-color: var(--bs-primary); // Restore border color
+    }
+
+    // Ensure borders are visible for all outline buttons in checkbox/radio groups
+    &[class*='btn-outline-'] {
+      border-color: var(--bs-primary);
+
+      &:hover,
+      &:focus,
+      &:active {
+        z-index: 2; // Ensure the active button appears on top
+      }
+    }
+
+    // Handle single checkbox/radio button in a group
+    &:only-of-type {
+      @include border-radius(var(--bs-border-radius));
+    }
+  }
+
+  // Fix border radius for first label in checkbox/radio groups
+  .btn-check:first-of-type + .btn {
+    @include border-start-radius(var(--bs-border-radius));
+    @include border-end-radius(0);
+  }
+
+  // Fix border radius for last label in checkbox/radio groups
+  .btn-check:last-of-type + .btn {
+    @include border-start-radius(0);
+    @include border-end-radius(var(--bs-border-radius));
+  }
+
+  // Fix border radius for middle labels in checkbox/radio groups
+  .btn-check:not(:first-of-type):not(:last-of-type) + .btn {
+    @include border-radius(0);
+  }
+
+  /* ==========================================================================
+   Button Group Sizes
+   ========================================================================== */
+
+  // Extra Small
+  &.btn-group-xs > .btn {
+    height: $input-btn-minheight-xs;
+    padding: $input-btn-padding-xs;
+    font-size: $input-btn-font-size-xs;
+  }
+
+  // Small (already exists in Bootstrap)
+  &.btn-group-sm > .btn {
+    height: $input-btn-minheight-sm;
+    padding: $input-btn-padding-sm;
+    font-size: $input-btn-font-size-sm;
+  }
+
+  // Default size is handled by Bootstrap
+
+  // Large (already exists in Bootstrap)
+  &.btn-group-lg > .btn {
+    height: $input-btn-minheight-lg;
+    padding: $input-btn-padding-lg;
+    font-size: $input-btn-font-size-lg;
+  }
+
+  // Extra Large
+  &.btn-group-xl > .btn {
+    height: $input-btn-minheight-xl;
+    padding: $input-btn-padding-xl;
+    font-size: $input-btn-font-size-xl;
+  }
+}
+
+/* ==========================================================================
+   Vertical Button Group Styles
+   ========================================================================== */
+
+.btn-group-vertical {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  // justify-content: center;
+
+  > .btn {
+    position: relative;
+    flex: 0 1 auto;
+    width: 100%;
+
+    &:hover,
+    &:focus,
+    &:active,
+    &.active {
+      z-index: 1;
+    }
+
+    // Fix for double borders between buttons
+    &:not(:first-child) {
+      margin-top: -1px; // Negative margin to overlap borders
+      margin-left: 0;
+    }
+
+    // Fix for outline buttons specifically - handle all outline variants
+    &[class*='btn-outline-']:not(:last-child) {
+      border-bottom-color: transparent;
+    }
+
+    &[class*='btn-outline-']:not(:first-child):not(:last-child) {
+      border-bottom-color: transparent;
+    }
+
+    // Ensure the top border of the last button is visible
+    &[class*='btn-outline-']:last-child {
+      border-top-color: inherit;
+    }
+
+    // Handle border radius for vertical button groups
+    &:first-child {
+      @include border-bottom-radius(0);
+    }
+
+    &:last-child {
+      @include border-top-radius(0);
+    }
+
+    &:not(:first-child):not(:last-child) {
+      @include border-radius(0);
+    }
+
+    // Special handling for single button in a group
+    &:only-child {
+      @include border-radius(var(--bs-border-radius));
+    }
+  }
+
+  // Special handling for checkbox and radio button groups in vertical layout
+  .btn-check + .btn {
+    &:not(:first-of-type) {
+      margin-top: -1px;
+      margin-left: 0;
+      border-top-color: var(--bs-danger); // Restore border color for danger buttons
+    }
+
+    // Ensure borders are visible for all outline buttons in checkbox/radio groups
+    &[class*='btn-outline-'] {
+      border-color: var(--bs-danger);
+
+      &:hover,
+      &:focus,
+      &:active {
+        z-index: 2; // Ensure the active button appears on top
+      }
+    }
+
+    // Handle single checkbox/radio button in a group
+    &:only-of-type {
+      @include border-radius(var(--bs-border-radius));
+    }
+  }
+
+  // Fix border radius for first label in checkbox/radio groups
+  .btn-check:first-of-type + .btn {
+    @include border-top-radius(var(--bs-border-radius));
+    @include border-bottom-radius(0);
+  }
+
+  // Fix border radius for last label in checkbox/radio groups
+  .btn-check:last-of-type + .btn {
+    @include border-top-radius(0);
+    @include border-bottom-radius(var(--bs-border-radius));
+  }
+
+  // Fix border radius for middle labels in checkbox/radio groups
+  .btn-check:not(:first-of-type):not(:last-of-type) + .btn {
+    @include border-radius(0);
+  }
+}

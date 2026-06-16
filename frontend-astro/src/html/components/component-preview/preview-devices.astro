@@ -1,0 +1,49 @@
+---
+import PreviewButton from './preview-button.astro'
+
+export interface Props {
+  className?: string
+}
+
+const { className = '' } = Astro.props
+
+const devices = [
+  {
+    title: 'Desktop View',
+    icon: 'ri-computer-line',
+    width: '100%',
+    className: 'd-none d-lg-flex',
+    isActive: true
+  },
+  {
+    title: 'Tablet View',
+    icon: 'ri-tablet-line',
+    width: '768',
+    className: 'd-none d-md-flex'
+  },
+  {
+    title: 'Mobile View',
+    icon: 'ri-smartphone-line',
+    width: '375',
+    className: 'd-none d-md-flex'
+  }
+]
+---
+
+<div
+  class={`d-flex gap-1 mx-auto preview-devices ${className}`.trim()}
+  role="group"
+  aria-label="Responsive Preview Controls"
+>
+  {
+    devices.map((device) => (
+      <PreviewButton
+        icon={device.icon}
+        title={device.title}
+        dataWidth={device.width}
+        className={device.className}
+        isActive={device.isActive}
+      />
+    ))
+  }
+</div>

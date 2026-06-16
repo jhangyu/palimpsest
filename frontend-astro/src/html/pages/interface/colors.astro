@@ -1,0 +1,339 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation
+const pageHeaderConfig = {
+  title: 'Colors',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), icon: 'ri-dashboard-line' },
+    { label: 'Interface', href: getPathPrefix('/interface'), icon: 'ri-layout-line' },
+    { label: 'Colors', class: 'active', icon: 'ri-layout-masonry-line' }
+  ]
+}
+
+// Examples
+const code_1 = `<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+        <p class="text-sky">.text-sky</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-blue">.text-blue</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-indigo">.text-indigo</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-grape">.text-grape</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-purple">.text-purple</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-violet">.text-violet</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-pink">.text-pink</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-fuchsia">.text-fuchsia</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-red">.text-red</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-orange">.text-orange</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-yellow">.text-yellow</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-green">.text-green</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-leaf">.text-leaf</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-teal">.text-teal</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-cyan">.text-cyan</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-aqua">.text-aqua</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-navy">.text-navy</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-ash">.text-ash</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-primary">.text-primary</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-secondary">.text-secondary</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-dark">.text-dark</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-muted">.text-muted</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-light bg-dark">.text-light</p>
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-1">.text-gradient-1</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-2">.text-gradient-2</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-3">.text-gradient-3</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-4">.text-gradient-4</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-5">.text-gradient-5</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-6">.text-gradient-6</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-7">.text-gradient-7</p>
+    </div>
+    <div class="col-6 col-md-4">
+        <p class="text-gradient-8">.text-gradient-8</p>
+    </div>
+</div>
+`
+
+const code_2 = `<div class="row g-3">
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-sky text-white p-2 mb-0">.bg-sky</p>
+      <p class="bg-sky-pale text-sky p-2 mb-0">.bg-sky-pale</p>
+      <p class="bg-sky-soft text-sky p-2 mb-0">.bg-sky-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-blue text-white p-2 mb-0">.bg-blue</p>
+      <p class="bg-blue-pale text-blue p-2 mb-0">.bg-blue-pale</p>
+      <p class="bg-blue-soft text-blue p-2 mb-0">.bg-blue-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-indigo text-white p-2 mb-0">.bg-indigo</p>
+      <p class="bg-indigo-pale text-indigo p-2 mb-0">.bg-indigo-pale</p>
+      <p class="bg-indigo-soft text-indigo p-2 mb-0">.bg-indigo-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-grape text-white p-2 mb-0">.bg-grape</p>
+      <p class="bg-grape-pale text-grape p-2 mb-0">.bg-grape-pale</p>
+      <p class="bg-grape-soft text-grape p-2 mb-0">.bg-grape-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-purple text-white p-2 mb-0">.bg-purple</p>
+      <p class="bg-purple-pale text-purple p-2 mb-0">.bg-purple-pale</p>
+      <p class="bg-purple-soft text-purple p-2 mb-0">.bg-purple-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-violet text-white p-2 mb-0">.bg-violet</p>
+      <p class="bg-violet-pale text-violet p-2 mb-0">.bg-violet-pale</p>
+      <p class="bg-violet-soft text-violet p-2 mb-0">.bg-violet-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-pink text-white p-2 mb-0">.bg-pink</p>
+      <p class="bg-pink-pale text-pink p-2 mb-0">.bg-pink-pale</p>
+      <p class="bg-pink-soft text-pink p-2 mb-0">.bg-pink-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-fuchsia text-white p-2 mb-0">.bg-fuchsia</p>
+      <p class="bg-fuchsia-pale text-fuchsia p-2 mb-0">.bg-fuchsia-pale</p>
+      <p class="bg-fuchsia-soft text-fuchsia p-2 mb-0">.bg-fuchsia-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-red text-white p-2 mb-0">.bg-red</p>
+      <p class="bg-red-pale text-red p-2 mb-0">.bg-red-pale</p>
+      <p class="bg-red-soft text-red p-2 mb-0">.bg-red-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-orange text-white p-2 mb-0">.bg-orange</p>
+      <p class="bg-orange-pale text-orange p-2 mb-0">.bg-orange-pale</p>
+      <p class="bg-orange-soft text-orange p-2 mb-0">.bg-orange-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-yellow text-white p-2 mb-0">.bg-yellow</p>
+      <p class="bg-yellow-pale text-yellow p-2 mb-0">.bg-yellow-pale</p>
+      <p class="bg-yellow-soft text-yellow p-2 mb-0">.bg-yellow-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-green text-white p-2 mb-0">.bg-green</p>
+      <p class="bg-green-pale text-green p-2 mb-0">.bg-green-pale</p>
+      <p class="bg-green-soft text-green p-2 mb-0">.bg-green-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-leaf text-white p-2 mb-0">.bg-leaf</p>
+      <p class="bg-leaf-pale text-leaf p-2 mb-0">.bg-leaf-pale</p>
+      <p class="bg-leaf-soft text-leaf p-2 mb-0">.bg-leaf-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-teal text-white p-2 mb-0">.bg-teal</p>
+      <p class="bg-teal-pale text-teal p-2 mb-0">.bg-teal-pale</p>
+      <p class="bg-teal-soft text-teal p-2 mb-0">.bg-teal-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-cyan text-white p-2 mb-0">.bg-cyan</p>
+      <p class="bg-cyan-pale text-cyan p-2 mb-0">.bg-cyan-pale</p>
+      <p class="bg-cyan-soft text-cyan p-2 mb-0">.bg-cyan-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-aqua text-white p-2 mb-0">.bg-aqua</p>
+      <p class="bg-aqua-pale text-aqua p-2 mb-0">.bg-aqua-pale</p>
+      <p class="bg-aqua-soft text-aqua p-2 mb-0">.bg-aqua-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-navy text-white p-2 mb-0">.bg-navy</p>
+      <p class="bg-navy-pale text-navy p-2 mb-0">.bg-navy-pale</p>
+      <p class="bg-navy-soft text-navy p-2 mb-0">.bg-navy-soft</p>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3">
+      <p class="bg-ash text-white p-2 mb-0">.bg-ash</p>
+      <p class="bg-ash-pale text-ash p-2 mb-0">.bg-ash-pale</p>
+      <p class="bg-ash-soft text-ash p-2 mb-0">.bg-ash-soft</p>
+    </div>
+</div>
+`
+
+const code_3 = `<div class="row g-3">
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-1 text-white p-3 mb-0">.bg-gradient-1</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-2 text-white p-3 mb-0">.bg-gradient-2</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-3 text-white p-3 mb-0">.bg-gradient-3</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-4 text-white p-3 mb-0">.bg-gradient-4</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-5 text-white p-3 mb-0">.bg-gradient-5</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-6 text-white p-3 mb-0">.bg-gradient-6</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-7 text-white p-3 mb-0">.bg-gradient-7</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-8 text-white p-3 mb-0">.bg-gradient-8</p>
+    </div>
+    <div class="col-6 col-sm-4">
+      <p class="bg-gradient-9 text-dark p-3 mb-0">.bg-gradient-9</p>
+    </div>
+</div>
+`
+---
+
+<AdminLayout
+  title="Colors"
+  description="Comprehensive utility classes for styling text and background colors with support for solid colors, gradients, and semantic color variations."
+  currentPath="interface/colors"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Our comprehensive color system provides a wide range of utility classes for styling text
+            and backgrounds. The color palette includes semantic colors (primary, secondary,
+            success, etc.), brand colors, and gradient variations. Each color comes with multiple
+            variants including pale and soft versions for subtle backgrounds. These utility classes
+            follow a consistent naming convention and are designed to work seamlessly with your
+            design system, ensuring accessibility and visual hierarchy throughout your application.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="text-colors">Text Colors</h3>
+            <p class="py-2">
+              Text color utilities provide precise control over typography appearance and
+              readability. The collection includes a full spectrum of colors from vibrant brand
+              colors to subtle muted tones. Semantic colors like <code>.text-primary</code> and <code
+                >.text-secondary</code
+              > maintain consistency with your theme, while specific color classes like <code
+                >.text-blue</code
+              > or <code>.text-red</code> offer exact color control. Gradient text classes create eye-catching
+              headings and call-to-action elements. All text colors are optimized for contrast and accessibility
+              standards.
+            </p>
+
+            <ComponentPreview
+              title="Text Colors"
+              height="550px"
+              component={code_1}
+              htmlCode={code_1}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="solid-background-colors">Solid Background Colors</h3>
+            <p class="py-2">
+              Background color utilities offer three intensity levels for each color: standard,
+              pale, and soft variants. The standard background classes (e.g., <code>.bg-blue</code>)
+              provide full-intensity colors perfect for buttons, badges, and prominent elements.
+              Pale variants (e.g., <code>.bg-blue-pale</code>) offer subtle backgrounds ideal for
+              cards, notifications, and content sections. Soft variants (e.g., <code
+                >.bg-blue-soft</code
+              >) provide the most subtle option, perfect for hover states and gentle highlighting.
+              Each variant is carefully calibrated to work with appropriate text colors for optimal
+              readability and visual appeal.
+            </p>
+
+            <ComponentPreview
+              title="Solid Background Colors"
+              height="550px"
+              component={code_2}
+              htmlCode={code_2}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="gradient-background-colors">Gradient Background Colors</h3>
+            <p class="py-2">
+              Gradient backgrounds add visual depth and modern appeal to your interface elements.
+              Our curated collection of gradient classes features smooth color transitions that work
+              beautifully for hero sections, cards, buttons, and decorative elements. Each gradient
+              is carefully designed with appropriate color stops and directions to ensure visual
+              harmony. Gradients 1-8 use vibrant color combinations with white text, while
+              gradient-9 features a lighter palette suitable for dark text. These gradients are
+              optimized for both aesthetic appeal and performance across all devices.
+            </p>
+
+            <ComponentPreview
+              title="Gradient Background Colors"
+              height="450px"
+              component={code_3}
+              htmlCode={code_3}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

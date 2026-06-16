@@ -1,0 +1,51 @@
+/* ==========================================================================
+     Form Components
+     ========================================================================== */
+@import 'forms/form-control';
+@import 'forms/form-check';
+@import 'forms/form-select';
+@import 'forms/input-group';
+
+/* Required Field Indicator */
+.form-label {
+  &::after {
+    content: '';
+  }
+}
+
+.form-label.required::after {
+  font-weight: 700;
+  color: var(--bs-danger);
+  content: ' *';
+}
+
+/* Password Field Enhancements */
+.password-wrapper {
+  position: relative;
+
+  .form-control {
+    padding-right: 2.5rem;
+  }
+
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    z-index: 10;
+    padding: 0.25rem;
+    color: var(--bs-secondary);
+    background: transparent;
+    border: 0;
+    transform: translateY(-50%);
+    @include transition(border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out);
+
+    &:hover {
+      color: var(--bs-secondary);
+    }
+  }
+}
+
+/* Adjust invalid styles for password toggle */
+.form-control.is-invalid ~ .password-toggle {
+  color: var(--bs-danger);
+}

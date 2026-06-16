@@ -1,0 +1,96 @@
+// Custom input group sizes and overrides
+// Extends Bootstrap's input groups
+
+// ==========================================================================
+//   Base Input Group Text Styling
+// ==========================================================================
+
+.input-group-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: $input-btn-minheight;
+  min-height: $input-btn-minheight;
+  padding: $input-btn-padding-y;
+  line-height: 1.2;
+}
+
+// ==========================================================================
+//   Input Group Size Variants
+// ==========================================================================
+
+// Input group size mixin
+@mixin input-group-size($size, $height, $padding, $font-size) {
+  .input-group-#{$size} {
+    > .form-control,
+    > .form-select,
+    > .btn {
+      height: $height;
+      padding: $padding;
+      font-size: $font-size;
+      line-height: 1.2;
+    }
+
+    // Special handling for file inputs
+    > .form-control[type='file'] {
+      height: $height;
+      padding: nth($padding, 1) nth($padding, 2);
+      font-size: $font-size;
+      line-height: 1.2;
+
+      // Style the file input button
+      &::-webkit-file-upload-button,
+      &::file-selector-button {
+        // stylelint-disable-next-line function-disallowed-list
+        height: calc(#{$height} - 2px); // calc() needed for mixed units (rem - px)
+        padding: 0 nth($padding, 2);
+        margin: -#{nth($padding, 1)} 0 -#{nth($padding, 1)} -#{nth($padding, 2)};
+        margin-right: nth($padding, 2);
+        font-size: $font-size;
+        line-height: 1.2;
+      }
+    }
+
+    > .input-group-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: $height;
+      height: $height;
+      min-height: $height;
+      padding: nth($padding, 1);
+      font-size: $font-size;
+      line-height: 1.2;
+    }
+
+    > .form-select {
+      padding-right: $form-select-padding-x + $form-select-indicator-padding;
+    }
+  }
+}
+
+// Apply sizes using the mixin with consistent font size variables
+@include input-group-size(
+  'xs',
+  $input-btn-minheight-xs,
+  $input-btn-padding-xs,
+  $input-btn-font-size-xs
+);
+@include input-group-size(
+  'sm',
+  $input-btn-minheight-sm,
+  $input-btn-padding-sm,
+  $input-btn-font-size-sm
+);
+@include input-group-size(
+  'lg',
+  $input-btn-minheight-lg,
+  $input-btn-padding-lg,
+  $input-btn-font-size-lg
+);
+@include input-group-size(
+  'xl',
+  $input-btn-minheight-xl,
+  $input-btn-padding-xl,
+  $input-btn-font-size-xl
+);

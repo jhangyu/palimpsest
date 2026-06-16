@@ -1,0 +1,46 @@
+// Import all variable files in a structured sequence
+
+// Core variables and functions
+@import '../../../node_modules/bootstrap/scss/functions';
+// Configuration that might use base variables
+@import 'config';
+// Color variables
+@import 'colors';
+// Layout variables
+@import 'layout';
+// Link variables
+@import 'link';
+// Typography variables
+@import 'typography';
+// Component variables
+@import 'components';
+// Tables variables
+@import 'tables';
+// Buttons variables
+@import 'buttons';
+// Forms variables
+@import 'forms';
+// Z-index variables
+@import 'z-index';
+// Navigation variables
+@import 'navigation';
+// Dropdowns variables
+@import 'dropdowns';
+// Pagination variables
+@import 'pagination';
+// Cards variables
+@import 'cards';
+// Accordion variables
+@import 'accordion';
+// Tooltips variables
+@import 'tooltips';
+// Popovers variables
+@import 'popovers';
+// Toasts variables
+@import 'toasts';
+// Modals variables
+@import 'modals';
+// Miscellaneous variables
+@import 'misc';
+// Dark mode variables -- Not required in v6
+@import 'dark';

@@ -1,0 +1,27 @@
+//
+// Component: Page Header
+//
+
+:root {
+  --bs-breadcrumb-divider: '/';
+}
+
+.page-header-container {
+  .page-actions {
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .breadcrumb {
+    .breadcrumb-item {
+      display: flex;
+      align-items: center;
+      &:not(:first-child)::before {
+        content: var(--bs-breadcrumb-divider, '/');
+      }
+    }
+  }
+}

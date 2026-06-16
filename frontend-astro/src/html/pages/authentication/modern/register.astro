@@ -1,0 +1,141 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="Register"
+  description="Register example"
+  currentPath="authentication/register/login"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <a
+      href={getPathPrefix('/')}
+      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
+    >
+      Back
+    </a>
+    <a
+      href={getPathPrefix('/authentication/modern/login')}
+      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
+    >
+      Login
+    </a>
+    <div class="text-center w-100" style="max-width: 800px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-2">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="AsteroAdmin Logo"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-2 fs-4">Create a new account</h4>
+          <div class="row my-3">
+            <div class="col-md-6 px-2 px-md-4">
+              <form>
+                <div class="mb-3 text-start">
+                  <label for="fullName" class="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="fullName"
+                    placeholder="John Doe"
+                    autocomplete="name"
+                    required
+                  />
+                </div>
+                <div class="mb-3 text-start">
+                  <label for="email" class="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    placeholder="yourname@example.com"
+                    autocomplete="username"
+                    required
+                  />
+                </div>
+                <div class="mb-3 text-start">
+                  <label for="password" class="form-label">Password</label>
+                  <div class="password-wrapper">
+                    <input
+                      type="password"
+                      class="form-control password-input"
+                      id="password"
+                      placeholder="Password"
+                      autocomplete="new-password"
+                      required
+                    />
+                    <button class="password-toggle" type="button" aria-label="Show password">
+                      <i class="ri-eye-off-line"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="mb-3 text-start">
+                  <label for="confirmPassword" class="form-label">Confirm Password</label>
+                  <div class="password-wrapper">
+                    <input
+                      type="password"
+                      class="form-control password-input"
+                      id="confirmPassword"
+                      placeholder="Password"
+                      autocomplete="new-password"
+                      required
+                    />
+                    <button class="password-toggle" type="button" aria-label="Show password">
+                      <i class="ri-eye-off-line"></i>
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-3">Register</button>
+              </form>
+            </div>
+            <div class="or-divider d-none d-md-flex col-md-1 py-3">
+              <span>OR</span>
+            </div>
+            <div class="col-md-5 px-2 px-md-4 d-flex flex-column justify-content-center">
+              <button
+                class="btn btn-outline-primary d-flex align-items-center w-100 mb-2 p-3 gap-3"
+              >
+                <i class="ri-google-fill"></i>
+                Continue with Google
+              </button>
+              <button
+                class="btn btn-outline-primary d-flex align-items-center w-100 mb-2 p-3 gap-3"
+              >
+                <i class="ri-apple-fill"></i>
+                Continue with Apple
+              </button>
+              <button
+                class="btn btn-outline-primary d-flex align-items-center w-100 mb-2 p-3 gap-3"
+              >
+                <i class="ri-facebook-fill"></i>
+                Continue with Facebook
+              </button>
+            </div>
+          </div>
+          <div class="mb-2">
+            <span class="text-muted">
+              Already have an account? <a
+                href={getPathPrefix('/authentication/modern/login')}
+                class="text-decoration-none text-center">Login</a
+              >
+            </span>
+          </div>
+          <div>
+            <small class="text-muted"
+              >By registering, you agree to our
+              <a href={getPathPrefix('/terms')} class="text-decoration-none">Terms of Service</a> and
+              <a href={getPathPrefix('/privacy')} class="text-decoration-none">Privacy Policy</a>.
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

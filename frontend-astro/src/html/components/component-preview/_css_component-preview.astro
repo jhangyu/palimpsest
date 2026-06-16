@@ -1,0 +1,41 @@
+---
+import { getAssetPrefix } from '../../../utils/path.js'
+---
+
+<!-- CodeMirror Core and Theme CSS -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/base16-dark.min.css"
+/>
+
+<!-- Component Preview CSS -->
+<link rel="stylesheet" href={getAssetPrefix('/assets/vendor/css/component-preview.css')} />
+<link rel="stylesheet" href={getAssetPrefix('/assets/vendor/css/codemirror-editor.css')} />
+
+<style is:inline>
+  /* Iframe Loader Styles */
+  .iframe-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(var(--bs-body-bg-rgb), 0.8);
+    z-index: 10;
+    transition:
+      opacity 0.3s ease,
+      visibility 0.3s ease;
+  }
+
+  .iframe-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+</style>

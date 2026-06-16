@@ -1,0 +1,19 @@
+/* ==========================================================================
+     Footer Component
+     ========================================================================== */
+
+.footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: var(--footer-height);
+  color: var(--footer-color);
+  background: var(--footer-bg);
+
+  a {
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

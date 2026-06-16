@@ -1,0 +1,119 @@
+name: '📝 Update Changelog'
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to generate changelog for'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Get release info
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ github.event.release.body }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "release_date=$(date -d '${{ github.event.release.published_at }}' '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            LATEST_TAG=$(git describe --tags --abbrev=0)
+            echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+            echo "release_date=$(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+            echo "release_notes=Manual changelog update" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Update CHANGELOG.md
+        id: update_changelog
+        run: |
+          VERSION="${{ steps.release_info.outputs.version }}"
+          RELEASE_DATE="${{ steps.release_info.outputs.release_date }}"
+          RELEASE_NOTES="${{ steps.release_info.outputs.release_notes }}"
+
+          # Create CHANGELOG.md if it doesn't exist
+          if [ ! -f CHANGELOG.md ]; then
+            cat > CHANGELOG.md << 'EOF'
+          # Changelog
+
+          All notable changes to this project will be documented in this file.
+
+          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+          EOF
+          fi
+
+          # Prepare the new entry
+          NEW_ENTRY=$(cat << EOF
+
+          ## [${VERSION}] - ${RELEASE_DATE}
+
+          ${RELEASE_NOTES}
+
+          EOF
+          )
+
+          # Check if this version already exists
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            echo "Version ${VERSION} already exists in changelog"
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            # Insert new entry after the header (before the first ## entry)
+            if grep -q "^## \[" CHANGELOG.md; then
+              # Find the first release entry and insert before it
+              awk -v new_entry="$NEW_ENTRY" '
+                /^## \[/ && !inserted {
+                  print new_entry
+                  inserted = 1
+                }
+                { print }
+              ' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
+            else
+              # No releases yet, append to end
+              echo "$NEW_ENTRY" >> CHANGELOG.md
+            fi
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Added ${VERSION} to CHANGELOG.md"
+          fi
+
+      - name: 🔍 Show changelog changes
+        if: steps.update_changelog.outputs.changes == 'true'
+        run: |
+          echo "📄 Updated CHANGELOG.md:"
+          echo "----------------------------------------"
+          head -30 CHANGELOG.md
+
+      - name: 💾 Commit changes
+        if: steps.update_changelog.outputs.changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "📝 Update CHANGELOG.md for ${{ steps.release_info.outputs.version }}" || exit 0
+          git push
+
+      - name: ✅ Summary
+        run: |
+          if [ "${{ steps.update_changelog.outputs.changes }}" = "true" ]; then
+            echo "🎉 Successfully updated CHANGELOG.md with version ${{ steps.release_info.outputs.version }}"
+          else
+            echo "ℹ️ No changes needed - version already exists in changelog"
+          fi

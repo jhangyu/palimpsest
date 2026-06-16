@@ -1,0 +1,60 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="Recovery Link Sent"
+  description="Recovery link sent example"
+  currentPath="authentication/modern/link-sent"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <a
+      href={getPathPrefix('/')}
+      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
+    >
+      Back
+    </a>
+    <a
+      href={getPathPrefix('/authentication/modern/register')}
+      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
+    >
+      Create Account
+    </a>
+    <div class="text-center w-100" style="max-width: 500px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-2">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="AsteroAdmin Logo"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-2 fs-4">Recovery Link Sent</h4>
+          <p class="text-muted mb-3">
+            We've sent a recovery link to your email address. Please check your inbox to reset your
+            password.
+          </p>
+          <div class="text-center mb-2">
+            <button type="button" class="btn btn-primary w-100"> Resend Link </button>
+          </div>
+          <div class="text-center mb-3">
+            <a
+              href={getPathPrefix('/authentication/modern/forgot-password')}
+              class="text-decoration-none text-primary"
+            >
+              Use another email address
+            </a>
+          </div>
+          <div class="mb-2 text-muted d-block text-center">
+            Please allow a few minutes for the email to arrive.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

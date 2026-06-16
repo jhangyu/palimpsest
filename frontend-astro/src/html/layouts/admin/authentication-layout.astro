@@ -1,0 +1,37 @@
+---
+import Head from './partials/_head.astro'
+import Scripts from './partials/_scripts.astro'
+
+interface Props {
+  title: string
+  description?: string
+  currentPath?: string
+  pageScript?: string
+}
+
+const { title, description, pageScript } = Astro.props
+
+const pageSeo = {
+  title,
+  description: description || `${title} page of the admin dashboard`
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head {...pageSeo} />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Page Content -->
+      <main class="content-wrapper row p-0">
+        <div class="container">
+          <slot />
+        </div>
+      </main>
+    </div>
+    <!-- All Scripts -->
+    <Scripts {pageScript} />
+  </body>
+</html>

@@ -1,0 +1,93 @@
+/*
+==========================================================================
+Table Styles
+==========================================================================
+*/
+.table:not(.table-bordered) {
+  // Row bordered
+  &.table-row-bordered {
+    tr {
+      border-bottom-color: var(--#{$prefix}border-color);
+      border-bottom-style: solid;
+      border-bottom-width: 1px;
+    }
+
+    tfoot {
+      th,
+      td {
+        border-top-width: 1px !important;
+      }
+    }
+  }
+
+  // Row dashed
+  &.table-row-dashed {
+    tr {
+      border-bottom-color: var(--#{$prefix}border-color);
+      border-bottom-style: dashed;
+      border-bottom-width: 1px;
+    }
+
+    tfoot {
+      th,
+      td {
+        border-top-width: 1px !important;
+      }
+    }
+  }
+
+  // Row border colors
+  @each $name, $value in $grays {
+    &.table-row-gray-#{$name} {
+      tr {
+        border-bottom-color: var(--#{$prefix}gray-#{$name});
+      }
+    }
+  }
+}
+
+/*
+==========================================================================
+Search Wrapper Styles
+==========================================================================
+*/
+.search-wrapper {
+  position: relative;
+  min-width: 280px;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  .btn-clear {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0.25rem;
+    color: var(--bs-secondary-color);
+    background: transparent;
+    @extend .border-0;
+    @extend .rounded-circle;
+    transform: translateY(-50%);
+
+    &:hover {
+      color: var(--bs-emphasis-color);
+      background-color: var(--bs-tertiary-bg);
+    }
+  }
+
+  .search-input {
+    padding-right: 2rem;
+    padding-left: 2.75rem;
+  }
+}

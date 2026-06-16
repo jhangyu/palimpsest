@@ -1,0 +1,72 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="2-Step Verification"
+  description="2-Step verification example"
+  currentPath="authentication/modern/2-step-verification"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <a
+      href={getPathPrefix('/')}
+      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
+    >
+      Back
+    </a>
+    <a
+      href={getPathPrefix('/authentication/modern/register')}
+      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
+    >
+      Create Account
+    </a>
+    <div class="text-center w-100" style="max-width: 400px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-2">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="AsteroAdmin Logo"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-2 fs-4">2-Step Verification</h4>
+          <form>
+            <div class="mb-3">
+              <p class="text-muted">
+                For added security, please enter your phone number and verify the code sent to it.
+              </p>
+            </div>
+            <div class="mb-3 text-start">
+              <label for="country" class="form-label">Select Country</label>
+              <select class="form-control" id="country" required>
+                <option value="">Select Country</option>
+                <option value="US">United States (+1)</option>
+                <option value="GB">United Kingdom (+44)</option>
+                <option value="IN">India (+91)</option>
+                <option value="CA">Canada (+1)</option>
+              </select>
+            </div>
+            <div class="mb-3 text-start">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input
+                type="tel"
+                class="form-control"
+                id="phone"
+                placeholder="+1 (XXX) XXX-XXXX"
+                pattern="[0-9]{10}"
+                autocomplete="tel"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Send Verification Code</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

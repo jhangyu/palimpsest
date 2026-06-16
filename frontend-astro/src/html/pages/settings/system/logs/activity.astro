@@ -1,0 +1,93 @@
+---
+import AdminLayout from '../../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../../utils/path.js'
+
+const pageHeaderProps = {
+  title: 'Activity Logs',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Settings', href: getPathPrefix('/settings') },
+    { label: 'Activity Logs', class: 'active' } // No href means it's the current page
+  ]
+}
+---
+
+<AdminLayout
+  title="Activity Logs"
+  description="System activity and audit logs"
+  currentPath="settings/system/logs/activity"
+>
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">System Activity</h5>
+          <div>
+            <button class="btn btn-primary btn-sm">Export Logs</button>
+            <button class="btn btn-secondary btn-sm ms-2">Filter</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2024-01-20 15:30:22</td>
+                  <td>admin@example.com</td>
+                  <td>User Login</td>
+                  <td>Successful login attempt</td>
+                  <td>192.168.1.100</td>
+                </tr>
+                <tr>
+                  <td>2024-01-20 15:28:15</td>
+                  <td>john.doe@example.com</td>
+                  <td>Settings Update</td>
+                  <td>Modified system preferences</td>
+                  <td>192.168.1.101</td>
+                </tr>
+                <tr>
+                  <td>2024-01-20 15:25:00</td>
+                  <td>jane.smith@example.com</td>
+                  <td>User Created</td>
+                  <td>New user account created</td>
+                  <td>192.168.1.102</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <nav aria-label="Activity log navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+              <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1">Previous</a>
+              </li>
+              <li class="page-item active">
+                <a class="page-link" href="#">1</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="#">2</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="#">3</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="#">Next</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

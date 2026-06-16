@@ -1,0 +1,472 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation
+const pageConfig = {
+  title: 'Navs and Tabs',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), icon: 'ri-dashboard-line' },
+    { label: 'Interface', href: getPathPrefix('/interface'), icon: 'ri-layout-line' },
+    { label: 'Navs and Tabs', class: 'active', icon: 'ri-navigation-line' }
+  ]
+}
+
+// Basic navigation example with standard links
+const basicNavExample = `<ul class="nav">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Centered navigation example
+const centeredNavExample = `<ul class="nav justify-content-center">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Right-aligned navigation example
+const rightAlignedNavExample = `<ul class="nav justify-content-end">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Vertical navigation example
+const verticalNavExample = `<ul class="nav flex-column">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Tabs navigation example
+const tabsNavExample = `<ul class="nav nav-tabs">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Pills navigation example
+const pillsNavExample = `<ul class="nav nav-pills">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Underline navigation example
+const underlineNavExample = `<ul class="nav nav-underline">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-user-line me-2"></i>Profile</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Fill navigation example
+const fillNavExample = `<ul class="nav nav-pills nav-fill">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-file-text-line me-2"></i>Documentation</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Justified navigation example
+const justifiedNavExample = `<ul class="nav nav-pills nav-justified">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-file-text-line me-2"></i>Documentation</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Responsive navigation example
+const responsiveNavExample = `<nav class="nav nav-pills flex-column flex-sm-row">
+  <a class="flex-sm-fill text-sm-center nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  <a class="flex-sm-fill text-sm-center nav-link" href="#"><i class="ri-file-text-line me-2"></i>Documentation</a>
+  <a class="flex-sm-fill text-sm-center nav-link" href="#"><i class="ri-settings-line me-2"></i>Settings</a>
+  <a class="flex-sm-fill text-sm-center nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+</nav>
+`
+
+// Tabs with dropdown example
+const tabsWithDropdownExample = `<ul class="nav nav-tabs">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">
+      <i class="ri-menu-line me-2"></i>Dropdown
+    </a>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item" href="#"><i class="ri-add-line me-2"></i>New Item</a></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-edit-line me-2"></i>Edit</a></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-delete-bin-line me-2"></i>Delete</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-settings-line me-2"></i>Settings</a></li>
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-link me-2"></i>Link</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+
+// Pills with dropdown example
+const pillsWithDropdownExample = `<ul class="nav nav-pills">
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="#"><i class="ri-home-line me-2"></i>Home</a>
+  </li>
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">
+      <i class="ri-menu-line me-2"></i>Dropdown
+    </a>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item" href="#"><i class="ri-add-line me-2"></i>New Item</a></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-edit-line me-2"></i>Edit</a></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-delete-bin-line me-2"></i>Delete</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#"><i class="ri-settings-line me-2"></i>Settings</a></li>
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="#"><i class="ri-link me-2"></i>Link</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link disabled" aria-disabled="true"><i class="ri-lock-line me-2"></i>Disabled</a>
+  </li>
+</ul>
+`
+---
+
+<AdminLayout
+  title="Navs and Tabs"
+  description="Modern navigation components with various styles and layouts"
+  currentPath="interface/navs-and-tabs"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Bootstrap's navigation components offer flexible and responsive solutions for organizing
+            content and enhancing user experience. From simple navigation bars to complex tabbed
+            interfaces, these components provide various styling options and layouts to create
+            intuitive navigation systems that adapt seamlessly across different screen sizes.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="base-nav">Base Navigation</h3>
+            <p class="py-2">
+              The base navigation component demonstrates the fundamental structure using <code
+                >nav</code
+              > class. Each navigation item (<code>nav-item</code>) contains a link (<code
+                >nav-link</code
+              >) with optional icons for enhanced visual hierarchy. The <code>aria-current</code> attribute
+              indicates the active page for accessibility.
+            </p>
+
+            <ComponentPreview
+              title="Base Navigation with Icons"
+              height="200px"
+              component={basicNavExample}
+              htmlCode={basicNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="available-styles">Available Styles</h3>
+            <p class="py-2">
+              Bootstrap's navigation system provides multiple styling options to create visually
+              distinct and functional navigation patterns. Each style can be enhanced with icons and
+              customized to match your application's design language.
+            </p>
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="horizontal-alignment">Horizontal Alignment</h3>
+            <p class="py-2">
+              Control the horizontal positioning of navigation items using Bootstrap's
+              justify-content utilities. The <code>justify-content-center</code> class centers items,
+              while <code>justify-content-end</code> aligns them to the right.
+            </p>
+
+            <ComponentPreview
+              title="Centered Navigation"
+              height="200px"
+              component={centeredNavExample}
+              htmlCode={centeredNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+
+            <ComponentPreview
+              title="Right-Aligned Navigation"
+              height="200px"
+              component={rightAlignedNavExample}
+              htmlCode={rightAlignedNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="vertical-alignment">Vertical Alignment</h3>
+            <p class="py-2">
+              The <code>flex-column</code> class vertically aligns the nav items, stacking them in a column
+              instead of the default horizontal layout.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Vertical Alignment"
+              height="250px"
+              component={verticalNavExample}
+              htmlCode={verticalNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="tabs">Tabs</h3>
+            <p class="py-2">
+              Tabs are created using the <code>nav</code> class with <code>nav-tabs</code>,
+              providing a tabbed navigation interface where each tab can link to different content
+              sections.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Tabs"
+              height="200px"
+              component={tabsNavExample}
+              htmlCode={tabsNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="pills">Pills</h3>
+            <p class="py-2">
+              Pills are similar to tabs but have a rounded, "pill" shape. They are created using the <code
+                >nav</code
+              > class with
+              <code>nav-pills</code> to style the navigation items as pill-shaped buttons.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Pills"
+              height="200px"
+              component={pillsNavExample}
+              htmlCode={pillsNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="underline">Underline</h3>
+            <p class="py-2">
+              The <code>nav-underline</code> class adds an underline style to navigation links, providing
+              a clear visual indicator of the active tab or link, improving navigation clarity for users.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Underline"
+              height="200px"
+              component={underlineNavExample}
+              htmlCode={underlineNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="fill-and-justify">Fill and justify</h3>
+            <p class="py-2">
+              The combination of <code>nav</code>, <code>nav-pills</code>, and <code>nav-fill</code>
+              creates a navigation menu where the pill-styled links are evenly distributed across the
+              available width, filling the container.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Nav Fill"
+              height="200px"
+              component={fillNavExample}
+              htmlCode={fillNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+
+            <p class="py-2">
+              <code>nav-justified</code> makes each navigation item take up an equal width, ensuring that
+              the items are spaced evenly across the entire navbar, filling the available space.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Nav Justified"
+              height="200px"
+              component={justifiedNavExample}
+              htmlCode={justifiedNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="flex-utilities">Flex utilities</h3>
+            <p class="py-2">
+              This code uses Bootstrap's flex utilities to create a responsive vertical and
+              horizontal navigation. The
+              <code>flex-column</code> class stacks the nav items vertically on smaller screens, while
+              <code>flex-sm-row</code>
+              changes the layout to horizontal on larger screens. Each <code>flex-sm-fill</code> class
+              ensures that each nav item takes equal width in the horizontal layout, and <code
+                >text-sm-center</code
+              > centers the text in the items when displayed as rows.
+            </p>
+
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Flex Utilities"
+              height="250px"
+              component={responsiveNavExample}
+              htmlCode={responsiveNavExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="dropdowns">Dropdowns</h3>
+            <p class="py-2">
+              You can also add a dropdown menu within the navbar by using the <code>dropdown</code> class
+              and
+              <code>dropdown-toggle</code> to trigger the menu.
+            </p>
+          </div>
+          <div class="my-3">
+            <h3 id="tabs-with-dropdowns">Tabs with dropdowns</h3>
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Tabs with Dropdowns"
+              height="200px"
+              component={tabsWithDropdownExample}
+              htmlCode={tabsWithDropdownExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 id="pills-with-dropdowns">Pills with dropdowns</h3>
+            <!-- Navs and Tabs Example -->
+            <ComponentPreview
+              title="Pills with Dropdowns"
+              height="200px"
+              component={pillsWithDropdownExample}
+              htmlCode={pillsWithDropdownExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

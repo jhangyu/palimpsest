@@ -1,0 +1,853 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+
+// Page header configuration with breadcrumb navigation
+const pageHeaderConfiguration = {
+  title: 'Info Box Components',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Interface', href: getPathPrefix('/interface') },
+    { label: 'Info Box', class: 'active' }
+  ]
+}
+
+// Basic info box examples showcasing different metrics with Remixicon icons
+const basicInfoBoxExample = `<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-info"><i class="ri-team-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Active Users</span>
+                <span class="info-box-number">2,845</span>
+                <span class="info-box-more-info">Last 30 days</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-success"><i class="ri-shopping-bag-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Orders</span>
+                <span class="info-box-number">856</span>
+                <span class="info-box-more-info">+12% this month</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-warning"><i class="ri-download-cloud-2-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">App Downloads</span>
+                <span class="info-box-number">24.7K</span>
+                <span class="info-box-more-info">Mobile & Desktop</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-danger"><i class="ri-feedback-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Customer Reviews</span>
+                <span class="info-box-number">4.8</span>
+                <span class="info-box-more-info">Average rating</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-primary"><i class="ri-funds-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Monthly Revenue</span>
+                <span class="info-box-number">$84.9K</span>
+                <span class="info-box-more-info">+65% vs target</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-secondary"><i class="ri-customer-service-2-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Support Tickets</span>
+                <span class="info-box-number">142</span>
+                <span class="info-box-more-info">Pending resolution</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-dark"><i class="ri-line-chart-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Conversion Rate</span>
+                <span class="info-box-number">3.2%</span>
+                <span class="info-box-more-info">Up from 2.8%</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box">
+            <span class="info-box-icon bg-light text-dark"><i class="ri-calendar-check-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Tasks Completed</span>
+                <span class="info-box-number">287</span>
+                <span class="info-box-more-info">This week</span>
+            </div>
+        </div>
+    </div>
+</div>`
+
+// Background info box examples with progress indicators
+const backgroundInfoBoxExample = `<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-info">
+            <span class="info-box-icon"><i class="ri-team-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Team Members</span>
+                <span class="info-box-number">3,590</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 75%"></div>
+                </div>
+                <span class="progress-description">
+                    75% Growth in Q3 2024
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-success">
+            <span class="info-box-icon"><i class="ri-funds-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Monthly Revenue</span>
+                <span class="info-box-number">$84,950</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 65%"></div>
+                </div>
+                <span class="progress-description">
+                    65% Above Monthly Target
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-warning">
+            <span class="info-box-icon"><i class="ri-customer-service-2-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Support Tickets</span>
+                <span class="info-box-number">7,842</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 80%"></div>
+                </div>
+                <span class="progress-description">
+                    80% Resolution Rate This Month
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-danger">
+            <span class="info-box-icon"><i class="ri-line-chart-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Conversion Rate</span>
+                <span class="info-box-number">4.2%</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 88%"></div>
+                </div>
+                <span class="progress-description">
+                    88% Improvement vs Last Period
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-primary">
+            <span class="info-box-icon"><i class="ri-mail-send-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Email Campaign</span>
+                <span class="info-box-number">15,680</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 92%"></div>
+                </div>
+                <span class="progress-description">
+                    92% Delivery Rate Achieved
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-secondary">
+            <span class="info-box-icon"><i class="ri-download-cloud-2-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">App Downloads</span>
+                <span class="info-box-number">89,247</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 78%"></div>
+                </div>
+                <span class="progress-description">
+                    78% of Monthly Goal Reached
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-dark">
+            <span class="info-box-icon"><i class="ri-user-add-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">New Registrations</span>
+                <span class="info-box-number">2,847</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 95%"></div>
+                </div>
+                <span class="progress-description">
+                    95% Conversion from Signups
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-light text-dark">
+            <span class="info-box-icon"><i class="ri-calendar-check-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Project Completion</span>
+                <span class="info-box-number">156</span>
+                <div class="progress">
+                    <div class="progress-bar bg-dark" style="width: 85%"></div>
+                </div>
+                <span class="progress-description">
+                    85% On-time Delivery Rate
+                </span>
+            </div>
+        </div>
+    </div>
+</div>`
+
+// Outline style info box examples
+const outlineInfoBoxExample = `<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-info">
+            <span class="info-box-icon bg-info"><i class="ri-mail-send-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Email Campaigns</span>
+                <span class="info-box-number">5,280</span>
+                <span class="info-box-more-info">Sent this month</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-success">
+            <span class="info-box-icon bg-success"><i class="ri-calendar-check-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Scheduled Events</span>
+                <span class="info-box-number">892</span>
+                <span class="info-box-more-info">This month</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-warning">
+            <span class="info-box-icon bg-warning"><i class="ri-notification-4-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Push Notifications</span>
+                <span class="info-box-number">16.9K</span>
+                <span class="info-box-more-info">Delivered today</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-danger">
+            <span class="info-box-icon bg-danger"><i class="ri-todo-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Pending Tasks</span>
+                <span class="info-box-number">345</span>
+                <span class="info-box-more-info">High priority</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-primary">
+            <span class="info-box-icon bg-primary"><i class="ri-user-follow-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">New Followers</span>
+                <span class="info-box-number">1,247</span>
+                <span class="info-box-more-info">This week</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-secondary">
+            <span class="info-box-icon bg-secondary"><i class="ri-file-text-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Documents</span>
+                <span class="info-box-number">2,156</span>
+                <span class="info-box-more-info">Processed</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-dark">
+            <span class="info-box-icon bg-dark"><i class="ri-shield-check-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Security Scans</span>
+                <span class="info-box-number">98.5%</span>
+                <span class="info-box-more-info">Clean rate</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box info-box-outline info-box-outline-info">
+            <span class="info-box-icon bg-info"><i class="ri-speed-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Page Load Speed</span>
+                <span class="info-box-number">1.2s</span>
+                <span class="info-box-more-info">Average response</span>
+            </div>
+        </div>
+    </div>
+</div>`
+
+// Loading state info box examples
+const loadingStateInfoBoxExample = `<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-info loading">
+            <span class="info-box-icon"><i class="ri-database-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Data Synchronization</span>
+                <span class="info-box-number">8,750</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 78%"></div>
+                </div>
+                <span class="progress-description">
+                    78% Synchronized
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-success loading">
+            <span class="info-box-icon"><i class="ri-upload-cloud-2-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Media Uploads</span>
+                <span class="info-box-number">2,648</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 55%"></div>
+                </div>
+                <span class="progress-description">
+                    55% Uploaded
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-warning loading">
+            <span class="info-box-icon"><i class="ri-cloud-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Cloud Backup</span>
+                <span class="info-box-number">19.8GB</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 92%"></div>
+                </div>
+                <span class="progress-description">
+                    92% Completed
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-danger loading">
+            <span class="info-box-icon"><i class="ri-server-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">System Updates</span>
+                <span class="info-box-number">56</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 95%"></div>
+                </div>
+                <span class="progress-description">
+                    95% Installed
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-primary loading">
+            <span class="info-box-icon"><i class="ri-refresh-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Cache Refresh</span>
+                <span class="info-box-number">4,280</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 67%"></div>
+                </div>
+                <span class="progress-description">
+                    67% Refreshed
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-secondary loading">
+            <span class="info-box-icon"><i class="ri-download-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">File Downloads</span>
+                <span class="info-box-number">1,547</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 43%"></div>
+                </div>
+                <span class="progress-description">
+                    43% Downloaded
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-dark loading">
+            <span class="info-box-icon"><i class="ri-mail-send-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Email Queue</span>
+                <span class="info-box-number">892</span>
+                <div class="progress">
+                    <div class="progress-bar" style="width: 84%"></div>
+                </div>
+                <span class="progress-description">
+                    84% Processed
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box bg-light text-dark loading">
+            <span class="info-box-icon"><i class="ri-file-copy-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Data Migration</span>
+                <span class="info-box-number">25.4GB</span>
+                <div class="progress">
+                    <div class="progress-bar bg-dark" style="width: 72%"></div>
+                </div>
+                <span class="progress-description">
+                    72% Migrated
+                </span>
+            </div>
+            <div class="overlay">
+                <i class="ri-loader-4-line fa-spin"></i>
+            </div>
+        </div>
+    </div>
+</div>`
+
+// Interactive info box examples with JavaScript functionality
+const interactiveInfoBoxExample = `<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box interactive-box" onclick="refreshMetric(this)">
+            <span class="info-box-icon bg-info"><i class="ri-cursor-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Click-through Rate</span>
+                <span class="info-box-number" id="ctr-rate">3.45%</span>
+                <span class="info-box-more-info">Click to refresh</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box interactive-box" onclick="refreshMetric(this)">
+            <span class="info-box-icon bg-success"><i class="ri-eye-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Page Views</span>
+                <span class="info-box-number" id="page-views">127.3K</span>
+                <span class="info-box-more-info">Real-time data</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box interactive-box" onclick="refreshMetric(this)">
+            <span class="info-box-icon bg-warning"><i class="ri-time-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Avg. Session</span>
+                <span class="info-box-number" id="avg-session">4m 32s</span>
+                <span class="info-box-more-info">Updated hourly</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-box interactive-box" onclick="refreshMetric(this)">
+            <span class="info-box-icon bg-danger"><i class="ri-arrow-up-line"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Bounce Rate</span>
+                <span class="info-box-number" id="bounce-rate">28.7%</span>
+                <span class="info-box-more-info">7-day average</span>
+            </div>
+        </div>
+    </div>
+</div>`
+
+const interactiveInfoBoxCSS = `.interactive-box {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.interactive-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.interactive-box:active {
+    transform: translateY(-1px);
+}`
+
+const interactiveInfoBoxJS = `function refreshMetric(element) {
+    const number = element.querySelector('.info-box-number') as HTMLElement
+    const icon = element.querySelector('.info-box-icon i') as HTMLElement
+
+    if (!number || !icon) return
+
+    // Add loading state
+    const originalIcon = icon.className
+    icon.className = 'ri-loader-4-line fa-spin'
+
+    setTimeout(() => {
+        // Simulate data update
+        const randomValue = Math.random()
+        if (number.id === 'ctr-rate') {
+            number.textContent = (randomValue * 5 + 2).toFixed(2) + '%'
+        } else if (number.id === 'page-views') {
+            number.textContent = Math.floor(randomValue * 50 + 100) + '.3K'
+        } else if (number.id === 'avg-session') {
+            const minutes = Math.floor(randomValue * 3 + 3)
+            const seconds = Math.floor(randomValue * 60)
+            number.textContent = minutes + 'm ' + seconds + 's'
+        } else if (number.id === 'bounce-rate') {
+            number.textContent = (randomValue * 20 + 20).toFixed(1) + '%'
+        }
+
+        // Restore original icon
+        icon.className = originalIcon
+
+        // Add success animation
+        element.style.transform = 'scale(1.02)'
+        setTimeout(() => {
+            element.style.transform = ''
+        }, 200)
+    }, 1000)
+}`
+---
+
+<AdminLayout
+  title="Info Box Components"
+  description="Create dynamic and informative status indicators with customizable info boxes"
+  currentPath="interface/info-box"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderConfiguration} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Info boxes are essential UI components for displaying key metrics, statistics, and
+            status updates in a clear and engaging way. They combine icons, text, and visual
+            indicators to present information at a glance while maintaining a professional and
+            modern appearance.
+          </p>
+          <div class="alert alert-info mt-3">
+            <i class="ri-lightbulb-line me-2"></i>
+            <strong>Design Tip:</strong> For optimal visual hierarchy, use consistent icon styles and
+            color schemes across related info boxes. Consider using contrasting colors for different data
+            categories to improve scanability.
+          </div>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <!-- Basic Info Box Section -->
+          <div class="my-3">
+            <h3 class="mb-0" id="basic-info-box">Basic Info Box</h3>
+            <p class="py-2">
+              Basic info boxes provide a clean and straightforward way to display metrics. Each box
+              combines an icon with a colored background and content area, making it perfect for
+              highlighting key statistics or status information.
+            </p>
+            <ComponentPreview
+              title="Basic Info Box Examples"
+              height="650px"
+              component={basicInfoBoxExample}
+              htmlCode={basicInfoBoxExample}
+            />
+          </div>
+
+          <!-- Background Info Box Section -->
+          <div class="my-3">
+            <h3 class="mb-0" id="background-info-box">Background Info Box</h3>
+            <p class="py-2">
+              Background info boxes enhance visual impact with full-color backgrounds and include
+              progress bars for showing completion rates or progress metrics. These are ideal for
+              dashboards and analytics displays.
+            </p>
+            <ComponentPreview
+              title="Background Info Box Examples"
+              height="750px"
+              component={backgroundInfoBoxExample}
+              htmlCode={backgroundInfoBoxExample}
+            />
+          </div>
+
+          <!-- Outline Info Box Section -->
+          <div class="my-3">
+            <h3 class="mb-0" id="outline-info-box">Outline Info Box</h3>
+            <p class="py-2">
+              Outline info boxes offer a lighter visual alternative with bordered styles. They
+              maintain high readability while providing a more subtle appearance, perfect for
+              secondary metrics or less critical information.
+            </p>
+            <ComponentPreview
+              title="Outline Info Box Examples"
+              height="650px"
+              component={outlineInfoBoxExample}
+              htmlCode={outlineInfoBoxExample}
+            />
+          </div>
+
+          <!-- Loading Info Box Section -->
+          <div class="my-3">
+            <h3 class="mb-0" id="loading-info-box">Loading Info Box</h3>
+            <p class="py-2">
+              Loading info boxes incorporate animated overlays to indicate active processes or data
+              updates. They're essential for providing visual feedback during data fetching,
+              synchronization, or processing operations.
+            </p>
+            <ComponentPreview
+              title="Loading Info Box Examples"
+              height="750px"
+              component={loadingStateInfoBoxExample}
+              htmlCode={loadingStateInfoBoxExample}
+            />
+          </div>
+
+          <!-- Interactive Info Box Examples -->
+          <div class="my-3">
+            <h3 class="mb-0" id="interactive-info-boxes">Interactive Info Box Examples</h3>
+            <p class="py-2">
+              Interactive info boxes provide real-time updates, hover effects, and clickable actions
+              for enhanced user engagement. These examples demonstrate dynamic content updates and
+              responsive interactions for modern dashboard applications.
+            </p>
+
+            <ComponentPreview
+              title="Interactive Dashboard Metrics"
+              height="650px"
+              component={interactiveInfoBoxExample}
+              htmlCode={interactiveInfoBoxExample}
+              cssCode={interactiveInfoBoxCSS}
+              jsCode={`<script>${interactiveInfoBoxJS}</script>`}
+            />
+
+            <!-- Developer Tips and Best Practices -->
+            <div class="my-3">
+              <h3 id="developer-tips">Developer Tips & Best Practices</h3>
+              <div class="alert alert-info">
+                <h4 class="alert-heading">
+                  <i class="ri-lightbulb-line me-2"></i>
+                  Pro Tips for Info Box Components
+                </h4>
+                <ul class="mb-0">
+                  <li>
+                    <strong>Consistent Iconography:</strong> Use icons from the same icon family (Remix
+                    Icons) to maintain visual consistency across all info boxes
+                  </li>
+                  <li>
+                    <strong>Color Coding:</strong> Establish a clear color system where each color represents
+                    specific data categories (e.g., blue for user metrics, green for revenue)
+                  </li>
+                  <li>
+                    <strong>Number Formatting:</strong> Use appropriate number formatting (K for thousands,
+                    M for millions) to improve readability
+                  </li>
+                  <li>
+                    <strong>Loading States:</strong> Always provide visual feedback during data updates
+                    with loading overlays or animations
+                  </li>
+                  <li>
+                    <strong>Responsive Design:</strong> Ensure info boxes stack properly on mobile devices
+                    and maintain readability at all screen sizes
+                  </li>
+                  <li>
+                    <strong>Progress Indicators:</strong> Use progress bars to show completion rates or
+                    target achievement for better context
+                  </li>
+                </ul>
+              </div>
+
+              <div class="alert alert-warning">
+                <h4 class="alert-heading">
+                  <i class="ri-error-warning-line me-2"></i>
+                  Common Pitfalls to Avoid
+                </h4>
+                <ul class="mb-0">
+                  <li>
+                    Don't overcrowd info boxes with too much information - keep content focused and
+                    scannable
+                  </li>
+                  <li>
+                    Avoid using more than 8-10 info boxes on a single dashboard to prevent cognitive
+                    overload
+                  </li>
+                  <li>
+                    Never use red backgrounds for positive metrics or green for negative ones -
+                    maintain logical color associations
+                  </li>
+                  <li>Don't forget to handle empty states and error conditions for dynamic data</li>
+                  <li>Avoid inconsistent spacing and sizing across info boxes in the same view</li>
+                  <li>
+                    Don't use vague labels - be specific about what each metric represents and its
+                    time frame
+                  </li>
+                </ul>
+              </div>
+
+              <div class="alert alert-success">
+                <h4 class="alert-heading">
+                  <i class="ri-code-s-slash-line me-2"></i>
+                  JavaScript Integration Best Practices
+                </h4>
+                <p class="mb-2">Essential features for dynamic info box implementations:</p>
+                <div class="bg-light p-3 rounded">
+                  <strong>InfoBox Manager Features:</strong>
+                  <ul class="mb-0 mt-2">
+                    <li>Real-time data updates with WebSocket or polling mechanisms</li>
+                    <li>Smooth number transitions and counting animations</li>
+                    <li>Error handling and fallback states for failed data requests</li>
+                    <li>Responsive hover effects and click interactions</li>
+                    <li>Accessibility support with ARIA labels and keyboard navigation</li>
+                    <li>Data caching and efficient update strategies</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="my-3">
+              <h3 class="mb-0" id="accessibility-guidelines">Accessibility Guidelines</h3>
+              <p class="py-2">
+                Ensure info box components are accessible to all users by following these best
+                practices:
+              </p>
+              <ul class="list-unstyled ps-3">
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Use semantic HTML with proper
+                  heading structure and ARIA labels
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Provide sufficient color contrast
+                  for all text and background combinations
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Include descriptive text for screen
+                  readers explaining metric context
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Ensure interactive elements are
+                  keyboard navigable with proper focus indicators
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Use ARIA live regions for dynamic
+                  content updates
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Provide alternative text
+                  descriptions for icon meanings
+                </li>
+                <li>
+                  <i class="ri-check-line text-success me-2"></i>Implement proper error messaging
+                  and loading state announcements
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+
+  <script>
+    // Interactive info box functionality
+
+    // Extend window interface for TypeScript
+    declare global {
+      interface Window {
+        refreshMetric: (element: HTMLElement) => void
+      }
+    }
+
+    window.refreshMetric = function (element: HTMLElement) {
+      const number = element.querySelector('.info-box-number') as HTMLElement
+      const icon = element.querySelector('.info-box-icon i') as HTMLElement
+
+      if (!number || !icon) return
+
+      // Add loading state
+      const originalIcon = icon.className
+      icon.className = 'ri-loader-4-line fa-spin'
+
+      setTimeout(() => {
+        // Simulate data update
+        const randomValue = Math.random()
+        if (number.id === 'ctr-rate') {
+          number.textContent = (randomValue * 5 + 2).toFixed(2) + '%'
+        } else if (number.id === 'page-views') {
+          number.textContent = Math.floor(randomValue * 50 + 100) + '.3K'
+        } else if (number.id === 'avg-session') {
+          const minutes = Math.floor(randomValue * 3 + 3)
+          const seconds = Math.floor(randomValue * 60)
+          number.textContent = minutes + 'm ' + seconds + 's'
+        } else if (number.id === 'bounce-rate') {
+          number.textContent = (randomValue * 20 + 20).toFixed(1) + '%'
+        }
+
+        // Restore original icon
+        icon.className = originalIcon
+
+        // Add success animation
+        element.style.transform = 'scale(1.02)'
+        setTimeout(() => {
+          element.style.transform = ''
+        }, 200)
+      }, 1000)
+    }
+
+    // Add hover effects for all info boxes
+    document.addEventListener('DOMContentLoaded', function () {
+      const infoBoxes = document.querySelectorAll('.info-box:not(.loading)')
+
+      infoBoxes.forEach((box) => {
+        if (!box.classList.contains('interactive-box')) {
+          box.addEventListener('mouseenter', function () {
+            this.style.transform = 'translateY(-2px)'
+            this.style.transition = 'all 0.3s ease'
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+          })
+
+          box.addEventListener('mouseleave', function () {
+            this.style.transform = 'translateY(0)'
+            this.style.boxShadow = ''
+          })
+        }
+      })
+    })
+  </script>
+</AdminLayout>

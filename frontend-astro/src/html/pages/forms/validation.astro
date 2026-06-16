@@ -1,0 +1,489 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page configuration with breadcrumb navigation
+const pageHeaderProps = {
+  title: 'Form Validation',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Forms' },
+    { label: 'Form Validation', class: 'active' }
+  ]
+}
+
+// Browser default validation example with HTML5 constraints
+const browserDefaultValidation = `<form class="row g-3">
+  <div class="col-md-4">
+    <label for="validationDefault01" class="form-label">
+      <i class="ri-user-line me-2"></i>First name
+    </label>
+    <input type="text" class="form-control" id="validationDefault01" value="Mark" required>
+  </div>
+  <div class="col-md-4">
+    <label for="validationDefault02" class="form-label">
+      <i class="ri-user-line me-2"></i>Last name
+    </label>
+    <input type="text" class="form-control" id="validationDefault02" value="Otto" required>
+  </div>
+  <div class="col-md-4">
+    <label for="validationDefaultUsername" class="form-label">
+      <i class="ri-at-line me-2"></i>Username
+    </label>
+    <div class="input-group">
+      <span class="input-group-text" id="inputGroupPrepend2">@</span>
+      <input type="text" class="form-control" id="validationDefaultUsername" aria-describedby="inputGroupPrepend2" required>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <label for="validationDefault03" class="form-label">
+      <i class="ri-building-line me-2"></i>City
+    </label>
+    <input type="text" class="form-control" id="validationDefault03" required>
+  </div>
+  <div class="col-md-3">
+    <label for="validationDefault04" class="form-label">
+      <i class="ri-map-pin-line me-2"></i>State
+    </label>
+    <select class="form-select" id="validationDefault04" required>
+      <option selected disabled value="">Choose...</option>
+      <option>...</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label for="validationDefault05" class="form-label">
+      <i class="ri-mail-line me-2"></i>Zip
+    </label>
+    <input type="text" class="form-control" id="validationDefault05" required>
+  </div>
+  <div class="col-12">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="" id="invalidCheck2" required>
+      <label class="form-check-label" for="invalidCheck2">
+        <i class="ri-checkbox-circle-line me-2"></i>Agree to terms and conditions
+      </label>
+    </div>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">
+      <i class="ri-save-line me-2"></i>Submit form
+    </button>
+  </div>
+</form>`
+
+// Custom validation styles with JavaScript validation
+const customStyleValidation = `<form class="row g-3 needs-validation" novalidate>
+  <div class="col-md-4">
+    <label for="validationCustom01" class="form-label">
+      <i class="ri-user-line me-2"></i>First name
+    </label>
+    <input type="text" class="form-control" id="validationCustom01" value="Mark" required>
+    <div class="valid-feedback">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label for="validationCustom02" class="form-label">
+      <i class="ri-user-line me-2"></i>Last name
+    </label>
+    <input type="text" class="form-control" id="validationCustom02" value="Otto" required>
+    <div class="valid-feedback">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label for="validationCustomUsername" class="form-label">
+      <i class="ri-at-line me-2"></i>Username
+    </label>
+    <div class="input-group has-validation">
+      <span class="input-group-text" id="inputGroupPrepend">@</span>
+      <input type="text" class="form-control" id="validationCustomUsername" aria-describedby="inputGroupPrepend" required>
+      <div class="invalid-feedback">
+        <i class="ri-error-warning-line me-2"></i>Please choose a username.
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <label for="validationCustom03" class="form-label">
+      <i class="ri-building-line me-2"></i>City
+    </label>
+    <input type="text" class="form-control" id="validationCustom03" required>
+    <div class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid city.
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label for="validationCustom04" class="form-label">
+      <i class="ri-map-pin-line me-2"></i>State
+    </label>
+    <select class="form-select" id="validationCustom04" required>
+      <option selected disabled value="">Choose...</option>
+      <option>...</option>
+    </select>
+    <div class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please select a valid state.
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label for="validationCustom05" class="form-label">
+      <i class="ri-mail-line me-2"></i>Zip
+    </label>
+    <input type="text" class="form-control" id="validationCustom05" required>
+    <div class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid zip.
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="" id="invalidCheck" required>
+      <label class="form-check-label" for="invalidCheck">
+        <i class="ri-checkbox-circle-line me-2"></i>Agree to terms and conditions
+      </label>
+      <div class="invalid-feedback">
+        <i class="ri-error-warning-line me-2"></i>You must agree before submitting.
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">
+      <i class="ri-save-line me-2"></i>Submit form
+    </button>
+  </div>
+</form>`
+
+// JavaScript code for custom validation
+const customStyleValidationJs = `<script>
+// Example starter JavaScript for disabling form submissions if there are invalid fields
+(() => {
+  'use strict'
+
+  // Fetch all forms that need custom Bootstrap validation styles
+  const forms = document.querySelectorAll('.needs-validation')
+
+  // Loop over forms and prevent submission if validation fails
+  Array.from(forms).forEach(form => {
+    form.addEventListener('submit', event => {
+      if (!form.checkValidity()) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+
+      form.classList.add('was-validated')
+    }, false)
+  })
+})()
+</script>`
+
+// CSS styles for validation feedback
+const customStyleValidationCss = `.valid-feedback {
+  color: #28a745;
+  display: flex;
+  align-items: center;
+}
+
+.invalid-feedback {
+  color: #dc3545;
+  display: flex;
+  align-items: center;
+}`
+
+// Server-side validation example with pre-validated states
+const serverSideValidation = `<form class="row g-3 needs-validation" novalidate>
+  <div class="col-md-4">
+    <label for="validationServer01" class="form-label">
+      <i class="ri-user-line me-2"></i>First name
+    </label>
+    <input type="text" class="form-control is-valid" id="validationServer01" value="Mark" required>
+    <div class="valid-feedback">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label for="validationServer02" class="form-label">
+      <i class="ri-user-line me-2"></i>Last name
+    </label>
+    <input type="text" class="form-control is-valid" id="validationServer02" value="Otto" required>
+    <div class="valid-feedback">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label for="validationServerUsername" class="form-label">
+      <i class="ri-at-line me-2"></i>Username
+    </label>
+    <div class="input-group has-validation">
+      <span class="input-group-text" id="inputGroupPrepend3">@</span>
+      <input type="text" class="form-control is-invalid" id="validationServerUsername" aria-describedby="inputGroupPrepend3 validationServerUsernameFeedback" required>
+      <div id="validationServerUsernameFeedback" class="invalid-feedback">
+        <i class="ri-error-warning-line me-2"></i>Please choose a username.
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <label for="validationServer03" class="form-label">
+      <i class="ri-building-line me-2"></i>City
+    </label>
+    <input type="text" class="form-control is-invalid" id="validationServer03" aria-describedby="validationServer03Feedback" required>
+    <div id="validationServer03Feedback" class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid city.
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label for="validationServer04" class="form-label">
+      <i class="ri-map-pin-line me-2"></i>State
+    </label>
+    <select class="form-select is-invalid" id="validationServer04" aria-describedby="validationServer04Feedback" required>
+      <option selected disabled value="">Choose...</option>
+      <option>...</option>
+    </select>
+    <div id="validationServer04Feedback" class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please select a valid state.
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label for="validationServer05" class="form-label">
+      <i class="ri-mail-line me-2"></i>Zip
+    </label>
+    <input type="text" class="form-control is-invalid" id="validationServer05" aria-describedby="validationServer05Feedback" required>
+    <div id="validationServer05Feedback" class="invalid-feedback">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid zip.
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="form-check">
+      <input class="form-check-input is-invalid" type="checkbox" value="" id="invalidCheck3" aria-describedby="invalidCheck3Feedback" required>
+      <label class="form-check-label" for="invalidCheck3">
+        <i class="ri-checkbox-circle-line me-2"></i>Agree to terms and conditions
+      </label>
+      <div id="invalidCheck3Feedback" class="invalid-feedback">
+        <i class="ri-error-warning-line me-2"></i>You must agree before submitting.
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">
+      <i class="ri-save-line me-2"></i>Submit form
+    </button>
+  </div>
+</form>`
+
+// Tooltip validation example with floating feedback
+const tooltipValidation = `<form class="row g-3 needs-validation" novalidate>
+  <div class="col-md-4 position-relative">
+    <label for="validationTooltip01" class="form-label">
+      <i class="ri-user-line me-2"></i>First name
+    </label>
+    <input type="text" class="form-control" id="validationTooltip01" value="Mark" required>
+    <div class="valid-tooltip">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4 position-relative">
+    <label for="validationTooltip02" class="form-label">
+      <i class="ri-user-line me-2"></i>Last name
+    </label>
+    <input type="text" class="form-control" id="validationTooltip02" value="Otto" required>
+    <div class="valid-tooltip">
+      <i class="ri-checkbox-circle-line me-2"></i>Looks good!
+    </div>
+  </div>
+  <div class="col-md-4 position-relative">
+    <label for="validationTooltipUsername" class="form-label">
+      <i class="ri-at-line me-2"></i>Username
+    </label>
+    <div class="input-group has-validation">
+      <span class="input-group-text" id="validationTooltipUsernamePrepend">@</span>
+      <input type="text" class="form-control" id="validationTooltipUsername" aria-describedby="validationTooltipUsernamePrepend" required>
+      <div class="invalid-tooltip">
+        <i class="ri-error-warning-line me-2"></i>Please choose a unique and valid username.
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 position-relative">
+    <label for="validationTooltip03" class="form-label">
+      <i class="ri-building-line me-2"></i>City
+    </label>
+    <input type="text" class="form-control" id="validationTooltip03" required>
+    <div class="invalid-tooltip">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid city.
+    </div>
+  </div>
+  <div class="col-md-3 position-relative">
+    <label for="validationTooltip04" class="form-label">
+      <i class="ri-map-pin-line me-2"></i>State
+    </label>
+    <select class="form-select" id="validationTooltip04" required>
+      <option selected disabled value="">Choose...</option>
+      <option>...</option>
+    </select>
+    <div class="invalid-tooltip">
+      <i class="ri-error-warning-line me-2"></i>Please select a valid state.
+    </div>
+  </div>
+  <div class="col-md-3 position-relative">
+    <label for="validationTooltip05" class="form-label">
+      <i class="ri-mail-line me-2"></i>Zip
+    </label>
+    <input type="text" class="form-control" id="validationTooltip05" required>
+    <div class="invalid-tooltip">
+      <i class="ri-error-warning-line me-2"></i>Please provide a valid zip.
+    </div>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">
+      <i class="ri-save-line me-2"></i>Submit form
+    </button>
+  </div>
+</form>`
+---
+
+<AdminLayout
+  title="Form Validation"
+  description="Examples and usage guidelines for form validation styles with Bootstrap."
+  currentPath="forms/validation"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Form validation helps ensure data quality and improves user experience by providing
+            immediate feedback. Our validation components offer multiple approaches:
+          </p>
+          <ul class="mt-3">
+            <li><strong>Browser Default:</strong> Native HTML5 validation</li>
+            <li>
+              <strong>Custom Styles:</strong> Enhanced Bootstrap validation with custom feedback
+            </li>
+            <li><strong>Server-side:</strong> Pre-validated states from backend processing</li>
+            <li><strong>Tooltips:</strong> Space-efficient validation messages</li>
+          </ul>
+          <div class="alert alert-info mt-3">
+            <i class="ri-information-line me-2"></i>
+            <strong>Best Practice:</strong> Combine client-side and server-side validation for the most
+            robust form validation strategy.
+          </div>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <!-- Browser defaults -->
+        <div class="col-12">
+          <h2 class="my-3" id="browser-defaults">Browser Defaults</h2>
+          <p>
+            Browser default validation provides a lightweight, native approach using HTML5
+            constraints. Key features include:
+          </p>
+          <ul class="mb-3">
+            <li>Native browser validation messages</li>
+            <li>No additional JavaScript required</li>
+            <li>Consistent behavior across modern browsers</li>
+            <li>Built-in accessibility support</li>
+          </ul>
+          <div class="card mb-4">
+            <div class="card-body">
+              <ComponentPreview
+                title="Browser Default Validation"
+                height="550px"
+                component={browserDefaultValidation}
+                htmlCode={browserDefaultValidation}
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom styles -->
+        <div class="col-12">
+          <h2 class="my-3" id="custom-styles">Custom Styles</h2>
+          <p>
+            Custom validation styles offer enhanced visual feedback and more control over the
+            validation experience:
+          </p>
+          <ul class="mb-3">
+            <li>Custom feedback messages with icons</li>
+            <li>Visual state indicators</li>
+            <li>Flexible styling options</li>
+            <li>JavaScript-powered validation</li>
+          </ul>
+          <div class="alert alert-warning mb-3">
+            <i class="ri-alert-line me-2"></i>
+            <strong>Note:</strong> Add the <code>novalidate</code> attribute to disable browser defaults
+            when using custom validation.
+          </div>
+          <div class="card mb-4">
+            <div class="card-body">
+              <ComponentPreview
+                title="Custom Styles Validation"
+                height="550px"
+                component={customStyleValidation}
+                htmlCode={customStyleValidation}
+                jsCode={customStyleValidationJs}
+                cssCode={customStyleValidationCss}
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Server side -->
+        <div class="col-12">
+          <h2 class="my-3" id="server-side">Server Side</h2>
+          <p>Server-side validation provides pre-validated states for form fields:</p>
+          <ul class="mb-3">
+            <li>Immediate feedback from backend validation</li>
+            <li>Persistent validation states</li>
+            <li>Support for complex validation rules</li>
+            <li>Enhanced security for sensitive data</li>
+          </ul>
+          <div class="alert alert-info mb-3">
+            <i class="ri-lightbulb-line me-2"></i>
+            <strong>Tip:</strong> Use <code>.is-invalid</code> and <code>.is-valid</code> classes to show
+            validation states.
+          </div>
+          <div class="card mb-4">
+            <div class="card-body">
+              <ComponentPreview
+                title="Server Side Validation"
+                height="550px"
+                component={serverSideValidation}
+                htmlCode={serverSideValidation}
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Tooltips -->
+        <div class="col-12">
+          <h2 class="my-3" id="tooltips">Tooltips</h2>
+          <p>Tooltip validation provides space-efficient feedback using floating messages:</p>
+          <ul class="mb-3">
+            <li>Compact feedback display</li>
+            <li>Non-intrusive validation messages</li>
+            <li>Improved form layout preservation</li>
+            <li>Enhanced visual hierarchy</li>
+          </ul>
+          <div class="alert alert-warning mb-3">
+            <i class="ri-alert-line me-2"></i>
+            <strong>Important:</strong> Ensure parent elements have <code>position: relative</code> for
+            proper tooltip positioning.
+          </div>
+          <div class="card mb-4">
+            <div class="card-body">
+              <ComponentPreview
+                title="Tooltip Validation"
+                height="550px"
+                component={tooltipValidation}
+                htmlCode={tooltipValidation}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

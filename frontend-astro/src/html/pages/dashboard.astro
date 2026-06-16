@@ -1,0 +1,128 @@
+---
+import AdminLayout from '../layouts/admin/admin-layout.astro'
+import PageHeader from '../components/common/page-header.astro'
+
+const pageHeaderProps = {
+  title: 'Dashboard',
+  actions: [
+    {
+      label: 'Add New Feed',
+      href: '/feeds/add',
+      variant: 'btn-primary' as const,
+      icon: 'ri-add-line'
+    }
+  ],
+  breadcrumbs: [
+    { label: 'Home', href: '/' },
+    { label: 'Dashboard', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  currentPath="dashboard"
+  title="Dashboard"
+  description="Feed management overview and system status"
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <div class="row">
+    <div class="col">
+      <!-- Metric Cards (populated by JS) -->
+      <div class="row g-4 mb-4" id="dashboard-metrics">
+        <div class="col-xl-4 col-md-6">
+          <div class="small-box text-bg-primary placeholder-glow">
+            <div class="inner">
+              <h3><span class="placeholder col-4"></span></h3>
+              <p>Total Feeds</p>
+            </div>
+            <div class="small-box-icon">
+              <i class="ri-rss-line"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+          <div class="small-box text-bg-success placeholder-glow">
+            <div class="inner">
+              <h3><span class="placeholder col-6"></span></h3>
+              <p>System Status</p>
+            </div>
+            <div class="small-box-icon">
+              <i class="ri-heart-pulse-line"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+          <div class="small-box text-bg-info placeholder-glow">
+            <div class="inner">
+              <h3><span class="placeholder col-3"></span></h3>
+              <p>Active Services</p>
+            </div>
+            <div class="small-box-icon">
+              <i class="ri-stack-line"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Feed List -->
+        <div class="col-xl-8">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="card-title mb-0">
+                <i class="ri-rss-line me-2"></i>Active Feeds
+              </h5>
+              <a href="/feeds/add" class="btn btn-sm btn-primary">
+                <i class="ri-add-line"></i> Add New
+              </a>
+            </div>
+            <div class="card-body" id="dashboard-feed-table">
+              <!-- Populated by dashboard.ts -->
+            </div>
+          </div>
+        </div>
+
+        <!-- System Activity -->
+        <div class="col-xl-4">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="card-title mb-0">
+                <i class="ri-pulse-line me-2"></i>System Activity
+              </h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-3">
+              <div class="p-3 rounded bg-body-secondary">
+                <div class="d-flex align-items-center mb-1">
+                  <i class="ri-time-line me-2 text-primary"></i>
+                  <span class="fw-semibold">Crawler Scheduler</span>
+                </div>
+                <small class="text-muted">Runs every 1 hour</small>
+              </div>
+              <div class="p-3 rounded bg-body-secondary">
+                <div class="d-flex align-items-center mb-1">
+                  <i class="ri-brain-line me-2 text-success"></i>
+                  <span class="fw-semibold">AI Model</span>
+                </div>
+                <small class="text-muted">MiniMax-M3 (Active)</small>
+              </div>
+              <div class="p-3 rounded bg-body-secondary">
+                <div class="d-flex align-items-center mb-1">
+                  <i class="ri-database-2-line me-2 text-info"></i>
+                  <span class="fw-semibold">Database</span>
+                </div>
+                <small class="text-muted">PostgreSQL (Connected)</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initDashboard } from '@/scripts/dashboard'
+
+  document.addEventListener('astro:page-load', () => initDashboard())
+</script>

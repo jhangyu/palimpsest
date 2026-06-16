@@ -1,0 +1,78 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import Branding from '../../../components/common/branding.astro'
+import { getAssetPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="2-Step Verification"
+  description="2-Step verification example"
+  currentPath="authentication/compact-split/2-step-verification"
+>
+  <div class="row d-flex align-items-center min-vh-100 position-relative">
+    <div class="col-12 col-lg-8 offset-lg-2">
+      <!-- Theme Toggle Button -->
+      <button
+        class="btn p-0 border-0 shadow-none position-absolute top-0 end-0 m-3 px-3"
+        id="theme-toggle"
+      >
+        <i class="ri-sun-line fs-5"></i>
+      </button>
+      <!-- Company Logo and Name -->
+      <Branding brandName={false} />
+      <h1 class="h4 text-center mb-3">2-Step Verification</h1>
+
+      <!-- Main Card -->
+      <div class="card p-0 mx-2 mx-md-auto" style="max-width: 760px;">
+        <div class="card-body p-0">
+          <div class="row m-0">
+            <div class="col-12 col-md-6 p-4 my-auto">
+              <div class="text-start fs-2 mb-2">
+                <i class="ri-key-line"></i>
+              </div>
+              <p class="text-muted mb-4">
+                For added security, please enter your phone number and verify the code sent to it.
+              </p>
+              <!-- 2-Step Verification Form -->
+              <form class="text-start">
+                <div class="mb-3">
+                  <label for="country" class="form-label">Select Country</label>
+                  <select class="form-control" id="country" required>
+                    <option value="">Select Country</option>
+                    <option value="US">United States (+1)</option>
+                    <option value="GB">United Kingdom (+44)</option>
+                    <option value="IN">India (+91)</option>
+                    <option value="CA">Canada (+1)</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="phone" class="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    class="form-control"
+                    id="phone"
+                    placeholder="+1 (XXX) XXX-XXXX"
+                    pattern="[0-9]{10}"
+                    autocomplete="tel"
+                    required
+                  />
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-0"
+                  >Send Verification Code</button
+                >
+              </form>
+            </div>
+            <div class="col-md-6 d-none d-md-block p-0 m-0">
+              <img
+                src={getAssetPrefix('/assets/svg/placeholder.svg')}
+                class="img-fluid rounded-end-4"
+                alt=""
+                style="object-fit: cover; width: 100%; height: 100%;"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

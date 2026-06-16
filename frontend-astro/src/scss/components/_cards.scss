@@ -1,0 +1,38 @@
+// card changes
+.card {
+  padding: 1.5rem;
+  border-width: 0;
+  border-radius: var(--bs-border-radius-xl);
+  box-shadow: none;
+}
+
+.card-header {
+  padding: 0 0 1.5rem;
+  background-color: transparent;
+  border-width: 0;
+}
+
+.card-body {
+  padding: 0;
+}
+
+.card-footer {
+  padding: 1.5rem 0 0;
+  background-color: transparent;
+  border-width: 0;
+}
+/* stylelint-disable function-disallowed-list */
+.card-img,
+.card-img-top {
+  border-top-left-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+  border-top-right-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+}
+.card-img,
+.card-img-bottom {
+  border-bottom-right-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+  border-bottom-left-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+}
+
+.card-img-overlay {
+  border-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+}

@@ -1,0 +1,208 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+
+// No need for custom CSS or scripts to handle RTL mode anymore
+const pageCss = `
+<style>
+  /* Additional RTL-specific styles can go here if needed */
+</style>
+`
+
+const pageScript = `
+<script>
+  // Any additional RTL-specific scripts can go here if needed
+</script>
+`
+---
+
+<AdminLayout
+  title="عرض دعم RTL"
+  description="عرض توضيحي لدعم تخطيط من اليمين إلى اليسار"
+  currentPath="others/rtl-demo"
+  pageCss={pageCss}
+  pageScript={pageScript}
+  isRtl={true}
+>
+  <PageHeader title="عرض دعم RTL" />
+
+  <p class="lead mb-4">
+    توضح هذه الصفحة دعم تخطيط من اليمين إلى اليسار (RTL) للغات مثل العربية والعبرية والفارسية
+    والأردية.
+  </p>
+
+  <!-- Demo Content -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card rounded-4">
+        <div class="card-header">
+          <h5 class="card-title">محاذاة النص</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            توضح هذه الفقرة كيفية عمل محاذاة النص في وضع RTL. لاحظ كيف يتدفق النص من اليمين إلى
+            اليسار.
+          </p>
+          <div class="alert alert-info">
+            <i class="ri-information-line me-2"></i>
+            تتكيف تنبيهات المعلومات مع وضع موضع الأيقونات في وضع RTL.
+          </div>
+          <div class="alert alert-warning">
+            <i class="ri-alert-line me-2"></i>
+            تتكيف رسائل التحذير مع اتجاه النص الحالي.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card rounded-4">
+        <div class="card-header">
+          <h5 class="card-title">عناصر النموذج</h5>
+        </div>
+        <div class="card-body">
+          <form>
+            <div class="mb-3">
+              <label for="nameInput" class="form-label">الاسم</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="ri-user-line"></i></span>
+                <input type="text" class="form-control" id="nameInput" placeholder="أدخل اسمك" />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="emailInput" class="form-label">البريد الإلكتروني</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="ri-mail-line"></i></span>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="emailInput"
+                  placeholder="أدخل بريدك الإلكتروني"
+                />
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary">
+              <i class="ri-save-line me-2"></i> إرسال
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card rounded-4">
+        <div class="card-header">
+          <h5 class="card-title">مثال الجدول</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">الاسم الأول</th>
+                  <th scope="col">اسم العائلة</th>
+                  <th scope="col">البريد الإلكتروني</th>
+                  <th scope="col">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">١</th>
+                  <td>أحمد</td>
+                  <td>محمد</td>
+                  <td>ahmed@example.com</td>
+                  <td>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm btn-outline-primary"
+                        ><i class="ri-edit-line"></i></button
+                      >
+                      <button type="button" class="btn btn-sm btn-outline-danger"
+                        ><i class="ri-delete-bin-line"></i></button
+                      >
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">٢</th>
+                  <td>فاطمة</td>
+                  <td>علي</td>
+                  <td>fatima@example.com</td>
+                  <td>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm btn-outline-primary"
+                        ><i class="ri-edit-line"></i></button
+                      >
+                      <button type="button" class="btn btn-sm btn-outline-danger"
+                        ><i class="ri-delete-bin-line"></i></button
+                      >
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card rounded-4">
+        <div class="card-header">
+          <h5 class="card-title">معلومات دعم RTL</h5>
+        </div>
+        <div class="card-body">
+          <h6>كيف يعمل دعم RTL</h6>
+          <p>يتم تنفيذ دعم RTL (من اليمين إلى اليسار) باستخدام التقنيات التالية:</p>
+          <ul>
+            <li>يتم إنشاء ملف CSS منفصل للـ RTL باستخدام RTLCSS</li>
+            <li>تتم إضافة السمة <code>dir="rtl"</code> إلى عنصر HTML</li>
+            <li>يتم قلب خصائص CSS مثل padding و margin و text-align تلقائيًا</li>
+            <li>يتم عكس تخطيطات Flexbox و Grid تلقائيًا</li>
+          </ul>
+
+          <h6 class="mt-4">لغات RTL</h6>
+          <p>دعم RTL ضروري للغات التي تُكتب من اليمين إلى اليسار، بما في ذلك:</p>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="card bg-light rounded-4">
+                <div class="card-body text-center">
+                  <h3 class="mb-0">العربية</h3>
+                  <p class="mb-0">Arabic</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-light rounded-4">
+                <div class="card-body text-center">
+                  <h3 class="mb-0">עִברִית</h3>
+                  <p class="mb-0">Hebrew</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-light rounded-4">
+                <div class="card-body text-center">
+                  <h3 class="mb-0">فارسی</h3>
+                  <p class="mb-0">Persian</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-light rounded-4">
+                <div class="card-body text-center">
+                  <h3 class="mb-0">اردو</h3>
+                  <p class="mb-0">Urdu</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

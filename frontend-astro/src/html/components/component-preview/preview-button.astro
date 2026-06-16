@@ -1,0 +1,56 @@
+---
+import type { HTMLAttributes } from 'astro/types'
+
+export interface Props {
+  icon: string
+  title: string
+  className?: string
+  dataWidth?: string
+  dataTarget?: string
+  isActive?: boolean
+  onClick?: string
+  ariaLabel?: string
+  extraAttributes?: Record<string, string>
+}
+
+const {
+  icon,
+  title,
+  className = '',
+  dataWidth,
+  dataTarget,
+  isActive = false,
+  onClick,
+  ariaLabel = title,
+  extraAttributes = {}
+} = Astro.props
+
+const baseClass = 'btn btn-icon btn-outline-secondary p-2'
+const activeClass = isActive ? 'active' : ''
+const finalClass = `${baseClass} ${className} ${activeClass}`.trim()
+
+// Define button attributes with proper HTML button attribute types
+const attributes: HTMLAttributes<'button'> = {
+  type: 'button' as const,
+  class: finalClass,
+  'aria-label': ariaLabel,
+  'data-bs-toggle': 'tooltip',
+  'data-bs-placement': 'bottom',
+  title,
+  ...(dataWidth && { 'data-width': dataWidth }),
+  ...(dataTarget && { 'data-bs-target': dataTarget }),
+  ...(onClick && { onclick: onClick }),
+  ...extraAttributes
+}
+---
+
+<button {...attributes}>
+  <i class={icon}></i>
+  {
+    Astro.slots.has('default') && (
+      <span>
+        <slot />
+      </span>
+    )
+  }
+</button>

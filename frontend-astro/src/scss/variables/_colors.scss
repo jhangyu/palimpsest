@@ -1,0 +1,302 @@
+// Color system
+
+// scss-docs-start base-colors
+@import 'base-colors';
+
+// scss-docs-start theme-color-variables
+$primary:       #7533f9 !default;
+$secondary:     $gray-600 !default;
+$success:       $green !default;
+$info:          $cyan !default;
+$warning:       $yellow !default;
+$danger:        $red !default;
+$light:         $gray-100 !default;
+$dark:          $gray-900 !default;
+// scss-docs-end theme-color-variables
+
+// scss-docs-start theme-text-variables
+$primary-text-emphasis:   shade-color($primary, 30%) !default;
+$secondary-text-emphasis: shade-color($secondary, 30%) !default;
+$success-text-emphasis:   shade-color($success, 30%) !default;
+$info-text-emphasis:      shade-color($info, 30%) !default;
+$warning-text-emphasis:   shade-color($warning, 30%) !default;
+$danger-text-emphasis:    shade-color($danger, 30%) !default;
+$light-text-emphasis:     shade-color($light, 30%) !default;
+$dark-text-emphasis:      shade-color($dark, 30%) !default;
+// scss-docs-end theme-text-variables
+
+// scss-docs-start theme-bg-subtle-variables
+$primary-bg-subtle:       tint-color($primary, 90%) !default;
+$secondary-bg-subtle:     tint-color($secondary, 90%) !default;
+$success-bg-subtle:       tint-color($success, 90%) !default;
+$info-bg-subtle:          tint-color($info, 90%) !default;
+$warning-bg-subtle:       tint-color($warning, 90%) !default;
+$danger-bg-subtle:        tint-color($danger, 90%) !default;
+$light-bg-subtle:         mix($gray-200, $white) !default;
+$dark-bg-subtle:          tint-color($dark, 90%) !default;
+// scss-docs-end theme-bg-subtle-variables
+
+// scss-docs-start theme-soft-variables
+$primary-soft:       tint-color($primary, 90%) !default;
+$secondary-soft:     tint-color($secondary, 90%) !default;
+$indigo-soft:        tint-color($indigo, 90%) !default;
+$blue-soft:          tint-color($blue, 90%) !default;
+$sky-soft:           tint-color($sky, 90%) !default;
+$purple-soft:        tint-color($purple, 90%) !default;
+$grape-soft:         tint-color($grape, 90%) !default;
+$violet-soft:        tint-color($violet, 90%) !default;
+$pink-soft:          tint-color($pink, 90%) !default;
+$fuchsia-soft:       tint-color($fuchsia, 90%) !default;
+$red-soft:           tint-color($red, 90%) !default;
+$orange-soft:        tint-color($orange, 90%) !default;
+$yellow-soft:        tint-color($yellow, 90%) !default;
+$green-soft:         tint-color($green, 90%) !default;
+$leaf-soft:          tint-color($leaf, 90%) !default;
+$teal-soft:          tint-color($teal, 90%) !default;
+$cyan-soft:          tint-color($cyan, 90%) !default;
+$aqua-soft:          tint-color($aqua, 90%) !default;
+$navy-soft:          tint-color($navy, 90%) !default;
+$ash-soft:           tint-color($ash, 90%) !default;
+$gray-soft:          $gray-200 !default;
+// scss-docs-end theme-soft-variables
+
+// scss-docs-start theme-pale-variables
+$primary-pale:         tint-color($primary, 84%) !default;
+$secondary-pale:       tint-color($secondary, 84%) !default;
+$indigo-pale:          tint-color($indigo, 84%) !default;
+$blue-pale:            tint-color($blue, 84%) !default;
+$sky-pale:             tint-color($sky, 84%) !default;
+$purple-pale:          tint-color($purple, 84%) !default;
+$grape-pale:           tint-color($grape, 84%) !default;
+$violet-pale:          tint-color($violet, 84%) !default;
+$pink-pale:            tint-color($pink, 84%) !default;
+$fuchsia-pale:         tint-color($fuchsia, 84%) !default;
+$red-pale:             tint-color($red, 84%) !default;
+$orange-pale:          tint-color($orange, 84%) !default;
+$yellow-pale:          tint-color($yellow, 84%) !default;
+$green-pale:           tint-color($green, 84%) !default;
+$leaf-pale:            tint-color($leaf, 84%) !default;
+$teal-pale:            tint-color($teal, 84%) !default;
+$cyan-pale:            tint-color($cyan, 84%) !default;
+$aqua-pale:            tint-color($aqua, 84%) !default;
+$navy-pale:            tint-color($navy, 84%) !default;
+$dark-pale:            tint-color($dark, 84%) !default;
+$ash-pale:             tint-color($ash, 84%) !default;
+$gray-pale:            $gray-300 !default;
+// scss-docs-end theme-pale-variables
+
+// scss-docs-start theme-border-subtle-variables
+$primary-border-subtle:   tint-color($primary, 70%) !default;
+$secondary-border-subtle: tint-color($secondary, 70%) !default;
+$success-border-subtle:   tint-color($success, 70%) !default;
+$info-border-subtle:      tint-color($info, 70%) !default;
+$warning-border-subtle:   tint-color($warning, 70%) !default;
+$danger-border-subtle:    tint-color($danger, 70%) !default;
+$light-border-subtle:     $gray-200 !default;
+$dark-border-subtle:      tint-color($dark, 70%) !default;
+// scss-docs-end theme-border-subtle-variables
+
+// scss-docs-start theme-border-soft-variables
+$primary-border-soft:   tint-color($primary, 70%) !default;
+$secondary-border-soft: tint-color($secondary, 70%) !default;
+$indigo-border-soft:    tint-color($indigo, 70%) !default;
+$blue-border-soft:      tint-color($blue, 70%) !default;
+$sky-border-soft:       tint-color($sky, 70%) !default;
+$purple-border-soft:    tint-color($purple, 70%) !default;
+$grape-border-soft:     tint-color($grape, 70%) !default;
+$violet-border-soft:    tint-color($violet, 70%) !default;
+$pink-border-soft:      tint-color($pink, 70%) !default;
+$fuchsia-border-soft:   tint-color($fuchsia, 70%) !default;
+$red-border-soft:       tint-color($red, 70%) !default;
+$orange-border-soft:    tint-color($orange, 70%) !default;
+$yellow-border-soft:    tint-color($yellow, 70%) !default;
+$green-border-soft:     tint-color($green, 70%) !default;
+$leaf-border-soft:      tint-color($leaf, 70%) !default;
+$teal-border-soft:      tint-color($teal, 70%) !default;
+$cyan-border-soft:      tint-color($cyan, 70%) !default;
+$aqua-border-soft:      tint-color($aqua, 70%) !default;
+$navy-border-soft:      tint-color($navy, 70%) !default;
+$ash-border-soft:       tint-color($ash, 70%) !default;
+$gray-border-soft:      $gray-200 !default;
+// scss-docs-end theme-border-soft-variables
+
+// scss-docs-start theme-border-pale-variables
+$primary-border-pale:   tint-color($primary, 60%) !default;
+$secondary-border-pale: tint-color($secondary, 60%) !default;
+$indigo-border-pale:    tint-color($indigo, 60%) !default;
+$blue-border-pale:      tint-color($blue, 60%) !default;
+$sky-border-pale:       tint-color($sky, 60%) !default;
+$purple-border-pale:    tint-color($purple, 60%) !default;
+$grape-border-pale:     tint-color($grape, 60%) !default;
+$violet-border-pale:    tint-color($violet, 60%) !default;
+$pink-border-pale:      tint-color($pink, 60%) !default;
+$fuchsia-border-pale:   tint-color($fuchsia, 60%) !default;
+$red-border-pale:       tint-color($red, 60%) !default;
+$orange-border-pale:    tint-color($orange, 60%) !default;
+$yellow-border-pale:    tint-color($yellow, 60%) !default;
+$green-border-pale:     tint-color($green, 60%) !default;
+$leaf-border-pale:      tint-color($leaf, 60%) !default;
+$teal-border-pale:      tint-color($teal, 60%) !default;
+$cyan-border-pale:      tint-color($cyan, 60%) !default;
+$aqua-border-pale:      tint-color($aqua, 60%) !default;
+$navy-border-pale:      tint-color($navy, 60%) !default;
+$ash-border-pale:       tint-color($ash, 60%) !default;
+$gray-border-pale:      $gray-300 !default;
+// scss-docs-end theme-border-pale-variables
+
+// scss-docs-start theme-colors-map
+$theme-colors: (
+  'primary':    $primary,
+  'secondary':  $secondary,
+  'success':    $success,
+  'info':       $info,
+  'warning':    $warning,
+  'danger':     $danger,
+  'indigo':     $indigo,
+  'blue':       $blue,
+  'sky':        $sky,
+  'purple':     $purple,
+  'grape':      $grape,
+  'violet':     $violet,
+  'pink':       $pink,
+  'fuchsia':    $fuchsia,
+  'red':        $red,
+  'orange':     $orange,
+  'yellow':     $yellow,
+  'green':      $green,
+  'leaf':       $leaf,
+  'teal':       $teal,
+  'cyan':       $cyan,
+  'aqua':       $aqua,
+  'navy':       $navy,
+  'ash':        $ash,
+  'light':      $light,
+  'dark':       $dark,
+  'muted':      $text-muted,
+  'gray-100':   $gray-100,
+  'gray-200':   $gray-200,
+  'gray-300':   $gray-300,
+  'gray-400':   $gray-400,
+  'gray-500':   $gray-500,
+  'gray-600':   $gray-600,
+  'gray-700':   $gray-700,
+  'gray-800':   $gray-800,
+  'gray-900':   $gray-900
+) !default;
+// scss-docs-end theme-colors-map
+
+// scss-docs-start soft-colors-map
+$soft-colors: (
+  'primary-soft':    $primary-soft,
+  'secondary-soft':  $secondary-soft,
+  'indigo-soft':     $indigo-soft,
+  'blue-soft':       $blue-soft,
+  'sky-soft':        $sky-soft,
+  'purple-soft':     $purple-soft,
+  'grape-soft':      $grape-soft,
+  'violet-soft':     $violet-soft,
+  'pink-soft':       $pink-soft,
+  'fuchsia-soft':    $fuchsia-soft,
+  'red-soft':        $red-soft,
+  'orange-soft':     $orange-soft,
+  'yellow-soft':     $yellow-soft,
+  'green-soft':      $green-soft,
+  'leaf-soft':       $leaf-soft,
+  'teal-soft':       $teal-soft,
+  'cyan-soft':       $cyan-soft,
+  'aqua-soft':       $aqua-soft,
+  'navy-soft':       $navy-soft,
+  'ash-soft':        $ash-soft,
+  'gray-soft':       $gray-soft
+) !default;
+// scss-docs-end soft-colors-map
+
+// scss-docs-start pale-colors-map
+$pale-colors: (
+  'primary-pale':    $primary-pale,
+  'secondary-pale':  $secondary-pale,
+  'indigo-pale':     $indigo-pale,
+  'blue-pale':       $blue-pale,
+  'sky-pale':        $sky-pale,
+  'purple-pale':     $purple-pale,
+  'grape-pale':      $grape-pale,
+  'violet-pale':     $violet-pale,
+  'pink-pale':       $pink-pale,
+  'fuchsia-pale':    $fuchsia-pale,
+  'red-pale':        $red-pale,
+  'orange-pale':     $orange-pale,
+  'yellow-pale':     $yellow-pale,
+  'green-pale':      $green-pale,
+  'leaf-pale':       $leaf-pale,
+  'teal-pale':       $teal-pale,
+  'cyan-pale':       $cyan-pale,
+  'aqua-pale':       $aqua-pale,
+  'navy-pale':       $navy-pale,
+  'ash-pale':        $ash-pale,
+  'gray-pale':       $gray-pale
+) !default;
+// scss-docs-end pale-colors-map
+
+// scss-docs-start border-soft-colors-map
+$border-soft-colors: (
+  'primary':         $primary-border-soft,
+  'secondary':       $secondary-border-soft,
+  'indigo':          $indigo-border-soft,
+  'blue':            $blue-border-soft,
+  'sky':             $sky-border-soft,
+  'purple':          $purple-border-soft,
+  'grape':           $grape-border-soft,
+  'violet':          $violet-border-soft,
+  'pink':            $pink-border-soft,
+  'fuchsia':         $fuchsia-border-soft,
+  'red':             $red-border-soft,
+  'orange':          $orange-border-soft,
+  'yellow':          $yellow-border-soft,
+  'green':           $green-border-soft,
+  'leaf':            $leaf-border-soft,
+  'teal':            $teal-border-soft,
+  'cyan':            $cyan-border-soft,
+  'aqua':            $aqua-border-soft,
+  'navy':            $navy-border-soft,
+  'ash':             $ash-border-soft,
+  'gray':            $gray-border-soft
+) !default;
+// scss-docs-end border-soft-colors-map
+
+// scss-docs-start border-pale-colors-map
+$border-pale-colors: (
+  'primary':         $primary-border-pale,
+  'secondary':       $secondary-border-pale,
+  'indigo':          $indigo-border-pale,
+  'blue':            $blue-border-pale,
+  'sky':             $sky-border-pale,
+  'purple':          $purple-border-pale,
+  'grape':           $grape-border-pale,
+  'violet':          $violet-border-pale,
+  'pink':            $pink-border-pale,
+  'fuchsia':         $fuchsia-border-pale,
+  'red':             $red-border-pale,
+  'orange':          $orange-border-pale,
+  'yellow':          $yellow-border-pale,
+  'green':           $green-border-pale,
+  'leaf':            $leaf-border-pale,
+  'teal':            $teal-border-pale,
+  'cyan':            $cyan-border-pale,
+  'aqua':            $aqua-border-pale,
+  'navy':            $navy-border-pale,
+  'ash':             $ash-border-pale,
+  'gray':            $gray-border-pale
+) !default;
+// scss-docs-end border-pale-colors-map
+
+// Gradient
+//
+// The gradient which is added to components if `$enable-gradients` is `true`
+// This gradient is also added to elements with `.bg-gradient`
+// scss-docs-start variable-gradient
+$gradient: linear-gradient(180deg, rgba($white, 0.15), rgba($white, 0)) !default;
+// scss-docs-end variable-gradient
+
+// Component colors
+$component-active-color:      $white !default;
+$component-active-bg:         $primary !default;

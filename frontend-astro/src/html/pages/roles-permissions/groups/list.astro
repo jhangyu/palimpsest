@@ -1,0 +1,379 @@
+---
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import ConfirmationModal from '../../../components/common/confirmation-modal.astro'
+
+// Register DataTables styles
+const pageStyles = `
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css">
+`
+
+// Register DataTables scripts
+const pageScript = `<!-- Add this scripts before body close -->
+<!-- Jquery -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.7/js/jquery.dataTables.min.js"></script>
+
+<script src="${getAssetPrefix('/assets/vendor/datatables/datatables.init.js')}"></script>
+<script type="module" src="${getAssetPrefix('/assets/js/pages/roles-permissions/groups/table.js')}"></script>
+`
+
+const groups = [
+  {
+    id: 1,
+    title: 'Pages Management',
+    slug: 'pages_management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 2,
+    title: 'Posts Management',
+    slug: 'posts_management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 3,
+    title: 'Media Library',
+    slug: 'media_library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 4,
+    title: 'Categories Management',
+    slug: 'categories_management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 5,
+    title: 'SEO Settings',
+    slug: 'seo_settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 6,
+    title: 'URL Redirects',
+    slug: 'url_redirects',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 7,
+    title: 'Analytics',
+    slug: 'analytics',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 8,
+    title: 'User Management',
+    slug: 'user_management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 9,
+    title: 'Role Management',
+    slug: 'role_management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 10,
+    title: 'System Settings',
+    slug: 'system_settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 11,
+    title: 'System Logs',
+    slug: 'system_logs',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  }
+]
+
+// const statusClasses = {
+//   Active: 'success',
+//   Inactive: 'warning',
+//   Trashed: 'danger'
+// }
+
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Groups',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions'), class: '' },
+    { label: 'Groups', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Add Group',
+      href: getPathPrefix('/roles-permissions/groups/add'),
+      type: 'link',
+      variant: 'btn-primary',
+      icon: 'ri-add-line'
+    }
+  ]
+}
+---
+
+<AdminLayout
+  title="Groups"
+  description="Groups Management"
+  currentPath="roles-permissions/groups/list"
+  pageScript={pageScript}
+  pageCss={pageStyles}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <!-- Groups Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="astero-table">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+              <!--begin::Search-->
+              <div class="search-wrapper">
+                <i class="ri-search-line search-icon"></i>
+                <input
+                  type="text"
+                  class="form-control search-input"
+                  data-table-filter="search"
+                  placeholder="Search groups..."
+                />
+                <button type="button" class="btn-clear search-clear" style="display: none;">
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+              <!--end::Search-->
+              <!--begin::Table toolbar-->
+              <div class="d-flex gap-2 flex-wrap">
+                <!--begin::Filters-->
+                <button
+                  class="btn btn-outline-primary gap-1"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#filterDrawer"
+                  data-table-toolbar="filter"
+                >
+                  <i class="ri-filter-2-line"></i> Filters
+                </button>
+                <!--begin::Filter Drawer-->
+                <div
+                  class="offcanvas offcanvas-end filter-drawer datatable-filters"
+                  tabindex="-1"
+                  id="filterDrawer"
+                  aria-labelledby="filterDrawerLabel"
+                  data-table-toolbar="filter"
+                >
+                  <div class="offcanvas-header border-bottom">
+                    <h5 class="offcanvas-title" id="filterDrawerLabel">Filter Options</h5>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="offcanvas"
+                      aria-label="Close"></button>
+                  </div>
+                  <div class="offcanvas-body p-0">
+                    <div data-table-filter-form="form" class="filter-form h-100 d-flex flex-column">
+                      <div class="filter-form-fields p-4">
+                        <!-- Status -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">Status</label>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="active"
+                              id="active"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Active"
+                            />
+                            <label class="form-check-label" for="active">
+                              <span class="badge bg-success-subtle text-success">Active</span>
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="inactive"
+                              id="inactive"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Inactive"
+                            />
+                            <label class="form-check-label" for="inactive">
+                              <span class="badge bg-warning-subtle text-warning">Inactive</span>
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="trashed"
+                              id="trashed"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Trashed"
+                            />
+                            <label class="form-check-label" for="trashed">
+                              <span class="badge bg-danger-subtle text-danger">Trashed</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Filter Actions -->
+                      <div class="border-top p-3 mt-auto">
+                        <div class="d-flex gap-2">
+                          <button
+                            type="submit"
+                            class="btn btn-primary flex-grow-1"
+                            data-table-filter-btn="filter">Apply Filters</button
+                          >
+                          <button type="button" class="btn btn-light" data-table-filter-btn="reset"
+                            >Reset</button
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!--end::Filter Drawer-->
+                <!--end::Filters-->
+
+                <!--begin::Bulk Actions-->
+                <div class="bulk-actions-div d-none" data-table-toolbar="bulk_selected">
+                  <span class="selected-count me-2"
+                    ><span data-table-select="selected_count"></span> items selected</span
+                  >
+                  <button
+                    class="btn btn-light-danger shadow-none align-items-center gap-2 bulk-delete"
+                    data-table-select="delete_selected"
+                  >
+                    <i class="ri-delete-bin-line"></i> Delete Selected
+                  </button>
+                </div>
+                <!--end::Bulk Actions-->
+              </div>
+              <!--end::Table toolbar-->
+            </div>
+            <div class="table-container">
+              <div
+                class="d-none flex-column flex-lg-row justify-content-start filter-datas mb-3"
+                data-filters
+              >
+                <strong class="fs-6 me-2 text-primary">Filters : </strong>
+                <div class="d-flex flex-row flex-wrap align-items-center" data-filters-data></div>
+              </div>
+
+              <div class="table-responsive border-0">
+                <table id="table_groups" class="table align-middle">
+                  <thead>
+                    <tr>
+                      <th class="fs-6">
+                        <div class="form-check">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            data-table-select="select_all"
+                          />
+                        </div>
+                      </th>
+                      <th>GROUP TITLE</th>
+                      <th>SLUG</th>
+                      <th>STATUS</th>
+                      <th>ADDED AT</th>
+                      <th class="text-end pe-3">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {
+                      groups.map((group) => (
+                        <tr>
+                          <td />
+                          <td>
+                            <span class="text-primary">{group.title}</span>
+                          </td>
+                          <td>
+                            <span class="text-muted">{group.slug}</span>
+                          </td>
+                          <td>
+                            {group.status == 'Active' ? (
+                              <span class="badge bg-success">{group.status}</span>
+                            ) : group.status == 'Inactive' ? (
+                              <span class="badge bg-warning">{group.status}</span>
+                            ) : (
+                              <span class="badge bg-danger">{group.status}</span>
+                            )}
+                          </td>
+                          <td>
+                            <span class="text-muted">{group.added_at}</span>
+                          </td>
+                          <td class="text-end">
+                            <div class="dropdown text-end">
+                              <button
+                                class="btn btn-light btn-active-light-primary dropdown-toggle shadow-none action-btn"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                              >
+                                Actions
+                              </button>
+                              <ul class="dropdown-menu">
+                                <li>
+                                  <a
+                                    class="dropdown-item d-flex align-items-center gap-2"
+                                    href={getPathPrefix('/roles-permissions/groups/edit')}
+                                  >
+                                    <i class="ri-pencil-line" /> Edit
+                                  </a>
+                                </li>
+                                <li>
+                                  <hr class="dropdown-divider" />
+                                </li>
+                                <li>
+                                  <a
+                                    class="dropdown-item d-flex align-items-center gap-2 text-danger delete-button"
+                                    href="#"
+                                  >
+                                    <i class="ri-delete-bin-line" /> Delete
+                                  </a>
+                                </li>
+                              </ul>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ConfirmationModal />
+</AdminLayout>

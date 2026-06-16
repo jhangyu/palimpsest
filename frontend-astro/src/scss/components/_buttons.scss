@@ -1,0 +1,157 @@
+/* ==========================================================================
+   Button Base Styles
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: $input-btn-minheight;
+  font-weight: 500;
+  line-height: 1;
+
+  /* ==========================================================================
+     Button Sizes
+     ========================================================================== */
+
+  // Extra Small
+  &.btn-xs {
+    height: $input-btn-minheight-xs;
+    padding: $input-btn-padding-xs;
+    font-size: $input-btn-font-size-xs;
+    line-height: 1;
+  }
+
+  // Small
+  &.btn-sm {
+    height: $input-btn-minheight-sm;
+    padding: $input-btn-padding-sm;
+    font-size: $input-btn-font-size-sm;
+    line-height: 1;
+  }
+
+  // Large
+  &.btn-lg {
+    height: $input-btn-minheight-lg;
+    padding: $input-btn-padding-lg;
+    font-size: $input-btn-font-size-lg;
+    line-height: 1;
+  }
+
+  // Extra Large
+  &.btn-xl {
+    height: $input-btn-minheight-xl;
+    padding: $input-btn-padding-xl;
+    font-size: $input-btn-font-size-xl;
+    line-height: 1;
+  }
+
+  /* ==========================================================================
+     Icon Button Base
+     ========================================================================== */
+
+  &[class*='btn-icon'] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    @extend .rounded-circle;
+
+    i {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+    }
+  }
+
+  /* ==========================================================================
+     Icon Button Sizes
+     ========================================================================== */
+
+  // Extra Small Icon
+  &.btn-icon-xs {
+    width: $input-btn-minheight-xs;
+    height: $input-btn-minheight-xs;
+    font-size: $input-btn-font-size-xs;
+  }
+
+  // Small Icon
+  &.btn-icon-sm {
+    width: $input-btn-minheight-sm;
+    height: $input-btn-minheight-sm;
+    font-size: $input-btn-font-size-sm;
+  }
+
+  // Default Icon
+  &.btn-icon {
+    width: $input-btn-minheight;
+    height: $input-btn-minheight;
+    font-size: $input-btn-font-size;
+  }
+
+  // Large Icon
+  &.btn-icon-lg {
+    width: $input-btn-minheight-lg;
+    height: $input-btn-minheight-lg;
+    font-size: $input-btn-font-size-lg;
+  }
+
+  // Extra Large Icon
+  &.btn-icon-xl {
+    width: $input-btn-minheight-xl;
+    height: $input-btn-minheight-xl;
+    font-size: $input-btn-font-size-xl;
+  }
+
+  /* ==========================================================================
+     Light Button Variants
+     ========================================================================== */
+
+  // Light Primary Button
+  &.btn-light-primary {
+    color: var(--bs-primary);
+    background-color: rgb(var(--bs-primary-rgb), 0.2);
+
+    &:hover,
+    &:focus {
+      color: var(--bs-white);
+      background-color: var(--bs-primary);
+    }
+
+    &:active {
+      color: var(--bs-white);
+      background-color: rgb(var(--bs-primary-rgb), 0.8);
+    }
+  }
+
+  // Light Danger Button
+  &.btn-light-danger {
+    color: var(--bs-danger);
+    background-color: rgb(var(--bs-danger-rgb), 0.2);
+
+    &:hover,
+    &:focus {
+      color: var(--bs-white);
+      background-color: var(--bs-danger);
+    }
+
+    &:active {
+      color: var(--bs-white);
+      background-color: rgb(var(--bs-danger-rgb), 0.8);
+    }
+  }
+
+  // Active Light Primary Button
+  &.btn-active-light-primary {
+    &:hover,
+    &:focus {
+      color: var(--bs-primary);
+      background-color: rgb(var(--bs-primary-rgb), 0.2);
+    }
+
+    &:active {
+      color: var(--bs-primary);
+      background-color: rgb(var(--bs-primary-rgb), 0.3);
+    }
+  }
+}

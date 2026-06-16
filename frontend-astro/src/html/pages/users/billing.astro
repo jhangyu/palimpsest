@@ -1,0 +1,325 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+
+const billingPageConfig: PageHeaderProps = {
+  title: 'Billing Settings',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Users', href: getPathPrefix('/users'), class: '' },
+    { label: 'Billing', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Billing & Subscription"
+  description="Manage your subscription plan and billing information"
+  currentPath="users/billing"
+>
+  <PageHeader {...billingPageConfig} />
+  <div class="row g-4">
+    <!-- User Profile Sidebar -->
+    <div class="col-lg-3">
+      <div class="card p-3">
+        <div class="card-header text-center pt-3">
+          <div class="position-relative d-inline-block mb-4">
+            <img
+              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+              alt="User Avatar"
+              class="rounded-circle"
+              width="120"
+              height="120"
+              style="object-fit: cover;"
+            />
+            <button
+              class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
+              title="Change Profile Picture"
+            >
+              <i class="ri-camera-line"></i>
+            </button>
+          </div>
+          <h5 class="mb-1">Amara Evans</h5>
+          <p class="text-muted mb-0">
+            <i class="ri-mail-line me-1"></i>amara@example.com
+          </p>
+        </div>
+        <div class="card-body">
+          <!-- Navigation Menu -->
+          <nav class="nav-tree">
+            <ul class="list-unstyled">
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Personal</span>
+              </li>
+              <!-- Profile -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/profile')}>
+                  <i class="ri-user-line"></i>
+                  <span>Profile</span>
+                </a>
+              </li>
+              <!-- Notifications -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+                  <i class="ri-notification-4-line"></i>
+                  <span>Notifications</span>
+                </a>
+              </li>
+              <!-- Security -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/security')}>
+                  <i class="ri-shield-check-line"></i>
+                  <span>Security</span>
+                </a>
+              </li>
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Other</span>
+              </li>
+              <!-- Billing -->
+              <li class="nav-item active">
+                <a class="nav-link" href={getPathPrefix('/users/billing')}>
+                  <i class="ri-bank-card-line"></i>
+                  <span>Billing</span>
+                </a>
+              </li>
+              <!-- Team -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/team')}>
+                  <i class="ri-group-line"></i>
+                  <span>Team</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Billing Content -->
+    <div class="col-lg-9">
+      <!-- Subscription Plans -->
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-rocket-line me-2"></i>
+            <h5 class="card-title mb-0">Subscription Plans</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <form>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-medium">Choose Your Plan</label>
+                <div class="row">
+                  <!-- Basic Plan -->
+                  <div class="col-md-4">
+                    <div class="card mb-2 border h-100">
+                      <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                          <h6 class="card-title d-flex align-items-center">
+                            <i class="ri-award-line me-2 text-primary"></i>Basic Plan
+                          </h6>
+                          <div class="d-flex align-items-baseline">
+                            <h4 class="mb-0">$9.99</h4>
+                            <span class="text-muted ms-1">/month</span>
+                          </div>
+                        </div>
+                        <p class="card-text text-muted flex-grow-1">
+                          Perfect for individuals and small projects
+                        </p>
+                        <button type="button" class="btn btn-outline-primary w-100">
+                          <i class="ri-arrow-up-line me-1"></i>Upgrade to Basic
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Standard Plan -->
+                  <div class="col-md-4">
+                    <div class="card mb-2 border border-primary h-100">
+                      <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                          <h6 class="card-title d-flex align-items-center text-primary">
+                            <i class="ri-vip-crown-line me-2"></i>Standard Plan
+                          </h6>
+                          <div class="d-flex align-items-baseline">
+                            <h4 class="mb-0">$19.99</h4>
+                            <span class="text-muted ms-1">/month</span>
+                          </div>
+                        </div>
+                        <p class="card-text text-muted flex-grow-1">
+                          Ideal for growing businesses and teams
+                        </p>
+                        <button type="button" class="btn btn-primary w-100" disabled>
+                          <i class="ri-check-line me-1"></i>Current Plan
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Premium Plan -->
+                  <div class="col-md-4">
+                    <div class="card mb-2 border h-100">
+                      <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                          <h6 class="card-title d-flex align-items-center">
+                            <i class="ri-vip-diamond-line me-2 text-primary"></i>Premium Plan
+                          </h6>
+                          <div class="d-flex align-items-baseline">
+                            <h4 class="mb-0">$29.99</h4>
+                            <span class="text-muted ms-1">/month</span>
+                          </div>
+                        </div>
+                        <p class="card-text text-muted flex-grow-1">
+                          Advanced features for large enterprises
+                        </p>
+                        <button type="button" class="btn btn-outline-primary w-100">
+                          <i class="ri-arrow-up-line me-1"></i>Upgrade to Premium
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 text-end mt-2">
+                <button type="submit" class="btn btn-primary">
+                  <i class="ri-secure-payment-line me-1"></i>Confirm Subscription Change
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Payment Information -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center justify-content-between w-100">
+            <div class="d-flex align-items-center">
+              <i class="ri-bank-card-line me-2"></i>
+              <h5 class="card-title mb-0">Payment Information</h5>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline-primary">
+                <i class="ri-edit-line me-1"></i>Update Payment Details
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table table-borderless">
+            <tbody>
+              <tr>
+                <td style="width: 200px;">
+                  <span class="text-muted d-flex align-items-center">
+                    <i class="ri-user-line me-2"></i>Cardholder Name
+                  </span>
+                </td>
+                <td>Amara Evans</td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="text-muted d-flex align-items-center">
+                    <i class="ri-map-pin-line me-2"></i>Billing Country
+                  </span>
+                </td>
+                <td>United States</td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="text-muted d-flex align-items-center">
+                    <i class="ri-mail-line me-2"></i>Postal Code
+                  </span>
+                </td>
+                <td>90210</td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="text-muted d-flex align-items-center">
+                    <i class="ri-bank-card-line me-2"></i>Card Details
+                  </span>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="ri-visa-line me-2 fs-5"></i>
+                    **** **** **** 1234
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Billing History -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-history-line me-2"></i>
+            <h5 class="card-title mb-0">Transaction History</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table table-borderless">
+            <thead>
+              <tr>
+                <th>Invoice Date</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>March 1, 2025</td>
+                <td>$19.99</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="ri-bank-card-line me-2"></i>Credit Card
+                  </div>
+                </td>
+                <td><span class="badge text-bg-success">Paid</span></td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-light" title="Download Invoice">
+                    <i class="ri-download-2-line"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>February 1, 2025</td>
+                <td>$19.99</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="ri-paypal-line me-2"></i>PayPal
+                  </div>
+                </td>
+                <td><span class="badge text-bg-success">Paid</span></td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-light" title="Download Invoice">
+                    <i class="ri-download-2-line"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>January 1, 2025</td>
+                <td>$19.99</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="ri-bank-card-line me-2"></i>Credit Card
+                  </div>
+                </td>
+                <td><span class="badge text-bg-warning">Pending</span></td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-light" title="Download Invoice">
+                    <i class="ri-download-2-line"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

@@ -1,0 +1,107 @@
+/* ==========================================================================
+    Colors Components
+   ========================================================================== */
+
+// Generate background and text utility classes from the $soft-colors map
+@each $color, $value in $soft-colors {
+  .bg-#{$color} {
+    background-color: $value !important;
+  }
+  .text-#{$color} {
+    color: $value !important;
+  }
+}
+
+// Generate background and text utility classes from the $pale-colors map
+@each $color, $value in $pale-colors {
+  .bg-#{$color} {
+    background-color: $value !important;
+  }
+  .text-#{$color} {
+    color: $value !important;
+  }
+}
+
+// Generate border utility classes from the $border-soft-colors map
+@each $color, $value in $border-soft-colors {
+  .border-#{$color}-soft {
+    border-color: $value !important;
+  }
+}
+
+// Generate border utility classes from the $border-pale-colors map
+@each $color, $value in $border-pale-colors {
+  .border-#{$color}-pale {
+    border-color: $value !important;
+  }
+}
+
+[data-bs-theme='dark'] {
+  // Generate background and text utility classes from the $soft-dark-colors map
+  @each $color, $value in $soft-dark-colors {
+    .bg-#{$color}-soft {
+      background-color: $value !important;
+    }
+    .text-#{$color}-soft {
+      color: $value !important;
+    }
+  }
+
+  // Generate background and text utility classes from the $pale-dark-colors map
+  @each $color, $value in $pale-dark-colors {
+    .bg-#{$color}-pale {
+      background-color: $value !important;
+    }
+    .text-#{$color}-pale {
+      color: $value !important;
+    }
+  }
+
+  // Generate border utility classes from the $border-soft-dark-colors map
+  @each $color, $value in $border-soft-dark-colors {
+    .border-#{$color}-soft {
+      border-color: $value !important;
+    }
+  }
+
+  // Generate border utility classes from the $border-pale-dark-colors map
+  @each $color, $value in $border-pale-dark-colors {
+    .border-#{$color}-pale {
+      border-color: $value !important;
+    }
+  }
+}
+
+// Mixin to Generate Gradient Classes
+@mixin generate-gradient-classes($gradients-map) {
+  @each $name, $gradient in $gradients-map {
+    // Text Gradient Classes
+    .text-#{$name} {
+      background: $gradient;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    // Background Gradient Classes
+    .bg-#{$name} {
+      background: $gradient !important;
+    }
+  }
+}
+
+// Generate Gradient Classes
+@include generate-gradient-classes($gradients);
+
+// Generate background and text utility classes for each color in the grouped color maps
+// (e.g., 'bg-sky-600', 'text-leaf-200')
+@each $group-name, $colors in $color-groups {
+  @each $color, $value in $colors {
+    .bg-#{$color} {
+      background-color: $value !important;
+    }
+    .text-#{$color} {
+      color: $value !important;
+    }
+  }
+}

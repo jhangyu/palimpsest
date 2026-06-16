@@ -1,0 +1,315 @@
+// Dark color mode variables
+//
+// Custom variables for the `[data-bs-theme="dark"]` theme. Use this as a starting point for your own custom color modes by creating a new theme-specific file like `_variables-dark.scss` and adding the variables you need.
+
+//
+// Global colors
+//
+
+// scss-docs-start sass-dark-mode-vars
+// scss-docs-start gray-color-variables-dark
+$gray-100-dark:  #1b1b29 !default;
+$gray-200-dark:  #2b2b40 !default;
+$gray-300-dark:  #323248 !default;
+$gray-400-dark:  #474761 !default;
+$gray-500-dark:  #565674 !default;
+$gray-600-dark:  #6d6d80 !default;
+$gray-700-dark:  #92929f !default;
+$gray-800-dark:  #cdcdde !default;
+$gray-900-dark:  #fff !default;
+
+$grays-dark: (
+  '100': $gray-100-dark,
+  '200': $gray-200-dark,
+  '300': $gray-300-dark,
+  '400': $gray-400-dark,
+  '500': $gray-500-dark,
+  '600': $gray-600-dark,
+  '700': $gray-700-dark,
+  '800': $gray-800-dark,
+  '900': $gray-900-dark
+) !default;
+// scss-docs-end gray-colors-map-dark
+$text-muted-dark: $gray-500-dark !default;
+
+// scss-docs-start theme-text-dark-variables
+$primary-text-emphasis-dark:        tint-color($primary, 40%) !default;
+$secondary-text-emphasis-dark:      tint-color($secondary, 40%) !default;
+$success-text-emphasis-dark:        tint-color($success, 40%) !default;
+$info-text-emphasis-dark:           tint-color($info, 40%) !default;
+$warning-text-emphasis-dark:        tint-color($warning, 40%) !default;
+$danger-text-emphasis-dark:         tint-color($danger, 40%) !default;
+$light-text-emphasis-dark:          $gray-100 !default;
+$dark-text-emphasis-dark:           $gray-300 !default;
+// scss-docs-end theme-text-dark-variables
+
+// scss-docs-start theme-bg-subtle-dark-variables
+$primary-bg-subtle-dark:            shade-color($primary, 80%) !default;
+$secondary-bg-subtle-dark:          shade-color($secondary, 80%) !default;
+$success-bg-subtle-dark:            shade-color($success, 80%) !default;
+$info-bg-subtle-dark:               shade-color($info, 80%) !default;
+$warning-bg-subtle-dark:            shade-color($warning, 80%) !default;
+$danger-bg-subtle-dark:             shade-color($danger, 80%) !default;
+$light-bg-subtle-dark:              $gray-800 !default;
+$dark-bg-subtle-dark:               mix($gray-800, $black) !default;
+// scss-docs-end theme-bg-subtle-dark-variables
+
+// scss-docs-start theme-soft-dark-variables
+$primary-soft-dark:       shade-color($primary, 80%) !default;
+$secondary-soft-dark:     shade-color($secondary, 80%) !default;
+$indigo-soft-dark:        shade-color($indigo, 80%) !default;
+$blue-soft-dark:          shade-color($blue, 80%) !default;
+$sky-soft-dark:           shade-color($sky, 80%) !default;
+$purple-soft-dark:        shade-color($purple, 80%) !default;
+$grape-soft-dark:         shade-color($grape, 80%) !default;
+$violet-soft-dark:        shade-color($violet, 80%) !default;
+$pink-soft-dark:          shade-color($pink, 80%) !default;
+$fuchsia-soft-dark:       shade-color($fuchsia, 80%) !default;
+$red-soft-dark:           shade-color($red, 80%) !default;
+$orange-soft-dark:        shade-color($orange, 80%) !default;
+$yellow-soft-dark:        shade-color($yellow, 80%) !default;
+$green-soft-dark:         shade-color($green, 80%) !default;
+$leaf-soft-dark:          shade-color($leaf, 80%) !default;
+$teal-soft-dark:          shade-color($teal, 80%) !default;
+$cyan-soft-dark:          shade-color($cyan, 80%) !default;
+$aqua-soft-dark:          shade-color($aqua, 80%) !default;
+$navy-soft-dark:          shade-color($navy, 80%) !default;
+$ash-soft-dark:           shade-color($ash, 80%) !default;
+$gray-soft-dark:          $gray-800 !default;
+// scss-docs-end theme-soft-dark-variables
+
+// scss-docs-start theme-pale-dark-variables
+$primary-pale-dark:       shade-color($primary, 70%) !default;
+$secondary-pale-dark:     shade-color($secondary, 70%) !default;
+$indigo-pale-dark:        shade-color($indigo, 70%) !default;
+$blue-pale-dark:          shade-color($blue, 70%) !default;
+$sky-pale-dark:           shade-color($sky, 70%) !default;
+$purple-pale-dark:        shade-color($purple, 70%) !default;
+$grape-pale-dark:         shade-color($grape, 70%) !default;
+$violet-pale-dark:        shade-color($violet, 70%) !default;
+$pink-pale-dark:          shade-color($pink, 70%) !default;
+$fuchsia-pale-dark:       shade-color($fuchsia, 70%) !default;
+$red-pale-dark:           shade-color($red, 70%) !default;
+$orange-pale-dark:        shade-color($orange, 70%) !default;
+$yellow-pale-dark:        shade-color($yellow, 70%) !default;
+$green-pale-dark:         shade-color($green, 70%) !default;
+$leaf-pale-dark:          shade-color($leaf, 70%) !default;
+$teal-pale-dark:          shade-color($teal, 70%) !default;
+$cyan-pale-dark:          shade-color($cyan, 70%) !default;
+$aqua-pale-dark:          shade-color($aqua, 70%) !default;
+$navy-pale-dark:          shade-color($navy, 70%) !default;
+$ash-pale-dark:           shade-color($ash, 70%) !default;
+$gray-pale-dark:          $gray-700 !default;
+// scss-docs-end theme-pale-dark-variables
+
+// scss-docs-start theme-border-subtle-dark-variables
+$primary-border-subtle-dark:        shade-color($primary, 40%) !default;
+$secondary-border-subtle-dark:      shade-color($secondary, 40%) !default;
+$success-border-subtle-dark:        shade-color($success, 40%) !default;
+$info-border-subtle-dark:           shade-color($info, 40%) !default;
+$warning-border-subtle-dark:        shade-color($warning, 40%) !default;
+$danger-border-subtle-dark:         shade-color($danger, 40%) !default;
+$light-border-subtle-dark:          $gray-700 !default;
+$dark-border-subtle-dark:           $gray-800 !default;
+// scss-docs-end theme-border-subtle-dark-variables
+
+// scss-docs-start theme-border-soft-dark-variables
+$primary-border-soft-dark:        shade-color($primary, 40%) !default;
+$secondary-border-soft-dark:      shade-color($secondary, 40%) !default;
+$indigo-border-soft-dark:         shade-color($indigo, 40%) !default;
+$blue-border-soft-dark:           shade-color($blue, 40%) !default;
+$sky-border-soft-dark:            shade-color($sky, 40%) !default;
+$purple-border-soft-dark:         shade-color($purple, 40%) !default;
+$grape-border-soft-dark:          shade-color($grape, 40%) !default;
+$violet-border-soft-dark:         shade-color($violet, 40%) !default;
+$pink-border-soft-dark:           shade-color($pink, 40%) !default;
+$fuchsia-border-soft-dark:        shade-color($fuchsia, 40%) !default;
+$red-border-soft-dark:            shade-color($red, 40%) !default;
+$orange-border-soft-dark:         shade-color($orange, 40%) !default;
+$yellow-border-soft-dark:         shade-color($yellow, 40%) !default;
+$green-border-soft-dark:          shade-color($green, 40%) !default;
+$leaf-border-soft-dark:           shade-color($leaf, 40%) !default;
+$teal-border-soft-dark:           shade-color($teal, 40%) !default;
+$cyan-border-soft-dark:           shade-color($cyan, 40%) !default;
+$aqua-border-soft-dark:           shade-color($aqua, 40%) !default;
+$navy-border-soft-dark:           shade-color($navy, 40%) !default;
+$ash-border-soft-dark:            shade-color($ash, 40%) !default;
+$gray-border-soft-dark:           $gray-800 !default;
+// scss-docs-end theme-border-soft-dark-variables
+
+// scss-docs-start theme-border-pale-dark-variables
+$primary-border-pale-dark:        shade-color($primary, 30%) !default;
+$secondary-border-pale-dark:      shade-color($secondary, 30%) !default;
+$indigo-border-pale-dark:         shade-color($indigo, 30%) !default;
+$blue-border-pale-dark:           shade-color($blue, 30%) !default;
+$sky-border-pale-dark:            shade-color($sky, 30%) !default;
+$purple-border-pale-dark:         shade-color($purple, 30%) !default;
+$grape-border-pale-dark:          shade-color($grape, 30%) !default;
+$violet-border-pale-dark:         shade-color($violet, 30%) !default;
+$pink-border-pale-dark:           shade-color($pink, 30%) !default;
+$fuchsia-border-pale-dark:        shade-color($fuchsia, 30%) !default;
+$red-border-pale-dark:            shade-color($red, 30%) !default;
+$orange-border-pale-dark:         shade-color($orange, 30%) !default;
+$yellow-border-pale-dark:         shade-color($yellow, 30%) !default;
+$green-border-pale-dark:          shade-color($green, 30%) !default;
+$leaf-border-pale-dark:           shade-color($leaf, 30%) !default;
+$teal-border-pale-dark:           shade-color($teal, 30%) !default;
+$cyan-border-pale-dark:           shade-color($cyan, 30%) !default;
+$aqua-border-pale-dark:           shade-color($aqua, 30%) !default;
+$navy-border-pale-dark:           shade-color($navy, 30%) !default;
+$ash-border-pale-dark:            shade-color($ash, 30%) !default;
+$gray-border-pale-dark:           $gray-700 !default;
+// scss-docs-end theme-border-pale-dark-variables
+
+// scss-docs-start theme-soft-dark-map
+$soft-dark-colors: (
+  'primary': $primary-soft-dark,
+  'secondary': $secondary-soft-dark,
+  'indigo': $indigo-soft-dark,
+  'blue': $blue-soft-dark,
+  'sky': $sky-soft-dark,
+  'purple': $purple-soft-dark,
+  'grape': $grape-soft-dark,
+  'violet': $violet-soft-dark,
+  'pink': $pink-soft-dark,
+  'fuchsia': $fuchsia-soft-dark,
+  'red': $red-soft-dark,
+  'orange': $orange-soft-dark,
+  'yellow': $yellow-soft-dark,
+  'green': $green-soft-dark,
+  'leaf': $leaf-soft-dark,
+  'teal': $teal-soft-dark,
+  'cyan': $cyan-soft-dark,
+  'aqua': $aqua-soft-dark,
+  'navy': $navy-soft-dark,
+  'ash': $ash-soft-dark,
+  'gray': $gray-soft-dark
+) !default;
+// scss-docs-end theme-soft-dark-map
+
+// scss-docs-start theme-pale-dark-map
+$pale-dark-colors: (
+  'primary': $primary-pale-dark,
+  'secondary': $secondary-pale-dark,
+  'indigo': $indigo-pale-dark,
+  'blue': $blue-pale-dark,
+  'sky': $sky-pale-dark,
+  'purple': $purple-pale-dark,
+  'grape': $grape-pale-dark,
+  'violet': $violet-pale-dark,
+  'pink': $pink-pale-dark,
+  'fuchsia': $fuchsia-pale-dark,
+  'red': $red-pale-dark,
+  'orange': $orange-pale-dark,
+  'yellow': $yellow-pale-dark,
+  'green': $green-pale-dark,
+  'leaf': $leaf-pale-dark,
+  'teal': $teal-pale-dark,
+  'cyan': $cyan-pale-dark,
+  'aqua': $aqua-pale-dark,
+  'navy': $navy-pale-dark,
+  'ash': $ash-pale-dark,
+  'gray': $gray-pale-dark
+) !default;
+// scss-docs-end theme-pale-dark-map
+
+// scss-docs-start theme-border-soft-dark-map
+$border-soft-dark-colors: (
+  'primary': $primary-border-soft-dark,
+  'secondary': $secondary-border-soft-dark,
+  'indigo': $indigo-border-soft-dark,
+  'blue': $blue-border-soft-dark,
+  'sky': $sky-border-soft-dark,
+  'purple': $purple-border-soft-dark,
+  'grape': $grape-border-soft-dark,
+  'violet': $violet-border-soft-dark,
+  'pink': $pink-border-soft-dark,
+  'fuchsia': $fuchsia-border-soft-dark,
+  'red': $red-border-soft-dark,
+  'orange': $orange-border-soft-dark,
+  'yellow': $yellow-border-soft-dark,
+  'green': $green-border-soft-dark,
+  'leaf': $leaf-border-soft-dark,
+  'teal': $teal-border-soft-dark,
+  'cyan': $cyan-border-soft-dark,
+  'aqua': $aqua-border-soft-dark,
+  'navy': $navy-border-soft-dark,
+  'ash': $ash-border-soft-dark,
+  'gray': $gray-border-soft-dark
+) !default;
+// scss-docs-end theme-border-soft-dark-map
+
+// scss-docs-start theme-border-pale-dark-map
+$border-pale-dark-colors: (
+  'primary': $primary-border-pale-dark,
+  'secondary': $secondary-border-pale-dark,
+  'indigo': $indigo-border-pale-dark,
+  'blue': $blue-border-pale-dark,
+  'sky': $sky-border-pale-dark,
+  'purple': $purple-border-pale-dark,
+  'grape': $grape-border-pale-dark,
+  'violet': $violet-border-pale-dark,
+  'pink': $pink-border-pale-dark,
+  'fuchsia': $fuchsia-border-pale-dark,
+  'red': $red-border-pale-dark,
+  'orange': $orange-border-pale-dark,
+  'yellow': $yellow-border-pale-dark,
+  'green': $green-border-pale-dark,
+  'leaf': $leaf-border-pale-dark,
+  'teal': $teal-border-pale-dark,
+  'cyan': $cyan-border-pale-dark,
+  'aqua': $aqua-border-pale-dark,
+  'navy': $navy-border-pale-dark,
+  'ash': $ash-border-pale-dark,
+  'gray': $gray-border-pale-dark
+) !default;
+// scss-docs-end theme-border-pale-dark-map
+
+$body-color-dark:                   $gray-300 !default;
+$body-bg-dark:                      $gray-900 !default;
+$body-secondary-color-dark:         rgba($body-color-dark, 0.75) !default;
+$body-secondary-bg-dark:            $gray-800 !default;
+$body-tertiary-color-dark:          rgba($body-color-dark, 0.5) !default;
+$body-tertiary-bg-dark:             mix($gray-800, $gray-900, 50%) !default;
+$body-emphasis-color-dark:          $white !default;
+$border-color-dark:                 $gray-700 !default;
+$border-color-translucent-dark:     rgba($white, 0.15) !default;
+$headings-color-dark:               inherit !default;
+$link-color-dark:                   tint-color($primary, 40%) !default;
+$link-hover-color-dark:             shift-color($link-color-dark, -$link-shade-percentage) !default;
+$code-color-dark:                   tint-color($code-color, 40%) !default;
+$mark-color-dark:                   $body-color-dark !default;
+$mark-bg-dark:                      $yellow-800 !default;
+
+// table
+$table-striped-bg-dark:             rgba($gray-100-dark, 0.75) !default;
+$table-loading-message-box-shadow-dark:        		0px 0px 30px rgb(0, 0, 0, 0.3) !default;
+
+//
+// Forms
+//
+
+$form-select-indicator-color-dark:  $body-color-dark !default;
+$form-select-indicator-dark:        url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='#{$form-select-indicator-color-dark}' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/></svg>") !default;
+
+$form-switch-color-dark:            rgba($white, 0.25) !default;
+$form-switch-bg-image-dark:         url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'><circle r='3' fill='#{$form-switch-color-dark}'/></svg>") !default;
+
+// scss-docs-start form-validation-colors-dark
+$form-valid-color-dark:             $green-300 !default;
+$form-valid-border-color-dark:      $green-300 !default;
+$form-invalid-color-dark:           $red-300 !default;
+$form-invalid-border-color-dark:    $red-300 !default;
+// scss-docs-end form-validation-colors-dark
+
+
+//
+// Accordion
+//
+
+$accordion-icon-color-dark:         $primary-text-emphasis-dark !default;
+$accordion-icon-active-color-dark:  $primary-text-emphasis-dark !default;
+
+$accordion-button-icon-dark:         url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$accordion-icon-color-dark}'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>") !default;
+$accordion-button-active-icon-dark:  url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$accordion-icon-active-color-dark}'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>") !default;
+// scss-docs-end sass-dark-mode-vars

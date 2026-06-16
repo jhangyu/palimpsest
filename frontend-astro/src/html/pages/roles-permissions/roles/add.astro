@@ -1,0 +1,231 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+import permissionsData from '../../../../assets/data/permissions.json'
+
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Add Role',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions') },
+    { label: 'Roles', href: getPathPrefix('/roles-permissions/roles/list') },
+    { label: 'Add Role', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Back',
+      href: getPathPrefix('/roles-permissions/roles/list'),
+      type: 'link',
+      variant: 'btn-outline-primary',
+      icon: 'ri-arrow-left-s-line'
+    }
+  ]
+}
+
+// Add custom validation script
+const pageScript = `
+  <script src="${getAssetPrefix('/assets/js/pages/roles-permissions/roles/toggle-permissions.js')}"></script>
+  <script src="${getAssetPrefix('/assets/js/pages/roles-permissions/roles/submitform.js')}"></script>
+`
+
+const { modules } = permissionsData
+---
+
+<AdminLayout
+  title="Add Role"
+  description="Create New Role"
+  currentPath="roles-permissions/roles/add"
+  pageScript={pageScript}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <form id="roleForm" novalidate>
+    <div class="row justify-content-center">
+      <div class="col-md-8 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Role Name -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="roleName" class="form-label"
+                    >Role Name <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="roleName"
+                    name="roleName"
+                    placeholder="Enter role name"
+                  />
+                  <div class="form-text">Example: Admin, Editor, Author, etc.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Role Slug -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="roleSlug" class="form-label"
+                    >Role Slug <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="roleSlug"
+                    name="roleSlug"
+                    placeholder="Enter role slug"
+                  />
+                  <div class="form-text">
+                    Auto-generated from name. Example: admin, editor, author
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Permissions Section -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label mb-0">Permissions</label>
+                </div>
+                <div class="permissions-container">
+                  {
+                    modules.map((module) => (
+                      <div class="module-section mb-3" id={`module_${module.id}`}>
+                        <div class="card border rounded p-0">
+                          <div class="card-header border-bottom px-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                              <div class="form-check">
+                                <input
+                                  class="form-check-input toggle-module"
+                                  type="checkbox"
+                                  id={`module_toggle_${module.id}`}
+                                  data-module-id={module.id}
+                                />
+                                <label
+                                  class="form-check-label fw-medium"
+                                  for={`module_toggle_${module.id}`}
+                                >
+                                  {module.name}
+                                </label>
+                              </div>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary toggle-module"
+                                data-module-id={module.id}
+                                data-expanded="false"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Expand All Permissions"
+                              >
+                                <i class="ri-add-line me-md-1" />
+                                <span class="d-none d-md-inline">Expand All</span>
+                              </button>
+                            </div>
+                          </div>
+                          <div class="card-body py-2">
+                            <div class="permission-groups d-flex flex-column flex-md-row flex-wrap">
+                              {module.groups.map((group) => (
+                                <div
+                                  class="col-12 col-md-6 permission-group px-2 mb-3"
+                                  id={`group_${group.id}`}
+                                >
+                                  <div class="card rounded px-2 py-1">
+                                    <div class="card-header d-flex flex-row py-1 justify-content-between align-items-center border-0">
+                                      <div class="form-check">
+                                        <input
+                                          class="form-check-input toggle-group"
+                                          type="checkbox"
+                                          id={`group_toggle_${group.id}`}
+                                          data-group-id={group.id}
+                                        />
+                                        <label
+                                          class="form-check-label fw-medium"
+                                          for={`group_toggle_${group.id}`}
+                                        >
+                                          {group.name}
+                                        </label>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        class="btn btn-outline-primary toggle-permissions mb-0"
+                                        data-group-id={group.id}
+                                        title="Toggle Group Permissions"
+                                      >
+                                        <i class="ri-add-line" />
+                                      </button>
+                                    </div>
+                                    <div
+                                      class="permission-items border-top pb-3 ps-4 collapse"
+                                      id={`permissions_${group.id}`}
+                                    >
+                                      {group.permissions.map((permission) => (
+                                        <div class="permission-item form-check">
+                                          <input
+                                            class="form-check-input permission-checkbox"
+                                            type="checkbox"
+                                            id={`permission_${permission.id}`}
+                                            name={`permissions[]`}
+                                            value={permission.id}
+                                          />
+                                          <label
+                                            class="form-check-label"
+                                            for={`permission_${permission.id}`}
+                                          >
+                                            {permission.name}
+                                          </label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Status -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="status" class="form-label"
+                    >Status <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="status" name="status" required>
+                    <option value="Active" selected>Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <!-- Form Actions -->
+            <div class="d-flex flex-column flex-lg-row justify-content-end gap-2">
+              <a
+                href={getPathPrefix('/roles-permissions/roles/list')}
+                class="btn btn-outline-secondary">Cancel</a
+              >
+              <button type="submit" class="btn btn-primary">Create Role</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</AdminLayout>

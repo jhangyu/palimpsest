@@ -1,0 +1,68 @@
+/* ==========================================================================
+   Accordion Components
+   ========================================================================== */
+
+.accordion {
+  .accordion-button {
+    font-weight: 500;
+
+    &::after {
+      order: -1; // Move the icon to the left
+      margin-right: 10px;
+      margin-left: 0;
+      content: '';
+    }
+
+    &:not(.collapsed) {
+      color: var(--bs-primary);
+      background-color: var(--bs-accordion-btn-bg);
+    }
+
+    &.collapsed:hover {
+      color: var(--bs-primary);
+    }
+  }
+}
+
+.accordion-icon,
+.accordion-without-arrow {
+  .accordion-button {
+    &::after {
+      content: none !important; // This removes the arrow
+    }
+  }
+}
+
+.indicator-accordion {
+  .accordion-button {
+    position: relative;
+    padding-right: 2.5rem; // space for icon
+    &::after {
+      display: none; // hide default arrow
+    }
+
+    .accordion-icon {
+      position: absolute;
+      top: 50%;
+      right: 1rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      transform: translateY(-50%);
+
+      &::before {
+        display: inline-block;
+        font-size: 2.3rem;
+        font-weight: 300;
+        content: '+';
+      }
+    }
+
+    &.collapsed .accordion-icon::before {
+      content: '+';
+    }
+
+    &:not(.collapsed) .accordion-icon::before {
+      content: '–';
+    }
+  }
+}

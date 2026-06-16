@@ -1,0 +1,173 @@
+// Table of Contents (TOC) Component
+// Uses Bootstrap's scrollspy functionality
+
+.toc {
+  top: 20px;
+  /* stylelint-disable function-disallowed-list */
+  max-height: calc(100vh - 120px); // Prevent TOC from being too long
+  /* stylelint-enable function-disallowed-list */
+  padding: 0.75rem;
+  overflow-y: auto; // Add scrollbar if needed
+  font-size: 0.95rem;
+
+  // Custom scrollbar styling
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--bs-border-color);
+    border-radius: 4px;
+  }
+
+  // When topbar is sticky, adjust position
+  &.with-sticky-topbar {
+    /* stylelint-disable function-disallowed-list */
+    top: calc(var(--topbar-height) + 20px);
+    max-height: calc(100vh - var(--topbar-height) - 40px);
+    /* stylelint-enable function-disallowed-list */
+  }
+
+  // Title styling
+  .fw-bold {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.25rem 0;
+    margin: -0.25rem 0;
+    color: var(--bs-heading-color);
+    background-color: var(--bs-body-bg);
+  }
+
+  hr {
+    position: sticky;
+    top: 2rem;
+    z-index: 1;
+    margin: 0.5rem 0;
+    background-color: var(--bs-body-bg);
+  }
+
+  // Navigation list
+  .nav {
+    --bs-nav-link-padding-x: 0.5rem;
+    --bs-nav-link-padding-y: 0.375rem;
+    position: relative;
+  }
+
+  // Navigation links styling
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: var(--bs-nav-link-padding-y) var(--bs-nav-link-padding-x);
+    margin: 1px 0;
+    line-height: 1.4;
+    color: var(--bs-secondary-color);
+    border-left: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+
+    // Hover state
+    &:hover {
+      color: var(--bs-primary);
+      text-decoration: none;
+      background-color: rgb(var(--bs-primary-rgb), 0.05);
+    }
+
+    // Active state
+    &.active {
+      font-weight: 500;
+      color: var(--bs-primary);
+      background-color: rgb(var(--bs-primary-rgb), 0.05);
+      border-left-color: var(--bs-primary);
+
+      &::before {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -2px;
+        width: 2px;
+        content: '';
+        background-color: var(--bs-primary);
+      }
+    }
+
+    // Small variant for sub-items
+    &.small {
+      font-size: 0.875rem;
+    }
+
+    // Indentation levels with improved visibility
+    &[data-level='2'] {
+      font-weight: 500;
+    }
+
+    &[data-level='3'] {
+      padding-left: 1.5rem;
+      font-size: 0.875rem;
+
+      &::after {
+        position: absolute;
+        top: 50%;
+        left: 0.5rem;
+        width: 0.5rem;
+        height: 1px;
+        content: '';
+        background-color: var(--bs-border-color);
+        opacity: 0.5;
+      }
+    }
+
+    &[data-level='4'] {
+      padding-left: 2.5rem;
+      font-size: 0.875rem;
+
+      &::after {
+        position: absolute;
+        top: 50%;
+        left: 1.5rem;
+        width: 0.5rem;
+        height: 1px;
+        content: '';
+        background-color: var(--bs-border-color);
+        opacity: 0.5;
+      }
+    }
+
+    &[data-level='5'] {
+      padding-left: 3.5rem;
+      font-size: 0.875rem;
+    }
+
+    &[data-level='6'] {
+      padding-left: 4.5rem;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+// Dark mode adjustments
+[data-bs-theme='dark'] {
+  .toc {
+    .nav-link {
+      &:hover {
+        background-color: rgb(var(--bs-primary-rgb), 0.15);
+      }
+
+      &.active {
+        background-color: rgb(var(--bs-primary-rgb), 0.15);
+      }
+
+      &[data-level='3'],
+      &[data-level='4'] {
+        &::after {
+          background-color: var(--bs-border-color);
+          opacity: 0.3;
+        }
+      }
+    }
+  }
+}

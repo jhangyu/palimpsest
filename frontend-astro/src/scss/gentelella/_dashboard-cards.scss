@@ -1,0 +1,29 @@
+// ==========================================================================
+//   gentelella Dashboard Cards
+//   Namespace: .g-card
+// ==========================================================================
+
+.g-card {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--radius);
+}
+
+.g-card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.g-card-body {
+  padding: var(--space-5);
+}
+
+.g-card-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.g-card-stat {
+  padding: var(--space-5);
+  text-align: center;
+}

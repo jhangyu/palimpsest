@@ -1,0 +1,115 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  NODE: 18
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '${{ env.NODE }}'
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build distribution files
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          echo "📁 Contents of dist directory:"
+          ls -la dist/
+          echo ""
+          echo "🔍 Checking subdirectories:"
+          find dist/ -type f -name "*" | head -20
+          echo ""
+          echo "📊 Total files built:"
+          find dist/ -type f | wc -l
+
+      - name: Zip distribution files
+        run: |
+          echo "🗜️ Creating zip file..."
+          cd dist
+          zip -r ../astero-admin-${{env.RELEASE_VERSION}}.zip . -x "*.DS_Store" "*/.DS_Store"
+          cd ..
+          echo "✅ Zip file created:"
+          ls -la astero-admin-${{env.RELEASE_VERSION}}.zip
+
+      - name: Generate awesome changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configurationJson: |
+            {
+              "template": "## 🚀 What's New in ${{env.RELEASE_VERSION}}\n\n#{{CHANGELOG}}\n\n---\n\n### 📊 Release Stats\n- **🔧 Changes:** #{{CHANGES}} lines\n- **📝 Commits:** #{{COMMITS}}\n- **👥 Contributors:** #{{CONTRIBUTORS}}\n- **📅 Days since last release:** #{{DAYS_SINCE}}\n\n#{{UNCATEGORIZED}}",
+              "categories": [
+                {
+                  "title": "## 🎉 New Features",
+                  "labels": ["feature", "enhancement", "feat"]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes",
+                  "labels": ["bug", "fix", "hotfix"]
+                },
+                {
+                  "title": "## 🔧 Improvements",
+                  "labels": ["improvement", "refactor", "perf"]
+                },
+                {
+                  "title": "## 📚 Documentation",
+                  "labels": ["documentation", "docs"]
+                },
+                {
+                  "title": "## 🧹 Maintenance",
+                  "labels": ["chore", "maintenance", "dependencies"]
+                },
+                {
+                  "title": "## 🔐 Security",
+                  "labels": ["security"]
+                }
+              ],
+              "ignore_labels": ["duplicate", "question", "invalid", "wontfix", "skip-changelog"],
+              "sort": {
+                "order": "DESC",
+                "on_property": "mergedAt"
+              },
+              "pr_template": "- **#{{TITLE}}** by @#{{AUTHOR}} in ##{{NUMBER}}\n",
+              "empty_template": "- No changes in this category",
+              "trim_values": true,
+              "max_pull_requests": 200,
+              "fetchReleaseInformation": true,
+              "fetchReviewers": true
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: |
+            astero-admin-${{env.RELEASE_VERSION}}.zip
+          draft: false
+          prerelease: false

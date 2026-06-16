@@ -1,0 +1,116 @@
+---
+import { getPathPrefix } from '../../utils/path.js'
+
+// Determine the target redirect URL with environment-specific path prefix
+const redirectTargetPath = getPathPrefix('/dashboard')
+
+// Configuration for meta refresh (in seconds)
+const REDIRECT_DELAY = 0
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="refresh" content={`${REDIRECT_DELAY};url=${redirectTargetPath}`} />
+    <title>Welcome to Astero Admin Dashboard</title>
+    <style>
+      /* Base styles for the redirect page */
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Oxygen,
+          Ubuntu,
+          Cantarell,
+          'Open Sans',
+          'Helvetica Neue',
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 1.25rem;
+        text-align: center;
+        color: var(--bs-gray-800, #333);
+        background-color: var(--bs-gray-100, #f8f9fa);
+      }
+
+      /* Loading animation styles */
+      .loading-spinner {
+        border: 0.25rem solid var(--bs-gray-200, #f3f3f3);
+        border-top: 0.25rem solid var(--bs-primary, #3498db);
+        border-radius: 50%;
+        width: 2.5rem;
+        height: 2.5rem;
+        animation: spinAnimation 1s linear infinite;
+        margin-bottom: 1.25rem;
+      }
+
+      /* Spinner rotation animation */
+      @keyframes spinAnimation {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Text content styles */
+      .redirect-title {
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+        color: var(--bs-gray-900, #212529);
+      }
+
+      .redirect-message {
+        margin: 0.625rem 0;
+        color: var(--bs-gray-700, #495057);
+      }
+
+      /* Link styles */
+      .redirect-link {
+        color: var(--bs-primary, #3498db);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+      }
+
+      .redirect-link:hover {
+        text-decoration: underline;
+        color: var(--bs-primary-dark, #2773a5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading-spinner" role="status">
+      <span class="visually-hidden"></span>
+    </div>
+    <h1 class="redirect-title">Welcome to Astero Admin Dashboard</h1>
+    <p class="redirect-message">
+      Redirecting you to the dashboard...
+      <br />
+      <small>
+        If you are not redirected automatically,
+        <a href={redirectTargetPath} class="redirect-link">
+          <i class="ri-arrow-right-line"></i> click here
+        </a>
+      </small>
+    </p>
+
+    <script is:inline define:vars={{ redirectTargetPath }}>
+      // Fallback JavaScript redirection if meta refresh fails
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          window.location.href = redirectTargetPath
+        }, 100) // Small delay to ensure smooth transition
+      })
+    </script>
+  </body>
+</html>

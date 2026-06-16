@@ -1,0 +1,1040 @@
+---
+import { getPathPrefix } from '../../../../../utils/path.js'
+
+interface Props {
+  currentPath: string
+}
+
+const { currentPath } = Astro.props
+
+// Helper functions
+const isActive = (path: string) => currentPath === path
+const isActiveParent = (path: string) => currentPath.startsWith(path)
+---
+
+<nav class="nav-tree">
+  <ul class="list-unstyled">
+    <!-- Overview Section -->
+    <li class="nav-section">
+      <span class="nav-section-text text-uppercase px-2">Overview</span>
+    </li>
+    <!-- Dashboard -->
+    <li class={`nav-item ${isActive('dashboard') ? 'active' : ''}`}>
+      <a class="nav-link" href={getPathPrefix('/dashboard')}>
+        <i class="ri-dashboard-line"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- Analytics -->
+    <li class={`nav-item ${isActive('analytics') ? 'active' : ''}`}>
+      <a class="nav-link" href={getPathPrefix('/analytics')}>
+        <i class="ri-line-chart-line"></i>
+        <span>Analytics</span>
+      </a>
+    </li>
+
+    <!-- Feeds Section -->
+    <li class="nav-section">
+      <span class="nav-section-text text-uppercase px-2">Feeds</span>
+    </li>
+    <li class={`nav-item ${isActive('feeds/add') ? 'active' : ''}`}>
+      <a class="nav-link" href={getPathPrefix('/feeds/add')}>
+        <i class="ri-add-circle-line"></i>
+        <span>Add Feed</span>
+      </a>
+    </li>
+    <li class={`nav-item ${isActive('feeds/edit') ? 'active' : ''}`}>
+      <a class="nav-link" href={getPathPrefix('/feeds/edit')}>
+        <i class="ri-settings-3-line"></i>
+        <span>Manage Feeds</span>
+      </a>
+    </li>
+
+    <!-- Interface Section -->
+    <li class={`nav-item has-submenu parent ${isActiveParent('interface') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
+        <i class="ri-layout-grid-line"></i>
+        <span>Interface</span>
+        <i class="ri-arrow-right-s-line"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('interface/accordion') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/accordion')}>
+            <span>Accordion</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/alerts') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/alerts')}>
+            <span>Alerts</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/badges') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/badges')}>
+            <span>Badges</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/breadcrumb') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/breadcrumb')}>
+            <span>Breadcrumb</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/buttons') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/buttons')}>
+            <span>Buttons</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/button-group') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/button-group')}>
+            <span>Button Group</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/cards') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/cards')}>
+            <span>Cards</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/carousel') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/carousel')}>
+            <span>Carousel</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/close-button') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/close-button')}>
+            <span>Close Button</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/collapse') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/collapse')}>
+            <span>Collapse</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/colors') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/colors')}>
+            <span>Colors</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/dropdowns') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/dropdowns')}>
+            <span>Dropdowns</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/info-box') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/info-box')}>
+            <span>Info Box</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/list-group') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/list-group')}>
+            <span>List Group</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/modal') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/modal')}>
+            <span>Modal</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/navbar') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/navbar')}>
+            <span>Navbar</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/navs-and-tabs') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/navs-and-tabs')}>
+            <span>Navs and tabs</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/offcanvas') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/offcanvas')}>
+            <span>Offcanvas</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/pagination') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/pagination')}>
+            <span>Pagination</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/placeholders') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/placeholders')}>
+            <span>Placeholders</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/popovers') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/popovers')}>
+            <span>Popovers</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/progress') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/progress')}>
+            <span>Progress</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/scrollspy') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/scrollspy')}>
+            <span>Scrollspy</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/small-box') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/small-box')}>
+            <span>Small Box</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/spinners') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/spinners')}>
+            <span>Spinners</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/text-animations') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/text-animations')}>
+            <span>Text Animations</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/toasts') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/toasts')}>
+            <span>Toasts</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/tooltips') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/tooltips')}>
+            <span>Tooltips</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('interface/typography') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/interface/typography')}>
+            <span>Typography</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Forms And Tables Section -->
+    <li class="nav-section">
+      <span class="nav-section-text text-uppercase px-2">Forms And Tables</span>
+    </li>
+
+    <!-- Forms Section -->
+    <li class={`nav-item has-submenu parent ${isActiveParent('forms') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
+        <i class="ri-file-list-3-line"></i>
+        <span>Forms</span>
+        <i class="ri-arrow-right-s-line ms-auto"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('forms/form-controls') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/form-controls')}>
+            <span>Form controls</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('forms/select') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/select')}>
+            <span>Select</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('forms/radio-checkbox') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/radio-checkbox')}>
+            <span>Radio & Checkbox</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('forms/switches') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/switches')}>
+            <span>Switches</span>
+          </a>
+        </li>
+
+        <li class={`nav-item ${isActive('forms/vertical') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/vertical')}>
+            <span>Vertical</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('forms/horizontal') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/horizontal')}>
+            <span>Horizontal</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('forms/validation') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/forms/validation')}>
+            <span>Validation</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Tables Section -->
+    <li class={`nav-item has-submenu parent ${isActiveParent('tables') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
+        <i class="ri-table-line"></i>
+        <span>Tables</span>
+        <i class="ri-arrow-right-s-line ms-auto"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('tables/basic') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/tables/basic')}>
+            <span>Basic Tables</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('tables/enhanced') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/tables/enhanced')}>
+            <span>Enhanced Tables</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('tables/advanced') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/tables/advanced')}>
+            <span>Advanced Tables</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('tables/datatable') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/tables/datatable')}>
+            <span>Datatable</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Pages Section -->
+    <li class="nav-section">
+      <span class="nav-section-text text-uppercase px-2">Pages</span>
+    </li>
+
+    <!-- Users Section -->
+    <li class={`nav-item has-submenu parent ${isActiveParent('users') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
+        <i class="ri-user-line"></i>
+        <span>Users</span>
+        <i class="ri-arrow-right-s-line"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('users/add') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/users/add')}>
+            <span>Add User</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('users/list') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/users/list')}>
+            <span>List Users</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('users/profile') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/users/profile')}>
+            <span>Profile</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('users/security') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/users/security')}>
+            <span>Security</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Role & Permissions Section -->
+    <li
+      class={`nav-item has-submenu parent ${isActiveParent('roles-permissions') ? 'active open' : ''}`}
+    >
+      <a class="nav-link" href="#">
+        <i class="ri-shield-user-line"></i>
+        <span>Roles & Permissions</span>
+        <i class="ri-arrow-right-s-line"></i>
+      </a>
+      <ul class="submenu">
+        <li
+          class={`nav-item has-submenu ${isActiveParent('roles-permissions/roles') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Roles</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('roles-permissions/roles/list') ? 'active' : ''}`}>
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/roles/list')}>
+                <span>List</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('roles-permissions/roles/add') ? 'active' : ''}`}>
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/roles/add')}>
+                <span>Add</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li
+          class={`nav-item has-submenu ${isActiveParent('roles-permissions/permissions') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Permissions</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li
+              class={`nav-item ${isActive('roles-permissions/permissions/list') ? 'active' : ''}`}
+            >
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/permissions/list')}>
+                <span>List</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('roles-permissions/permissions/add') ? 'active' : ''}`}>
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/permissions/add')}>
+                <span>Add</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li
+          class={`nav-item has-submenu ${isActiveParent('roles-permissions/groups') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Groups</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('roles-permissions/groups/list') ? 'active' : ''}`}>
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/groups/list')}>
+                <span>List</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('roles-permissions/groups/add') ? 'active' : ''}`}>
+              <a class="nav-link" href={getPathPrefix('/roles-permissions/groups/add')}>
+                <span>Add</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Authentication Section -->
+    <li
+      class={`nav-item has-submenu parent ${isActiveParent('authentication') ? 'active open' : ''}`}
+    >
+      <a class="nav-link" href="#">
+        <i class="ri-lock-line"></i>
+        <span>Authentication</span>
+        <i class="ri-arrow-right-s-line"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item has-submenu ${isActive('authentication/basic') ? 'active open' : ''}`}>
+          <a class="nav-link" href="#">
+            <span>Basic</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('authentication/basic/login') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/login')}
+                target="_blank"
+              >
+                <span>Login</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/basic/register') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/register')}
+                target="_blank"
+              >
+                <span>Register</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/basic/verify-email') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/verify-email')}
+                target="_blank"
+              >
+                <span>Verify Email</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/basic/forgot-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/forgot-password')}
+                target="_blank"
+              >
+                <span>Forgot Password</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/basic/link-sent') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/link-sent')}
+                target="_blank"
+              >
+                <span>Link Sent</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/basic/new-password') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/new-password')}
+                target="_blank"
+              >
+                <span>New Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/basic/reset-successfully') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/reset-successfully')}
+                target="_blank"
+              >
+                <span>Reset Successfully</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/basic/lock-screen') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/lock-screen')}
+                target="_blank"
+              >
+                <span>Lock Screen</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/basic/2-step-verification') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/2-step-verification')}
+                target="_blank"
+              >
+                <span>2-Step Verification</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/basic/2-step-verification-code') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/basic/2-step-verification-code')}
+                target="_blank"
+              >
+                <span>Verification Code</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li
+          class={`nav-item has-submenu ${isActive('authentication/modern') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Modern</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('authentication/modern/login') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/login')}
+                target="_blank"
+              >
+                <span>Login</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/modern/register') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/register')}
+                target="_blank"
+              >
+                <span>Register</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/verify-email') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/verify-email')}
+                target="_blank"
+              >
+                <span>Verify Email</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/forgot-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/forgot-password')}
+                target="_blank"
+              >
+                <span>Forgot Password</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/modern/link-sent') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/link-sent')}
+                target="_blank"
+              >
+                <span>Link Sent</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/new-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/new-password')}
+                target="_blank"
+              >
+                <span>New Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/reset-successfully') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/reset-successfully')}
+                target="_blank"
+              >
+                <span>Reset Successfully</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/modern/lock-screen') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/lock-screen')}
+                target="_blank"
+              >
+                <span>Lock Screen</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/2-step-verification') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/2-step-verification')}
+                target="_blank"
+              >
+                <span>2-Step Verification</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/modern/2-step-verification-code') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/modern/2-step-verification-code')}
+                target="_blank"
+              >
+                <span>Verification Code</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li
+          class={`nav-item has-submenu ${isActive('authentication/social') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Social</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('authentication/social/login') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/login')}
+                target="_blank"
+              >
+                <span>Login</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/social/register') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/register')}
+                target="_blank"
+              >
+                <span>Register</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/verify-email') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/verify-email')}
+                target="_blank"
+              >
+                <span>Verify Email</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/forgot-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/forgot-password')}
+                target="_blank"
+              >
+                <span>Forgot Password</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/social/link-sent') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/link-sent')}
+                target="_blank"
+              >
+                <span>Link Sent</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/new-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/new-password')}
+                target="_blank"
+              >
+                <span>New Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/reset-successfully') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/reset-successfully')}
+                target="_blank"
+              >
+                <span>Reset Successfully</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/social/lock-screen') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/lock-screen')}
+                target="_blank"
+              >
+                <span>Lock Screen</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/2-step-verification') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/2-step-verification')}
+                target="_blank"
+              >
+                <span>2-Step Verification</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/social/2-step-verification-code') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/social/2-step-verification-code')}
+                target="_blank"
+              >
+                <span>Verification Code</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li class={`nav-item has-submenu ${isActive('authentication/split') ? 'active open' : ''}`}>
+          <a class="nav-link" href="#">
+            <span>Split</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li class={`nav-item ${isActive('authentication/split/login') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/login')}
+                target="_blank"
+              >
+                <span>Login</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/split/register') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/register')}
+                target="_blank"
+              >
+                <span>Register</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/split/verify-email') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/verify-email')}
+                target="_blank"
+              >
+                <span>Verify Email</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/split/forgot-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/forgot-password')}
+                target="_blank"
+              >
+                <span>Forgot Password</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/split/link-sent') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/link-sent')}
+                target="_blank"
+              >
+                <span>Link Sent</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/split/new-password') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/new-password')}
+                target="_blank"
+              >
+                <span>New Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/split/reset-successfully') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/reset-successfully')}
+                target="_blank"
+              >
+                <span>Reset Successfully</span>
+              </a>
+            </li>
+            <li class={`nav-item ${isActive('authentication/split/lock-screen') ? 'active' : ''}`}>
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/lock-screen')}
+                target="_blank"
+              >
+                <span>Lock Screen</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/split/2-step-verification') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/2-step-verification')}
+                target="_blank"
+              >
+                <span>2-Step Verification</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/split/2-step-verification-code') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/split/2-step-verification-code')}
+                target="_blank"
+              >
+                <span>Verification Code</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li
+          class={`nav-item has-submenu ${isActive('authentication/compact-split') ? 'active open' : ''}`}
+        >
+          <a class="nav-link" href="#">
+            <span>Compact Split</span>
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+          <ul class="submenu">
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/login') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/login')}
+                target="_blank"
+              >
+                <span>Login</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/register') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/register')}
+                target="_blank"
+              >
+                <span>Register</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/verify-email') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/verify-email')}
+                target="_blank"
+              >
+                <span>Verify Email</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/forgot-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/forgot-password')}
+                target="_blank"
+              >
+                <span>Forgot Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/link-sent') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/link-sent')}
+                target="_blank"
+              >
+                <span>Link Sent</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/new-password') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/new-password')}
+                target="_blank"
+              >
+                <span>New Password</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/reset-successfully') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/reset-successfully')}
+                target="_blank"
+              >
+                <span>Reset Successfully</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/lock-screen') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/lock-screen')}
+                target="_blank"
+              >
+                <span>Lock Screen</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/2-step-verification') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/2-step-verification')}
+                target="_blank"
+              >
+                <span>2-Step Verification</span>
+              </a>
+            </li>
+            <li
+              class={`nav-item ${isActive('authentication/compact-split/2-step-verification-code') ? 'active' : ''}`}
+            >
+              <a
+                class="nav-link"
+                href={getPathPrefix('/authentication/compact-split/2-step-verification-code')}
+                target="_blank"
+              >
+                <span>Verification Code</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Other Pages Section -->
+    <li class={`nav-item has-submenu parent ${isActiveParent('others') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
+        <i class="ri-pages-line"></i>
+        <span>Other Pages</span>
+        <i class="ri-arrow-right-s-line"></i>
+      </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('others/coming-soon') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/coming-soon')}>
+            <span>Coming Soon</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/maintenance') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/maintenance')}>
+            <span>Maintenance</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/password-protected') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/password-protected')}>
+            <span>Password Protected</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/401') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/401')}>
+            <span>401 - Unauthorized</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/error') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/error')}>
+            <span>404 - Page Not Found</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/500') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/500')}>
+            <span>500 - Internal Server Error</span>
+          </a>
+        </li>
+        <li class={`nav-item ${isActive('others/rtl-demo') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/others/rtl-demo')}>
+            <span>RTL Support Demo</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Settings Section -->
+    <li class={`nav-item ${isActive('settings') ? 'active' : ''}`}>
+      <a class="nav-link" href={getPathPrefix('/settings')}>
+        <i class="ri-settings-3-line"></i>
+        <span>Settings</span>
+      </a>
+    </li>
+
+    <!-- GitHub Repository Link -->
+    <li class="nav-item">
+      <a
+        class="nav-link"
+        href="https://github.com/asterodigital/bootstrap-admin-template"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <i class="ri-github-line"></i>
+        <span>GitHub Repository</span>
+      </a>
+    </li>
+  </ul>
+</nav>

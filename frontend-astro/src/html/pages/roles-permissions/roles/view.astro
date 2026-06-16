@@ -1,0 +1,164 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../utils/path.js'
+import permissionsData from '../../../../assets/data/permissions.json'
+
+const pageHeaderProps: PageHeaderProps = {
+  title: 'View Role',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions'), class: '' },
+    { label: 'Roles', href: getPathPrefix('/roles-permissions/roles/list'), class: '' }
+  ],
+  actions: [
+    {
+      label: 'Back',
+      href: getPathPrefix('/roles-permissions/roles/list'),
+      type: 'link',
+      variant: 'btn-outline-primary',
+      icon: 'ri-arrow-left-s-line',
+      class: ''
+    }
+  ]
+}
+
+const { modules } = permissionsData
+
+const selectedPermissions = [
+  { id: 'view_pages', name: 'View Pages' },
+  { id: 'add_pages', name: 'Create New Pages' },
+  { id: 'edit_pages', name: 'Edit Pages' },
+  { id: 'delete_pages', name: 'Delete Pages' },
+  { id: 'restore_pages', name: 'Restore Deleted Pages' },
+  { id: 'publish_pages', name: 'Publish/Unpublish Pages' },
+  { id: 'view_posts', name: 'View Posts' },
+  { id: 'add_posts', name: 'Create New Posts' },
+  { id: 'edit_posts', name: 'Edit Posts' },
+  { id: 'delete_posts', name: 'Delete Posts' },
+  { id: 'restore_posts', name: 'Restore Deleted Posts' },
+  { id: 'publish_posts', name: 'Publish/Unpublish Posts' },
+  { id: 'view_media', name: 'View Media Files' },
+  { id: 'upload_media', name: 'Upload Media Files' },
+  { id: 'edit_media', name: 'Edit Media Details' },
+  { id: 'delete_media', name: 'Delete Media Files' },
+  { id: 'restore_media', name: 'Restore Deleted Media' },
+  { id: 'view_categories', name: 'View Categories' },
+  { id: 'add_categories', name: 'Create Categories' },
+  { id: 'edit_categories', name: 'Edit Categories' },
+  { id: 'delete_categories', name: 'Delete Categories' },
+  { id: 'restore_categories', name: 'Restore Categories' },
+  { id: 'view_seo_settings', name: 'View SEO Settings' },
+  { id: 'edit_seo_settings', name: 'Edit SEO Settings' },
+  { id: 'manage_meta_tags', name: 'Manage Meta Tags' },
+  { id: 'manage_sitemaps', name: 'Manage Sitemaps' },
+  { id: 'view_redirects', name: 'View Redirects' },
+  { id: 'add_redirects', name: 'Add Redirects' },
+  { id: 'edit_redirects', name: 'Edit Redirects' },
+  { id: 'delete_redirects', name: 'Delete Redirects' },
+  { id: 'view_analytics', name: 'View Analytics Dashboard' },
+  { id: 'export_analytics', name: 'Export Analytics Data' },
+  { id: 'manage_analytics_settings', name: 'Manage Analytics Settings' },
+  { id: 'view_users', name: 'View Users' },
+  { id: 'add_users', name: 'Create Users' },
+  { id: 'edit_users', name: 'Edit Users' },
+  { id: 'delete_users', name: 'Delete Users' },
+  { id: 'restore_users', name: 'Restore Users' },
+  { id: 'block_users', name: 'Block/Unblock Users' },
+  { id: 'view_roles', name: 'View Roles' },
+  { id: 'add_roles', name: 'Create Roles' },
+  { id: 'edit_roles', name: 'Edit Roles' },
+  { id: 'delete_roles', name: 'Delete Roles' },
+  { id: 'assign_permissions', name: 'Assign Role Permissions' },
+  { id: 'view_settings', name: 'View System Settings' },
+  { id: 'edit_settings', name: 'Edit System Settings' },
+  { id: 'manage_backups', name: 'Manage System Backups' },
+  { id: 'manage_cache', name: 'Manage System Cache' }
+]
+---
+
+<AdminLayout title="View Role" description="View Role" currentPath="roles-permissions/roles/view">
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col-12 col-md-3 mb-3">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="fw-semibold text-capitalize mb-2">administrator</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-12">
+              <!-- display total users with this role -->
+              <div class="card-text mb-2">
+                <strong>Users:</strong>
+                <span class="text-muted ms-2">2</span>
+              </div>
+              <div class="card-text mb-2">
+                <strong>Granted Permissions:</strong>
+                <span class="text-muted">48</span>
+              </div>
+              <div class="card-text mb-2">
+                <strong>Added On:</strong>
+                <span class="text-muted">10/26/2023 18:45</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-end">
+          <a
+            href={getPathPrefix('/roles-permissions/roles/edit')}
+            class="btn btn-sm btn-primary px-3 py-1">Edit Role</a
+          >
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-9">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="fw-semibold text-capitalize mb-2">Granted Permissions</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-12">
+              {
+                modules.map((module) => (
+                  <div class="permission-module mb-3">
+                    <div class="card-text mb-2 border-bottom pb-2 d-flex flex-column">
+                      <strong>{module.name}</strong>
+                    </div>
+                    {module.groups.map((group) => (
+                      <div class="permission-group ms-3 mb-3">
+                        <div class="card-text mb-2 border-bottom pb-0 d-flex flex-column">
+                          <span class="fw-semibold">{group.name}</span>
+                        </div>
+                        <div class="permission-items ms-3 d-flex flex-row flex-wrap gap-4">
+                          {group.permissions.map((permission) => (
+                            <div class="permission-item d-flex align-items-center">
+                              {selectedPermissions.some(
+                                (selectedPermission) => selectedPermission.id === permission.id
+                              ) ? (
+                                <div class="permission-item-icon me-1 text-success">
+                                  <i class="ri-checkbox-circle-fill" />
+                                </div>
+                              ) : (
+                                <div class="permission-item-icon me-1 text-danger">
+                                  <i class="ri-close-circle-fill" />
+                                </div>
+                              )}
+                              <div class="permission-item-name">{permission.name}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

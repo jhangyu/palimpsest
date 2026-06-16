@@ -1,0 +1,67 @@
+---
+import { ViewTransitions } from 'astro:transitions'
+import Head from './partials/_head.astro'
+import TopNav from './partials/_topbar.astro'
+import Sidebar from './partials/_sidebar.astro'
+import Footer from './partials/_footer.astro'
+import Scripts from './partials/_scripts.astro'
+import CommandPalette from '../../components/app/CommandPalette.astro'
+
+interface Props {
+  title: string
+  description?: string
+  currentPath?: string
+  enableComponentPreview?: boolean
+  pageScript?: string
+  pageCss?: string
+  isRtl?: boolean
+}
+
+const {
+  title,
+  description,
+  currentPath,
+  enableComponentPreview = false,
+  pageScript,
+  pageCss,
+  isRtl = false
+} = Astro.props
+
+const pageSeo = {
+  title,
+  description: description || `${title} page of the admin dashboard`
+}
+
+const componentStatus = {
+  enableComponentPreview
+}
+---
+
+<!doctype html>
+<html lang="en" dir={isRtl ? 'rtl' : 'ltr'}>
+  <head>
+    <Head {...pageSeo} {pageCss} {...componentStatus} isRtl={isRtl} />
+    <ViewTransitions />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Overlay -->
+      <div class="sidebar-overlay"></div>
+      <Sidebar currentPath={currentPath || Astro.url.pathname.substring(1)} />
+      <!-- Main Content -->
+      <main class="main-content px-2">
+        <TopNav />
+        <!-- Page Content -->
+        <div class="content-wrapper py-4">
+          <div class="container">
+            <slot />
+          </div>
+        </div>
+        <Footer />
+      </main>
+    </div>
+    <!-- All Scripts -->
+    <Scripts {pageScript} {...componentStatus} />
+    <CommandPalette />
+  </body>
+</html>

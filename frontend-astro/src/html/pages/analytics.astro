@@ -1,0 +1,680 @@
+---
+import AdminLayout from '../layouts/admin/admin-layout.astro'
+import PageHeader from '../components/common/page-header.astro'
+import Chart from '../components/charts/Chart.astro'
+import { getPathPrefix } from '../../utils/path.js'
+
+const pageHeaderProps = {
+  title: 'Analytics Dashboard',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Analytics', class: 'active' }
+  ]
+}
+
+// Website Traffic Overview - bar chart data
+const trafficOverviewData = {
+  labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'],
+  datasets: [
+    { label: 'Organic Traffic', data: [40, 30, 20, 35, 65, 65, 35, 22, 52], color: '#198754' },
+    { label: 'Paid Traffic', data: [48, 65, 45, 65, 38, 35, 22, 65, 22], color: '#7533f9' }
+  ]
+}
+
+// Device Distribution - doughnut chart data
+const deviceDistributionData = {
+  items: [
+    { name: 'Desktop Users', value: 45, color: '#7533f9' },
+    { name: 'Mobile Users', value: 35, color: '#198754' },
+    { name: 'Tablet Users', value: 20, color: '#ffc107' }
+  ]
+}
+
+// Inbound Traffic Trend - line chart data (sparkline-style)
+const inboundTrendData = {
+  labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+  datasets: [
+    {
+      label: 'Inbound',
+      data: [600, 580, 590, 570, 580, 560, 550, 540, 530, 520, 510, 500],
+      color: '#dc3545'
+    }
+  ]
+}
+
+// Outbound Traffic Trend - line chart data (sparkline-style)
+const outboundTrendData = {
+  labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+  datasets: [
+    {
+      label: 'Outbound',
+      data: [1800, 1850, 1900, 1950, 1980, 2000, 2020, 2030, 2035, 2038, 2040, 2045],
+      color: '#198754'
+    }
+  ]
+}
+
+// User Growth Trends - line chart data
+const userGrowthData = {
+  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  datasets: [
+    {
+      label: 'Daily Active Users (DAU)',
+      data: [1200, 1350, 1250, 1400, 1300, 1450, 1500, 1550, 1600, 1650, 1700, 1800],
+      color: '#7533f9'
+    },
+    {
+      label: 'Weekly Active Users (WAU)',
+      data: [5500, 6000, 5800, 6200, 6100, 6400, 6600, 6800, 7000, 7200, 7400, 7600],
+      color: '#198754'
+    },
+    {
+      label: 'Monthly Active Users (MAU)',
+      data: [18000, 19500, 19000, 20000, 20500, 21000, 21500, 22000, 22500, 23000, 23500, 24000],
+      color: '#ffc107'
+    }
+  ]
+}
+
+// Daily Traffic Distribution - bar chart data
+const dailyTrafficData = {
+  labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  datasets: [
+    { label: 'Visits', data: [45, 82, 35, 93, 56, 68, 47], color: 'rgba(105, 108, 255, 1)' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Analytics Dashboard"
+  description="Comprehensive analytics dashboard showing key performance metrics and user engagement trends"
+  currentPath="analytics"
+>
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col">
+      <!-- Key Performance Metrics -->
+      <div class="row mb-4">
+        <div class="col-lg-3">
+          <div class="info-box info-box-outline info-box-outline-primary">
+            <div class="info-box-icon bg-primary">
+              <i class="ri-team-line"></i>
+            </div>
+            <div class="info-box-content">
+              <span class="info-box-text">Total Active Users</span>
+              <span class="info-box-number">24,850</span>
+              <div class="info-box-trend">
+                <i class="ri-arrow-up-line"></i> 12% increase from last month
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="info-box info-box-outline info-box-outline-success">
+            <div class="info-box-icon bg-success">
+              <i class="ri-pulse-line"></i>
+            </div>
+            <div class="info-box-content">
+              <span class="info-box-text">Current Active Sessions</span>
+              <span class="info-box-number">1,280</span>
+              <div class="info-box-trend">
+                <i class="ri-arrow-up-line"></i> 5% increase from last week
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="info-box info-box-outline info-box-outline-warning">
+            <div class="info-box-icon bg-warning">
+              <i class="ri-logout-circle-line"></i>
+            </div>
+            <div class="info-box-content">
+              <span class="info-box-text">Average Bounce Rate</span>
+              <span class="info-box-number">32.5%</span>
+              <div class="info-box-trend text-danger">
+                <i class="ri-arrow-down-line"></i> 2.3% higher than last week
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="info-box info-box-outline info-box-outline-info">
+            <div class="info-box-icon bg-info">
+              <i class="ri-timer-line"></i>
+            </div>
+            <div class="info-box-content">
+              <span class="info-box-text">Avg. Session Duration</span>
+              <span class="info-box-number">4m 38s</span>
+              <div class="info-box-trend">
+                <i class="ri-arrow-up-line"></i> 10% increase from last week
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traffic Overview and Device Distribution -->
+      <div class="row mb-4">
+        <div class="col-md-8">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Website Traffic Overview</h5>
+                <div class="text-muted small">30% growth compared to last year</div>
+              </div>
+              <Chart id="websiteVisitsChart" type="bar" data={trafficOverviewData} height="320px" />
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mt-4 mt-md-0">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Device Distribution</h5>
+              <Chart
+                id="usersByDeviceChart"
+                type="doughnut"
+                data={deviceDistributionData}
+                height="330px"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traffic Metrics Overview -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Traffic Metrics</h5>
+              </div>
+
+              <div class="mb-4">
+                <div class="small text-muted mb-1">Inbound Traffic</div>
+                <div class="d-flex align-items-center gap-2">
+                  <h3 class="mb-0">560</h3>
+                  <span class="badge bg-danger-subtle text-danger">
+                    <i class="ri-arrow-down-line"></i> 25% decrease
+                  </span>
+                </div>
+                <Chart id="inboundChart" type="line" data={inboundTrendData} height="50px" />
+              </div>
+
+              <div>
+                <div class="small text-muted mb-1">Outbound Traffic</div>
+                <div class="d-flex align-items-center gap-2">
+                  <h3 class="mb-0">2040</h3>
+                  <span class="badge bg-success-subtle text-success">
+                    <i class="ri-arrow-up-line"></i> 10% increase
+                  </span>
+                </div>
+                <Chart id="outboundChart" type="line" data={outboundTrendData} height="50px" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-9 mt-4 mt-md-0">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">User Growth Trends</h5>
+              <Chart id="activeUsersChart" type="line" data={userGrowthData} height="300px" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <!-- Daily Traffic Distribution -->
+        <div class="col-lg-4">
+          <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h5 class="card-title mb-1">Daily Traffic Distribution</h5>
+                  <p class="text-muted small mb-0">Total Weekly Visits: 424k</p>
+                </div>
+              </div>
+
+              <div class="flex-grow-1" style="min-height: 250px;">
+                <Chart id="visitsChart" type="bar" data={dailyTrafficData} height="250px" />
+              </div>
+
+              <div class="mt-4">
+                <div class="d-flex align-items-center">
+                  <span class="text-muted">Peak Traffic Day</span>
+                  <a href="#" class="ms-auto text-primary text-decoration-none">
+                    93k visits on Wednesday <i class="ri-arrow-right-line"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- User Activity Log -->
+        <div class="col-lg-8 mt-4 mt-lg-0">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Real-time User Activity</h5>
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>User Name</th>
+                      <th>Current Page</th>
+                      <th>Session Duration</th>
+                      <th>User Location</th>
+                      <th>Device Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>John Doe</td>
+                      <td>/dashboard</td>
+                      <td>5m 12s</td>
+                      <td>New York, USA</td>
+                      <td><i class="ri-computer-line"></i> Desktop</td>
+                    </tr>
+                    <tr>
+                      <td>Jane Smith</td>
+                      <td>/users/profile</td>
+                      <td>2m 45s</td>
+                      <td>London, UK</td>
+                      <td><i class="ri-smartphone-line"></i> Mobile</td>
+                    </tr>
+                    <tr>
+                      <td>Mike Johnson</td>
+                      <td>/analytics</td>
+                      <td>8m 30s</td>
+                      <td>Toronto, CA</td>
+                      <td><i class="ri-tablet-line"></i> Tablet</td>
+                    </tr>
+                    <tr>
+                      <td>Sarah Wilson</td>
+                      <td>/reports/sales</td>
+                      <td>4m 18s</td>
+                      <td>Sydney, AU</td>
+                      <td><i class="ri-computer-line"></i> Desktop</td>
+                    </tr>
+                    <tr>
+                      <td>Alex Chen</td>
+                      <td>/settings</td>
+                      <td>1m 55s</td>
+                      <td>Singapore, SG</td>
+                      <td><i class="ri-smartphone-line"></i> Mobile</td>
+                    </tr>
+                    <tr>
+                      <td>Emily Brown</td>
+                      <td>/products</td>
+                      <td>6m 40s</td>
+                      <td>Berlin, DE</td>
+                      <td><i class="ri-computer-line"></i> Desktop</td>
+                    </tr>
+                    <tr>
+                      <td>David Lee</td>
+                      <td>/customers</td>
+                      <td>3m 22s</td>
+                      <td>Tokyo, JP</td>
+                      <td><i class="ri-tablet-line"></i> Tablet</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-xl-8">
+          <div class="card h-100">
+            <div class="card-header">
+              <ul class="nav nav-pills p-2">
+                <li class="nav-item">
+                  <a class="nav-link active" id="osTab" data-bs-toggle="pill" href="#osContent"
+                    >Operating Systems</a
+                  >
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="browserTab" data-bs-toggle="pill" href="#browserContent"
+                    >Web Browsers</a
+                  >
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="devicesTab" data-bs-toggle="pill" href="#devicesContent"
+                    >Device Types</a
+                  >
+                </li>
+              </ul>
+            </div>
+            <div class="card-body">
+              <div class="tab-content">
+                <div class="tab-pane fade show active" id="osContent">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Operating System</th>
+                        <th>Total Visits</th>
+                        <th>Market Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1</td>
+                        <td><i class="ri-windows-fill fs-5 me-2"></i> Windows</td>
+                        <td>1,245,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 33%;"
+                              role="progressbar"
+                              aria-valuenow="33"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2</td>
+                        <td><i class="ri-apple-fill fs-5 me-2"></i> macOS</td>
+                        <td>820,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 22%;"
+                              role="progressbar"
+                              aria-valuenow="22"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>3</td>
+                        <td><i class="ri-android-fill fs-5 me-2"></i> Android</td>
+                        <td>1,590,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 43%;"
+                              role="progressbar"
+                              aria-valuenow="43"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>4</td>
+                        <td><i class="ri-ubuntu-fill fs-5 me-2"></i> Ubuntu</td>
+                        <td>250,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 6%;"
+                              role="progressbar"
+                              aria-valuenow="6"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="tab-pane fade" id="browserContent">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Web Browser</th>
+                        <th>Total Visits</th>
+                        <th>Market Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1</td>
+                        <td><i class="ri-google-fill fs-5 me-2"></i> Google Chrome</td>
+                        <td>2,340,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 50%;"
+                              role="progressbar"
+                              aria-valuenow="50"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2</td>
+                        <td><i class="ri-firefox-fill fs-5 me-2"></i> Mozilla Firefox</td>
+                        <td>1,120,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 25%;"
+                              role="progressbar"
+                              aria-valuenow="25"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>3</td>
+                        <td><i class="ri-safari-fill fs-5 me-2"></i> Safari</td>
+                        <td>780,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 17%;"
+                              role="progressbar"
+                              aria-valuenow="17"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>4</td>
+                        <td><i class="ri-edge-fill fs-5 me-2"></i> Microsoft Edge</td>
+                        <td>540,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 8%;"
+                              role="progressbar"
+                              aria-valuenow="8"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="tab-pane fade" id="devicesContent">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Device Category</th>
+                        <th>Total Visits</th>
+                        <th>Market Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1</td>
+                        <td><i class="ri-smartphone-line fs-5 me-2"></i> Mobile Devices</td>
+                        <td>5,000,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 60%;"
+                              role="progressbar"
+                              aria-valuenow="60"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2</td>
+                        <td><i class="ri-computer-line fs-5 me-2"></i> Desktop Computers</td>
+                        <td>2,500,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 30%;"
+                              role="progressbar"
+                              aria-valuenow="30"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>3</td>
+                        <td><i class="ri-tablet-line fs-5 me-2"></i> Tablet Devices</td>
+                        <td>500,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 10%;"
+                              role="progressbar"
+                              aria-valuenow="10"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>4</td>
+                        <td><i class="ri-tv-2-line fs-5 me-2"></i> Smart TVs</td>
+                        <td>50,000</td>
+                        <td>
+                          <div class="progress">
+                            <div
+                              class="progress-bar progress-bar-striped progress-bar-animated"
+                              style="width: 4%;"
+                              role="progressbar"
+                              aria-valuenow="4"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4 mt-4 mt-xl-0">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="card-title mb-0 mt-2">Device Traffic Summary</h5>
+            </div>
+            <div class="card-body d-flex p-4">
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="card shadow-sm rounded-2">
+                    <div class="card-body">
+                      <div class="d-flex flex-column align-items-center justify-content-center">
+                        <div class="bg-primary bg-opacity-10 rounded-2 px-2 py-0 mb-2">
+                          <i class="ri-smartphone-line fs-3 text-primary"></i>
+                        </div>
+                        <span class="fw-bold fs-5">5,000,000</span>
+                        <span class="text-muted">Mobile Traffic</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="d-flex flex-column align-items-center justify-content-center">
+                        <div class="bg-primary bg-opacity-10 rounded-2 px-2 py-0 mb-2">
+                          <i class="ri-computer-line fs-3 text-primary"></i>
+                        </div>
+                        <span class="fw-bold fs-5">2,500,000</span>
+                        <span class="text-muted">Desktop Traffic</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="d-flex flex-column align-items-center justify-content-center">
+                        <div class="bg-primary bg-opacity-10 rounded-2 px-2 py-0 mb-2">
+                          <i class="ri-tablet-line fs-3 text-primary"></i>
+                        </div>
+                        <span class="fw-bold fs-5">500,000</span>
+                        <span class="text-muted">Tablet Traffic</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="d-flex flex-column align-items-center justify-content-center">
+                        <div class="bg-primary bg-opacity-10 rounded-2 px-2 py-0 mb-2">
+                          <i class="ri-tv-2-line fs-3 text-primary"></i>
+                        </div>
+                        <span class="fw-bold fs-5">50,000</span>
+                        <span class="text-muted">TV Traffic</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

@@ -1,0 +1,1198 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with navigation breadcrumbs
+const pageHeaderConfig = {
+  title: 'Breadcrumb',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Interface', href: getPathPrefix('/interface') },
+    { label: 'Breadcrumb', class: 'active' }
+  ]
+}
+
+// Standard breadcrumb examples with different levels and icons
+const standardBreadcrumbExamples = `<!-- E-commerce Product Navigation -->
+<nav aria-label="Product navigation breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-shopping-bag-line me-1"></i>Electronics</a></li>
+    <li class="breadcrumb-item"><a href="#">Smartphones</a></li>
+    <li class="breadcrumb-item active" aria-current="page">iPhone 15 Pro Max</li>
+  </ol>
+</nav>
+
+<!-- Admin Dashboard Navigation -->
+<nav aria-label="Admin dashboard breadcrumb" class="bg-primary bg-opacity-10 px-3 py-2 rounded mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-dashboard-3-line me-1"></i>Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-user-settings-line me-1"></i>User Management</a></li>
+    <li class="breadcrumb-item"><a href="#">User Roles</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Edit Role Permissions</li>
+  </ol>
+</nav>
+
+<!-- Documentation Site Navigation -->
+<nav aria-label="Documentation breadcrumb" class="border-start border-4 border-info ps-3 mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-book-open-line me-1"></i>Docs</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-code-box-line me-1"></i>API Reference</a></li>
+    <li class="breadcrumb-item"><a href="#">Authentication</a></li>
+    <li class="breadcrumb-item active" aria-current="page">OAuth 2.0 Setup</li>
+  </ol>
+</nav>
+
+<!-- File System Navigation -->
+<nav aria-label="File system breadcrumb" class="bg-light px-3 py-2 rounded border mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-folder-line me-1"></i>Documents</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-folder-open-line me-1"></i>Projects</a></li>
+    <li class="breadcrumb-item"><a href="#">Web Development <span class="badge bg-success ms-1">12 files</span></a></li>
+    <li class="breadcrumb-item active" aria-current="page">React Components</li>
+  </ol>
+</nav>
+
+<!-- Support Ticket Navigation -->
+<nav aria-label="Support ticket breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-customer-service-2-line me-1"></i>Support</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-ticket-line me-1"></i>Tickets</a></li>
+    <li class="breadcrumb-item">
+      <a href="#">High Priority <span class="badge bg-danger ms-1">3</span></a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Ticket #12345</li>
+  </ol>
+</nav>
+
+<!-- Learning Management System -->
+<nav aria-label="Course navigation breadcrumb" class="bg-success bg-opacity-10 px-3 py-2 rounded">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-graduation-cap-line me-1"></i>Courses</a></li>
+    <li class="breadcrumb-item"><a href="#"><i class="ri-computer-line me-1"></i>Web Development</a></li>
+    <li class="breadcrumb-item"><a href="#">JavaScript Fundamentals</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Lesson 5: Async Programming</li>
+  </ol>
+</nav>`
+
+// Custom styled breadcrumb examples with different visual treatments
+const customStyledBreadcrumbExamples = `<!-- Custom Styled Breadcrumb with Background -->
+<nav aria-label="Styled breadcrumb" class="bg-body-tertiary px-3 rounded mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Products</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Current Item</li>
+  </ol>
+</nav>
+
+<!-- Breadcrumb with Custom Separators -->
+<nav aria-label="Custom separator breadcrumb" class="mt-3">
+  <ol class="breadcrumb separator-dot">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Category</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Current Page</li>
+  </ol>
+</nav>
+
+<!-- Breadcrumb with Arrow Separators -->
+<nav aria-label="Arrow separator breadcrumb" class="mt-3">
+  <ol class="breadcrumb separator-chevron">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Library</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Data</li>
+  </ol>
+</nav>
+
+<!-- Breadcrumb with Meta Information -->
+<nav aria-label="Detailed breadcrumb" class="mt-3">
+  <ol class="breadcrumb align-items-center">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Products</a></li>
+    <li class="breadcrumb-item active" aria-current="page">
+      Current Item
+      <span class="badge bg-primary ms-2">New</span>
+    </li>
+  </ol>
+</nav>
+
+<!-- Bordered Breadcrumb -->
+<nav aria-label="Bordered breadcrumb" class="mt-3">
+  <ol class="breadcrumb border rounded px-3 mb-3">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Library</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Data</li>
+  </ol>
+</nav>`
+
+// Responsive breadcrumb examples for different screen sizes
+const responsiveBreadcrumbExamples = `<!-- Responsive Breadcrumb with Truncation -->
+<nav aria-label="Responsive breadcrumb">
+  <ol class="breadcrumb flex-nowrap text-truncate">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Very Long Category Name That Might Need Truncation</a></li>
+    <li class="breadcrumb-item active text-truncate" aria-current="page">Current Page with Potentially Long Title</li>
+  </ol>
+</nav>
+
+<!-- Collapsible Breadcrumb for Mobile -->
+<nav aria-label="Collapsible breadcrumb" class="mt-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item d-none d-sm-block"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+    <li class="breadcrumb-item d-none d-md-block"><a href="#">Category</a></li>
+    <li class="breadcrumb-item active" aria-current="page">
+      <i class="ri-arrow-left-s-line d-sm-none me-1"></i>Current Page
+    </li>
+  </ol>
+</nav>
+
+<!-- Adaptive Breadcrumb with Icon-Only on Mobile -->
+<nav aria-label="Adaptive breadcrumb" class="mt-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="#"><i class="ri-home-line me-1"></i><span class="d-none d-sm-inline">Home</span></a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="#"><i class="ri-folder-line me-1"></i><span class="d-none d-sm-inline">Documents</span></a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="#"><i class="ri-file-list-line me-1"></i><span class="d-none d-sm-inline">Reports</span></a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      <span class="d-none d-sm-inline">Annual Report</span>
+      <span class="d-inline d-sm-none">Report</span>
+    </li>
+  </ol>
+</nav>`
+
+// Interactive breadcrumb examples with dropdown menus
+const interactiveBreadcrumbExamples = `<!-- Breadcrumb with Dropdown -->
+<nav aria-label="Breadcrumb with dropdown" style="--bs-breadcrumb-divider: '/';">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+    <li class="breadcrumb-item">
+      <div class="dropdown d-inline">
+        <a href="#" class="dropdown-toggle text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false">
+          Products
+        </a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#">Electronics</a></li>
+          <li><a class="dropdown-item" href="#">Clothing</a></li>
+          <li><a class="dropdown-item" href="#">Home & Garden</a></li>
+        </ul>
+      </div>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Current Item</li>
+  </ol>
+</nav>
+
+<!-- Breadcrumb with Search -->
+<nav aria-label="Breadcrumb with search" class="mt-3 d-flex justify-content-between align-items-center bg-body-tertiary px-3 rounded">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+    <li class="breadcrumb-item"><a href="#">Products</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Category</li>
+  </ol>
+  <div class="input-group input-group-sm" style="width: 200px;">
+    <input type="text" class="form-control" placeholder="Search in category">
+    <button class="btn btn-outline-secondary" type="button"><i class="ri-search-line"></i></button>
+  </div>
+</nav>`
+
+// Dynamic breadcrumb examples with JavaScript functionality
+const dynamicBreadcrumbExamples = `<!-- Smart Truncating Breadcrumb -->
+<nav aria-label="Smart breadcrumb navigation" class="mb-4">
+  <div class="d-flex justify-content-between align-items-center bg-light px-3 py-2 rounded">
+    <ol id="smart-breadcrumb" class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Home</a></li>
+      <li class="breadcrumb-item"><a href="#">Products</a></li>
+      <li class="breadcrumb-item"><a href="#">Electronics</a></li>
+      <li class="breadcrumb-item">
+        <span class="dropdown">
+          <button class="btn btn-link p-0 dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="ri-more-line"></i>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Computers</a></li>
+            <li><a class="dropdown-item" href="#">Laptops</a></li>
+          </ul>
+        </span>
+      </li>
+      <li class="breadcrumb-item"><a href="#">Gaming Laptops</a></li>
+      <li class="breadcrumb-item active" aria-current="page">ASUS ROG Strix</li>
+    </ol>
+    <button class="btn btn-sm btn-outline-secondary" onclick="addBreadcrumbLevel()">
+      <i class="ri-add-line me-1"></i>Add Level
+    </button>
+  </div>
+</nav>
+
+<!-- Contextual Breadcrumb with Actions -->
+<nav aria-label="Contextual breadcrumb" class="mb-4">
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="#"><i class="ri-folder-line me-1"></i>Projects</a></li>
+          <li class="breadcrumb-item"><a href="#">Web Development</a></li>
+          <li class="breadcrumb-item active" aria-current="page">
+            React Components
+            <span class="badge bg-success ms-2">24 files</span>
+          </li>
+        </ol>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="ri-more-2-line me-1"></i>Actions
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#"><i class="ri-share-line me-2"></i>Share Folder</a></li>
+            <li><a class="dropdown-item" href="#"><i class="ri-download-line me-2"></i>Download All</a></li>
+            <li><a class="dropdown-item" href="#"><i class="ri-settings-line me-2"></i>Properties</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="row text-muted small">
+        <div class="col-sm-6">Last modified: 2 hours ago</div>
+        <div class="col-sm-6 text-sm-end">Size: 2.4 MB</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Real-time Status Breadcrumb -->
+<nav aria-label="Status breadcrumb" class="mb-4">
+  <div class="bg-primary bg-opacity-10 px-3 py-2 rounded">
+    <ol class="breadcrumb mb-2">
+      <li class="breadcrumb-item"><a href="#"><i class="ri-workflow-line me-1"></i>Workflow</a></li>
+      <li class="breadcrumb-item"><a href="#">Data Processing</a></li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Current Job #12345
+        <span id="job-status" class="badge bg-warning ms-2">
+          <i class="ri-loader-4-line"></i> Processing...
+        </span>
+      </li>
+    </ol>
+    <div class="progress" style="height: 4px;">
+      <div id="job-progress" class="progress-bar" role="progressbar" style="width: 65%"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-1 small text-muted">
+      <span>Step 3 of 5: Data Validation</span>
+      <span>65% Complete</span>
+    </div>
+  </div>
+</nav>
+
+<!-- History-aware Breadcrumb -->
+<nav aria-label="History breadcrumb">
+  <div class="d-flex justify-content-between align-items-center">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="#"><i class="ri-home-line me-1"></i>Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="#">Analytics</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Sales Report</li>
+    </ol>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" onclick="goBack()" title="Previous Page">
+        <i class="ri-arrow-left-line"></i>
+      </button>
+      <button class="btn btn-outline-secondary" onclick="goForward()" title="Next Page">
+        <i class="ri-arrow-right-line"></i>
+      </button>
+      <button class="btn btn-outline-secondary" onclick="showBreadcrumbHistory()" title="View History">
+        <i class="ri-history-line"></i>
+      </button>
+    </div>
+  </div>
+</nav>`
+
+// JavaScript for dynamic breadcrumb functionality
+const dynamicBreadcrumbJS = `<script>
+let breadcrumbLevels = 0;
+let breadcrumbHistory = [];
+let currentProgress = 65;
+
+function addBreadcrumbLevel() {
+  breadcrumbLevels++;
+  const breadcrumb = document.getElementById('smart-breadcrumb');
+
+  // Remove active class from current last item
+  const currentActive = breadcrumb.querySelector('.active');
+  if (currentActive) {
+    currentActive.classList.remove('active');
+    currentActive.removeAttribute('aria-current');
+    const newLink = document.createElement('a');
+    newLink.href = '#';
+    newLink.textContent = currentActive.textContent;
+    currentActive.innerHTML = '';
+    currentActive.appendChild(newLink);
+  }
+
+  // Add new level
+  const newItem = document.createElement('li');
+  newItem.className = 'breadcrumb-item active';
+  newItem.setAttribute('aria-current', 'page');
+  newItem.textContent = \`Dynamic Level \${breadcrumbLevels}\`;
+
+  breadcrumb.appendChild(newItem);
+
+  // If too many levels, implement truncation
+  if (breadcrumb.children.length > 6) {
+    truncateBreadcrumb(breadcrumb);
+  }
+}
+
+function truncateBreadcrumb(breadcrumb) {
+  const items = Array.from(breadcrumb.children);
+  const home = items[0];
+  const current = items[items.length - 1];
+  const previous = items[items.length - 2];
+
+  // Create ellipsis dropdown
+  const ellipsis = document.createElement('li');
+  ellipsis.className = 'breadcrumb-item';
+  ellipsis.innerHTML = \`
+    <span class="dropdown">
+      <button class="btn btn-link p-0 dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="ri-more-line"></i>
+      </button>
+      <ul class="dropdown-menu">
+        \${items.slice(1, -2).map(item =>
+          \`<li><a class="dropdown-item" href="#">\${item.textContent}</a></li>\`
+        ).join('')}
+      </ul>
+    </span>
+  \`;
+
+  // Rebuild breadcrumb
+  breadcrumb.innerHTML = '';
+  breadcrumb.appendChild(home);
+  breadcrumb.appendChild(ellipsis);
+  breadcrumb.appendChild(previous);
+  breadcrumb.appendChild(current);
+}
+
+function updateJobStatus() {
+  const statusBadge = document.getElementById('job-status');
+  const progressBar = document.getElementById('job-progress');
+
+  currentProgress += Math.random() * 10;
+
+  if (currentProgress >= 100) {
+    statusBadge.innerHTML = '<i class="ri-check-line"></i> Complete';
+    statusBadge.className = 'badge bg-success ms-2';
+    progressBar.style.width = '100%';
+    clearInterval(statusInterval);
+  } else {
+    progressBar.style.width = currentProgress + '%';
+  }
+}
+
+function goBack() {
+  if (breadcrumbHistory.length > 0) {
+    const previous = breadcrumbHistory.pop();
+    console.log('Going back to:', previous);
+    // In real implementation, this would navigate
+  }
+}
+
+function goForward() {
+  // Implementation for forward navigation
+  console.log('Going forward');
+}
+
+function showBreadcrumbHistory() {
+  const history = ['Dashboard', 'Reports', 'Analytics', 'Sales Report'];
+  alert('Recent pages: ' + history.join(' → '));
+}
+
+// Simulate job progress
+const statusInterval = setInterval(updateJobStatus, 2000);
+
+// Track breadcrumb navigation
+document.addEventListener('DOMContentLoaded', function() {
+  breadcrumbHistory = ['Dashboard', 'Analytics'];
+});
+</script>`
+
+// Specialized breadcrumb examples for different industries and use cases
+const specializedBreadcrumbExamples = `<!-- E-commerce Product Hierarchy -->
+<nav aria-label="Product category breadcrumb" class="mb-4">
+  <div class="bg-gradient-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 0.5rem;">
+    <ol class="breadcrumb mb-2" style="--bs-breadcrumb-divider-color: rgba(255,255,255,0.7);">
+      <li class="breadcrumb-item">
+        <a href="#" class="text-white text-decoration-none">
+          <i class="ri-store-line me-1"></i>Shop
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#" class="text-white text-decoration-none">Men's Fashion</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#" class="text-white text-decoration-none">Shoes</a>
+      </li>
+      <li class="breadcrumb-item text-white" aria-current="page">
+        Running Shoes
+        <span class="badge bg-warning text-dark ms-2">247 items</span>
+      </li>
+    </ol>
+    <div class="d-flex gap-2 flex-wrap">
+      <span class="badge bg-light bg-opacity-25 text-white">Free Shipping Available</span>
+      <span class="badge bg-light bg-opacity-25 text-white">30-Day Returns</span>
+    </div>
+  </div>
+</nav>
+
+<!-- Content Management System -->
+<nav aria-label="CMS content breadcrumb" class="mb-4">
+  <div class="card border-start border-4 border-info">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item">
+              <a href="#"><i class="ri-pages-line me-1"></i>Content</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="#"><i class="ri-article-line me-1"></i>Blog Posts</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="#">Technology</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+              "Getting Started with React Hooks"
+            </li>
+          </ol>
+          <div class="small text-muted">
+            <span class="me-3"><i class="ri-calendar-line me-1"></i>Created: Mar 15, 2024</span>
+            <span class="me-3"><i class="ri-user-line me-1"></i>Author: John Doe</span>
+            <span><i class="ri-eye-line me-1"></i>Views: 1,247</span>
+          </div>
+        </div>
+        <div class="d-flex gap-1">
+          <span class="badge bg-success">Published</span>
+          <span class="badge bg-info">Featured</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Financial Trading Platform -->
+<nav aria-label="Trading platform breadcrumb" class="mb-4">
+  <div class="bg-dark text-white p-3 rounded">
+    <div class="d-flex justify-content-between align-items-center">
+      <ol class="breadcrumb mb-0" style="--bs-breadcrumb-divider-color: #6c757d;">
+        <li class="breadcrumb-item">
+          <a href="#" class="text-light text-decoration-none">
+            <i class="ri-stock-line me-1"></i>Markets
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="#" class="text-light text-decoration-none">Equities</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="#" class="text-light text-decoration-none">Technology</a>
+        </li>
+        <li class="breadcrumb-item text-light" aria-current="page">
+          AAPL - Apple Inc.
+        </li>
+      </ol>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-success fs-5">$175.43</span>
+        <span class="badge bg-success">+2.34%</span>
+        <div class="vr"></div>
+        <small class="text-muted">Last updated: 2 min ago</small>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Healthcare Patient Management -->
+<nav aria-label="Patient management breadcrumb" class="mb-4">
+  <div class="bg-light border rounded p-3">
+    <ol class="breadcrumb mb-2">
+      <li class="breadcrumb-item">
+        <a href="#"><i class="ri-hospital-line me-1"></i>Patients</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#"><i class="ri-user-heart-line me-1"></i>Active Cases</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#">Ward B-3</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Patient ID: P-2024-001234
+        <span class="badge bg-warning ms-2">High Priority</span>
+      </li>
+    </ol>
+    <div class="row small text-muted">
+      <div class="col-md-4">DOB: Jan 15, 1985</div>
+      <div class="col-md-4">Admitted: Mar 12, 2024</div>
+      <div class="col-md-4">Dr. Sarah Johnson</div>
+    </div>
+  </div>
+</nav>
+
+<!-- Educational Institution -->
+<nav aria-label="Academic breadcrumb">
+  <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded p-3">
+    <ol class="breadcrumb mb-2">
+      <li class="breadcrumb-item">
+        <a href="#"><i class="ri-school-line me-1"></i>Academic Portal</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#"><i class="ri-book-line me-1"></i>Computer Science</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="#">CS-401: Advanced Algorithms</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Assignment 3: Graph Algorithms
+        <span class="badge bg-danger ms-2">Due Tomorrow</span>
+      </li>
+    </ol>
+    <div class="d-flex justify-content-between align-items-center small">
+      <div class="text-muted">
+        <span class="me-3">Semester: Spring 2024</span>
+        <span>Instructor: Prof. Michael Chen</span>
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge bg-success">Enrolled</span>
+        <span class="badge bg-info">Credits: 3</span>
+      </div>
+    </div>
+  </div>
+</nav>`
+
+// Advanced navigation patterns combining breadcrumbs with other navigation elements
+const advancedBreadcrumbExamples = `<!-- Breadcrumb with Integrated Tabs -->
+<nav aria-label="Tabbed breadcrumb navigation" class="mb-4">
+  <div class="card">
+    <div class="card-header bg-light">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="#"><i class="ri-database-line me-1"></i>Data Explorer</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="#">Customer Database</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Customer #12345</li>
+      </ol>
+    </div>
+    <div class="card-body p-0">
+      <ul class="nav nav-tabs nav-fill">
+        <li class="nav-item">
+          <a class="nav-link active" href="#"><i class="ri-user-line me-1"></i>Profile</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="ri-shopping-bag-line me-1"></i>Orders</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="ri-bank-card-line me-1"></i>Payments</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="ri-customer-service-line me-1"></i>Support</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Breadcrumb with Advanced Filtering -->
+<nav aria-label="Filtered breadcrumb navigation" class="mb-4">
+  <div class="bg-body-tertiary rounded p-3">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a href="#"><i class="ri-search-line me-1"></i>Search Results</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#">Electronics</a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Smartphones
+            <span class="badge bg-primary ms-2">1,247 results</span>
+          </li>
+        </ol>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex gap-2 justify-content-md-end">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="ri-filter-line me-1"></i>Filter
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#">Price Range</a></li>
+              <li><a class="dropdown-item" href="#">Brand</a></li>
+              <li><a class="dropdown-item" href="#">Rating</a></li>
+            </ul>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="ri-sort-desc me-1"></i>Sort
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#">Price: Low to High</a></li>
+              <li><a class="dropdown-item" href="#">Price: High to Low</a></li>
+              <li><a class="dropdown-item" href="#">Newest First</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-2">
+      <div class="d-flex gap-1 flex-wrap">
+        <span class="badge bg-secondary">Brand: Samsung <i class="ri-close-line ms-1"></i></span>
+        <span class="badge bg-secondary">Price: $200-$500 <i class="ri-close-line ms-1"></i></span>
+        <span class="badge bg-secondary">Rating: 4+ stars <i class="ri-close-line ms-1"></i></span>
+        <button class="btn btn-link btn-sm p-0 text-decoration-none">Clear all filters</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Multi-dimensional Breadcrumb -->
+<nav aria-label="Multi-dimensional breadcrumb" class="mb-4">
+  <div class="border rounded p-3">
+    <div class="row">
+      <div class="col-md-6">
+        <h6 class="mb-2">Location Path</h6>
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a href="#"><i class="ri-globe-line me-1"></i>Global</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#">North America</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#">United States</a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">California</li>
+        </ol>
+      </div>
+      <div class="col-md-6">
+        <h6 class="mb-2">Department Path</h6>
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a href="#"><i class="ri-building-line me-1"></i>Company</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#">Engineering</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#">Frontend Team</a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">React Developers</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Breadcrumb with Timeline -->
+<nav aria-label="Timeline breadcrumb">
+  <div class="card">
+    <div class="card-header">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="#"><i class="ri-time-line me-1"></i>Project Timeline</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="#">Q1 2024</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="#">March</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Week 3</li>
+      </ol>
+    </div>
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary">
+            <i class="ri-arrow-left-line"></i> Previous Week
+          </button>
+          <button class="btn btn-outline-primary">
+            Today
+          </button>
+          <button class="btn btn-outline-primary">
+            Next Week <i class="ri-arrow-right-line"></i>
+          </button>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge bg-success">5 Completed</span>
+          <span class="badge bg-warning">3 In Progress</span>
+          <span class="badge bg-secondary">2 Pending</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>`
+
+// Shared preview configuration for consistent component display
+const previewConfig = {
+  cssCode: '',
+  jsCode: ''
+}
+---
+
+<AdminLayout
+  title="Breadcrumb"
+  description="Navigation breadcrumbs for enhanced user orientation and website hierarchy"
+  currentPath="interface/breadcrumb"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Breadcrumbs are secondary navigation patterns that reveal the user's location in a
+            website or application. They provide contextual information about page hierarchy and
+            allow users to easily navigate back through parent levels. Well-implemented breadcrumbs
+            improve user experience by enhancing wayfinding, reducing navigation steps, and
+            providing clear context about the current location within the site structure.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="examples">Standard Breadcrumbs</h3>
+            <p class="py-2">
+              Create standard breadcrumb navigation using the <code>breadcrumb</code> and
+              <code>breadcrumb-item</code> classes. Add icons, links, and proper ARIA labels to enhance
+              usability and accessibility. The last item should be marked as active with the <code
+                >active</code
+              >
+              class and <code>aria-current="page"</code> attribute to indicate the current page location.
+              Standard breadcrumbs work well for most navigation scenarios and provide clear path information.
+            </p>
+
+            <ComponentPreview
+              title="Standard Breadcrumb Examples"
+              height="550px"
+              component={standardBreadcrumbExamples}
+              htmlCode={standardBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="custom-styles">Custom Styled Breadcrumbs</h3>
+            <p class="py-2">
+              Enhance breadcrumbs with custom styles, backgrounds, and separators to match your
+              design system. Use utility classes for spacing, colors, and borders to create visually
+              distinct breadcrumb trails. Customize the separator using the <code
+                >--bs-breadcrumb-divider</code
+              > CSS variable, which accepts text or SVG content. Add badges or other elements to provide
+              additional context about the navigation path or destination.
+            </p>
+
+            <ComponentPreview
+              title="Custom Styled Breadcrumb Examples"
+              height="550px"
+              component={customStyledBreadcrumbExamples}
+              htmlCode={customStyledBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="responsive">Responsive Breadcrumbs</h3>
+            <p class="py-2">
+              Implement responsive breadcrumbs that adapt to different screen sizes to maintain
+              usability across devices. Use utility classes like <code>text-truncate</code> to handle
+              long text,
+              <code>d-none</code> and <code>d-sm-block</code> to control visibility at different breakpoints,
+              and consider alternative presentations for mobile views. Responsive breadcrumbs ensure that
+              navigation remains accessible and usable regardless of the device being used.
+            </p>
+
+            <ComponentPreview
+              title="Responsive Breadcrumb Examples"
+              height="550px"
+              component={responsiveBreadcrumbExamples}
+              htmlCode={responsiveBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="interactive">Interactive Breadcrumbs</h3>
+            <p class="py-2">
+              Create enhanced breadcrumb navigation with interactive elements like dropdowns and
+              search functionality. These advanced implementations provide additional navigation
+              options and shortcuts while maintaining the core breadcrumb functionality. Interactive
+              breadcrumbs are particularly useful for complex site structures where users might need
+              to jump between different sections or search within specific content areas.
+            </p>
+
+            <ComponentPreview
+              title="Interactive Breadcrumb Examples"
+              height="550px"
+              component={interactiveBreadcrumbExamples}
+              htmlCode={interactiveBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="dynamic-breadcrumbs">Dynamic & Smart Breadcrumbs</h3>
+            <p class="py-2">
+              Create intelligent breadcrumbs that adapt to user context, show additional
+              information, and provide enhanced navigation capabilities. These examples demonstrate
+              breadcrumbs with real-time updates, contextual actions, and smart truncation for
+              complex navigation hierarchies.
+            </p>
+
+            <ComponentPreview
+              title="Dynamic & Smart Breadcrumbs"
+              height="550px"
+              component={dynamicBreadcrumbExamples}
+              htmlCode={dynamicBreadcrumbExamples}
+              jsCode={dynamicBreadcrumbJS}
+              cssCode=""
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="specialized-breadcrumbs">Specialized Use Cases</h3>
+            <p class="py-2">
+              Industry-specific breadcrumb implementations for specialized applications like
+              e-commerce, content management, project management, and data exploration interfaces.
+              These examples show how breadcrumbs can be tailored for specific user workflows and
+              business requirements.
+            </p>
+
+            <ComponentPreview
+              title="Specialized Breadcrumb Use Cases"
+              height="550px"
+              component={specializedBreadcrumbExamples}
+              htmlCode={specializedBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="advanced-patterns">Advanced Navigation Patterns</h3>
+            <p class="py-2">
+              Complex breadcrumb patterns that combine multiple navigation concepts, including
+              breadcrumbs with tabs, filters, search integration, and multi-dimensional navigation.
+              These patterns are useful for sophisticated applications with complex information
+              architectures.
+            </p>
+
+            <ComponentPreview
+              title="Advanced Navigation Patterns"
+              height="550px"
+              component={advancedBreadcrumbExamples}
+              htmlCode={advancedBreadcrumbExamples}
+              {...previewConfig}
+            />
+          </div>
+
+          <div class="my-3">
+            <h3 id="developer-tips">Developer Tips & Best Practices</h3>
+            <div class="alert alert-info">
+              <h4 class="alert-heading">
+                <i class="ri-lightbulb-line me-2"></i>
+                Pro Tips for Breadcrumbs
+              </h4>
+              <ul class="mb-0">
+                <li>
+                  <strong>SEO Benefits:</strong> Use breadcrumbs with structured data (JSON-LD) to enhance
+                  search result snippets
+                </li>
+                <li>
+                  <strong>Performance:</strong> Implement breadcrumb caching for dynamic sites to reduce
+                  server load
+                </li>
+                <li>
+                  <strong>Analytics:</strong> Track breadcrumb clicks to understand user navigation patterns
+                </li>
+                <li>
+                  <strong>Internationalization:</strong> Ensure breadcrumb labels are properly localized
+                  and RTL-compatible
+                </li>
+                <li>
+                  <strong>State Management:</strong> Consider how breadcrumbs should behave with browser
+                  back/forward buttons
+                </li>
+                <li>
+                  <strong>Progressive Enhancement:</strong> Ensure breadcrumbs work without JavaScript
+                  for basic functionality
+                </li>
+              </ul>
+            </div>
+
+            <div class="alert alert-warning">
+              <h4 class="alert-heading">
+                <i class="ri-error-warning-line me-2"></i>
+                Common Pitfalls to Avoid
+              </h4>
+              <ul class="mb-0">
+                <li>
+                  Don't replicate the main navigation structure exactly - breadcrumbs should show
+                  logical paths
+                </li>
+                <li>
+                  Avoid making breadcrumbs too granular - not every page level needs to be shown
+                </li>
+                <li>
+                  Don't use breadcrumbs on the homepage or single-level sites where they add no
+                  value
+                </li>
+                <li>
+                  Never make the current page clickable in breadcrumbs - it should be plain text
+                </li>
+                <li>
+                  Don't forget mobile users - ensure breadcrumbs remain usable on small screens
+                </li>
+                <li>
+                  Avoid inconsistent breadcrumb patterns across different sections of your site
+                </li>
+              </ul>
+            </div>
+
+            <div class="alert alert-success">
+              <h4 class="alert-heading">
+                <i class="ri-code-s-slash-line me-2"></i>
+                JavaScript Integration Example
+              </h4>
+              <p class="mb-2">
+                Here's a comprehensive breadcrumb manager for dynamic applications:
+              </p>
+              <pre><code>{`class BreadcrumbManager {
+  constructor(containerId = 'breadcrumb-container') {
+    this.container = document.getElementById(containerId);
+    this.history = [];
+    this.maxItems = 5;
+    this.truncateThreshold = 4;
+  }
+
+  // Generate breadcrumb from current URL path
+  generateFromPath(customLabels = {}) {
+    const path = window.location.pathname;
+    const segments = path.split('/').filter(segment => segment);
+
+    this.clear();
+    this.addItem('Home', '/', 'ri-home-line');
+
+    let currentPath = '';
+    segments.forEach((segment, index) => {
+      currentPath += '/' + segment;
+      const label = customLabels[segment] || this.formatSegment(segment);
+      const isLast = index === segments.length - 1;
+
+      if (isLast) {
+        this.addItem(label, null); // Current page, no link
+      } else {
+        this.addItem(label, currentPath);
+      }
+    });
+  }
+
+  // Add a breadcrumb item
+  addItem(label, href = null, icon = null) {
+    const item = { label, href, icon, timestamp: Date.now() };
+    this.history.push(item);
+
+    if (this.history.length > this.maxItems) {
+      this.truncate();
+    }
+
+    this.render();
+  }
+
+  // Smart truncation for long paths
+  truncate() {
+    if (this.history.length <= this.truncateThreshold) return;
+
+    // Keep first item (home), last 2 items, and add ellipsis
+    const truncated = [
+      this.history[0], // Home
+      { label: '...', href: null, icon: 'ri-more-line', truncated: true },
+      ...this.history.slice(-2) // Last 2 items
+    ];
+
+    this.history = truncated;
+  }
+
+  // Render breadcrumb HTML
+  render() {
+    if (!this.container) return;
+
+    const nav = document.createElement('nav');
+    nav.setAttribute('aria-label', 'Breadcrumb navigation');
+
+    const ol = document.createElement('ol');
+    ol.className = 'breadcrumb mb-0';
+
+    this.history.forEach((item, index) => {
+      const li = this.createBreadcrumbItem(item, index === this.history.length - 1);
+      ol.appendChild(li);
+    });
+
+    nav.appendChild(ol);
+    this.container.innerHTML = '';
+    this.container.appendChild(nav);
+  }
+
+  // Create individual breadcrumb item
+  createBreadcrumbItem(item, isLast) {
+    const li = document.createElement('li');
+    li.className = 'breadcrumb-item' + (isLast ? ' active' : '');
+
+    if (isLast) {
+      li.setAttribute('aria-current', 'page');
+    }
+
+    if (item.href && !isLast) {
+      const a = document.createElement('a');
+      a.href = item.href;
+      a.innerHTML = this.formatItemContent(item);
+      li.appendChild(a);
+    } else {
+      li.innerHTML = this.formatItemContent(item, isLast);
+    }
+
+    return li;
+  }
+
+  // Format item content with icons
+  formatItemContent(item, isLast = false) {
+    const iconHtml = item.icon ? \`<i class="\${item.icon} me-1"></i>\` : '';
+    return iconHtml + item.label;
+  }
+
+  // Format URL segment to readable label
+  formatSegment(segment) {
+    return segment
+      .replace(/-/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  // Clear all breadcrumb items
+  clear() {
+    this.history = [];
+  }
+
+  // Add structured data for SEO
+  addStructuredData() {
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": this.history.map((item, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "name": item.label,
+        "item": item.href ? window.location.origin + item.href : undefined
+      }))
+    };
+
+    let script = document.querySelector('script[type="application/ld+json"]');
+    if (!script) {
+      script = document.createElement('script');
+      script.type = 'application/ld+json';
+      document.head.appendChild(script);
+    }
+
+    script.textContent = JSON.stringify(structuredData);
+  }
+}`}</code></pre>
+            </div>
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="accessibility">Accessibility Guidelines</h3>
+            <p class="py-2">
+              Ensure breadcrumb navigation is accessible to all users by following these best
+              practices:
+            </p>
+            <ul class="list-unstyled ps-3">
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Use <code>nav</code> element with
+                <code>aria-label="breadcrumb"</code> to identify the navigation purpose
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Mark current page with <code
+                  >aria-current="page"</code
+                > to indicate the current location
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Ensure sufficient color contrast for
+                links and separators (minimum 4.5:1 ratio)
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Provide clear visual hierarchy with
+                consistent styling and spacing
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Include meaningful link text that
+                describes the destination
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Ensure breadcrumbs are keyboard
+                navigable with proper focus states
+              </li>
+              <li>
+                <i class="ri-check-line text-success me-2"></i>Consider screen reader users by using
+                proper semantic markup
+              </li>
+            </ul>
+          </div>
+
+          <div class="my-3">
+            <h3 class="mb-0" id="best-practices">Implementation Best Practices</h3>
+            <p class="py-2">Follow these guidelines to create effective breadcrumb navigation:</p>
+            <ul class="list-unstyled ps-3">
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong>Keep it simple:</strong
+                >
+                Limit breadcrumb paths to 3-5 levels to avoid overwhelming users
+              </li>
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong
+                  >Use clear labels:</strong
+                >
+                Keep breadcrumb text concise and descriptive
+              </li>
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong
+                  >Consistent placement:</strong
+                >
+                Position breadcrumbs at the top of the page, below the main navigation
+              </li>
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong
+                  >Visual distinction:</strong
+                >
+                Ensure breadcrumbs are visually distinct from other page elements
+              </li>
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong
+                  >Responsive design:</strong
+                >
+                Adapt breadcrumbs for different screen sizes without losing functionality
+              </li>
+              <li>
+                <i class="ri-arrow-right-line text-primary me-2"></i><strong
+                  >Logical hierarchy:</strong
+                >
+                Reflect the actual site structure in your breadcrumb path
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

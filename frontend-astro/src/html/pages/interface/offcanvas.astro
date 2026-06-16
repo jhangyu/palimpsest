@@ -1,0 +1,316 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation
+const pageConfig = {
+  title: 'Offcanvas',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), icon: 'ri-dashboard-line' },
+    { label: 'Interface', href: getPathPrefix('/interface'), icon: 'ri-layout-line' },
+    { label: 'Offcanvas', class: 'active', icon: 'ri-layout-right-line' }
+  ]
+}
+
+// Basic offcanvas example with link and button triggers
+const basicOffcanvasExample = `<a class="btn btn-primary" data-bs-toggle="offcanvas" href="#offcanvasExample" role="button" aria-controls="offcanvasExample">
+  <i class="ri-link me-2"></i>Link with href
+</a>
+<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample" aria-controls="offcanvasExample">
+  <i class="ri-menu-2-line me-2"></i>Button with data-bs-target
+</button>
+
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasExampleLabel"><i class="ri-layout-right-line me-2"></i>Offcanvas Menu</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div>
+      <i class="ri-information-line me-2"></i>This is a demonstration of the offcanvas component. You can include various elements like text, images, navigation menus, or forms here.
+    </div>
+    <div class="dropdown mt-3">
+      <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        <i class="ri-menu-line me-2"></i>Menu Options
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#"><i class="ri-add-line me-2"></i>Create New</a></li>
+        <li><a class="dropdown-item" href="#"><i class="ri-edit-line me-2"></i>Edit Item</a></li>
+        <li><a class="dropdown-item" href="#"><i class="ri-settings-line me-2"></i>Settings</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+`
+
+// Scrollable body offcanvas example
+const scrollableOffcanvasExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+  <i class="ri-arrow-up-down-line me-2"></i>Enable body scrolling
+</button>
+
+<div class="offcanvas offcanvas-start" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasScrollingLabel"><i class="ri-scroll-line me-2"></i>Scrollable Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <p><i class="ri-mouse-line me-2"></i>Try scrolling the rest of the page to see this option in action.</p>
+  </div>
+</div>
+`
+
+// Scrollable body with backdrop example
+const scrollableWithBackdropExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions">
+  <i class="ri-layout-right-2-line me-2"></i>Enable both scrolling & backdrop
+</button>
+
+<div class="offcanvas offcanvas-start" data-bs-scroll="true" tabindex="-1" id="offcanvasWithBothOptions" aria-labelledby="offcanvasWithBothOptionsLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasWithBothOptionsLabel"><i class="ri-layout-right-line me-2"></i>Backdrop with scrolling</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <p><i class="ri-information-line me-2"></i>Try scrolling the rest of the page to see this option in action.</p>
+  </div>
+</div>
+`
+
+// Static backdrop offcanvas example
+const staticBackdropExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop" aria-controls="staticBackdrop">
+  <i class="ri-lock-line me-2"></i>Toggle static offcanvas
+</button>
+
+<div class="offcanvas offcanvas-start" data-bs-backdrop="static" tabindex="-1" id="staticBackdrop" aria-labelledby="staticBackdropLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="staticBackdropLabel"><i class="ri-shield-lock-line me-2"></i>Static Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div>
+      <i class="ri-information-line me-2"></i>This offcanvas has a static backdrop. You must use the close button to dismiss it.
+    </div>
+  </div>
+</div>
+`
+
+// Responsive offcanvas example
+const responsiveOffcanvasExample = `<button class="btn btn-primary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasResponsive" aria-controls="offcanvasResponsive">
+  <i class="ri-menu-line me-2"></i>Toggle offcanvas
+</button>
+
+<div class="alert alert-info d-none d-lg-block">
+  <i class="ri-information-line me-2"></i>Resize your browser to show the responsive offcanvas toggle.
+</div>
+
+<div class="offcanvas-lg offcanvas-end" tabindex="-1" id="offcanvasResponsive" aria-labelledby="offcanvasResponsiveLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasResponsiveLabel"><i class="ri-responsive-line me-2"></i>Responsive Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasResponsive" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <p class="mb-0"><i class="ri-layout-right-line me-2"></i>This is content within an <code>.offcanvas-lg</code>.</p>
+  </div>
+</div>
+`
+
+// Top placement offcanvas example
+const topOffcanvasExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasTop" aria-controls="offcanvasTop">
+  <i class="ri-arrow-up-line me-2"></i>Toggle top offcanvas
+</button>
+
+<div class="offcanvas offcanvas-top" tabindex="-1" id="offcanvasTop" aria-labelledby="offcanvasTopLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasTopLabel"><i class="ri-arrow-up-line me-2"></i>Top Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <p><i class="ri-information-line me-2"></i>This is a top-positioned offcanvas that slides down from the top of the viewport.</p>
+  </div>
+</div>
+`
+
+// Right placement offcanvas example
+const rightOffcanvasExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight" aria-controls="offcanvasRight">
+  <i class="ri-arrow-right-line me-2"></i>Toggle right offcanvas
+</button>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasRightLabel"><i class="ri-arrow-right-line me-2"></i>Right Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <p><i class="ri-information-line me-2"></i>This is a right-positioned offcanvas that slides in from the right side.</p>
+  </div>
+</div>
+`
+
+// Bottom placement offcanvas example
+const bottomOffcanvasExample = `<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasBottom" aria-controls="offcanvasBottom">
+  <i class="ri-arrow-down-line me-2"></i>Toggle bottom offcanvas
+</button>
+
+<div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasBottom" aria-labelledby="offcanvasBottomLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasBottomLabel"><i class="ri-arrow-down-line me-2"></i>Bottom Offcanvas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body small">
+    <p><i class="ri-information-line me-2"></i>This is a bottom-positioned offcanvas that slides up from the bottom of the viewport.</p>
+  </div>
+</div>
+`
+---
+
+<AdminLayout
+  title="Offcanvas"
+  description="Modern sliding panels for enhanced user interaction and content organization"
+  currentPath="interface/offcanvas"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            The Offcanvas component provides a powerful way to create sliding panels that reveal
+            content from any edge of the viewport. Perfect for navigation menus, filters, forms, or
+            any secondary content that needs to be easily accessible without disrupting the main
+            content flow. With support for multiple positions, backdrop options, and responsive
+            behaviors, offcanvas panels offer flexible solutions for modern web interfaces.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="live-demo">Basic Example</h3>
+            <p class="py-2">
+              Demonstrate the basic offcanvas functionality with both link and button triggers. The
+              panel can contain any content, from simple text to complex components.
+            </p>
+
+            <ComponentPreview
+              title="Basic Offcanvas Example"
+              height="550px"
+              component={basicOffcanvasExample}
+              htmlCode={basicOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="body-scrolling">Body Scrolling</h3>
+            <p class="py-2">
+              Enable content scrolling behind the offcanvas panel using the <code
+                >data-bs-scroll="true"</code
+              > attribute. This allows users to continue interacting with the main content while the offcanvas
+              is open.
+            </p>
+
+            <ComponentPreview
+              title="Scrollable Body Example"
+              height="550px"
+              component={scrollableOffcanvasExample}
+              htmlCode={scrollableOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="body-scrolling-backdrop">Scrolling with Backdrop</h3>
+            <p class="py-2">
+              Combine scrollable content with a backdrop overlay for a semi-modal experience. The
+              backdrop provides visual separation while maintaining content scrollability.
+            </p>
+
+            <ComponentPreview
+              title="Scrollable with Backdrop"
+              height="550px"
+              component={scrollableWithBackdropExample}
+              htmlCode={scrollableWithBackdropExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="static-backdrop">Static Backdrop</h3>
+            <p class="py-2">
+              Create a modal-like experience with <code>data-bs-backdrop="static"</code> where users must
+              explicitly close the offcanvas using the close button. This prevents accidental dismissal
+              through backdrop clicks.
+            </p>
+
+            <ComponentPreview
+              title="Static Backdrop Example"
+              height="550px"
+              component={staticBackdropExample}
+              htmlCode={staticBackdropExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="responsive-offcanvas">Responsive Behavior</h3>
+            <p class="py-2">
+              Create responsive offcanvas components that adapt to different screen sizes using the <code
+                >offcanvas-&#123;breakpoint&#125;</code
+              > classes. This example shows an offcanvas that transforms into inline content on larger
+              screens.
+            </p>
+
+            <ComponentPreview
+              title="Responsive Offcanvas Example"
+              height="550px"
+              component={responsiveOffcanvasExample}
+              htmlCode={responsiveOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="placement">Placement Options</h3>
+            <p class="py-2">
+              Offcanvas panels can slide in from any edge of the viewport using placement classes:
+              <code>offcanvas-start</code> (left), <code>offcanvas-end</code> (right),
+              <code>offcanvas-top</code> (top), and <code>offcanvas-bottom</code> (bottom). Choose the
+              placement that best suits your design and content needs.
+            </p>
+
+            <ComponentPreview
+              title="Top Placement Example"
+              height="550px"
+              component={topOffcanvasExample}
+              htmlCode={topOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+
+            <ComponentPreview
+              title="Right Placement Example"
+              height="550px"
+              component={rightOffcanvasExample}
+              htmlCode={rightOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+
+            <ComponentPreview
+              title="Bottom Placement Example"
+              height="550px"
+              component={bottomOffcanvasExample}
+              htmlCode={bottomOffcanvasExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

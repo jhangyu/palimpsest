@@ -1,0 +1,34 @@
+/* ==========================================================================
+     Auth
+     ========================================================================== */
+
+.split-theme-toggler {
+  right: 0;
+
+  @media (min-width: 768px) {
+    right: 50%;
+    transform: translateX(50%);
+  }
+}
+
+.or-divider {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+}
+
+.or-divider::before,
+.or-divider::after {
+  flex-grow: 1;
+  width: 1px;
+  content: '';
+  background-color: var(--bs-border-color);
+}
+
+.or-divider span {
+  padding: 10px 0;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}

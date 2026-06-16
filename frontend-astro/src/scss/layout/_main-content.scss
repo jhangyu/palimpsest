@@ -1,0 +1,47 @@
+/* ==========================================================================
+   Main Content Variables
+   ========================================================================== */
+
+$content-transition-duration: 0.3s !default;
+$content-transition-timing: ease !default;
+$content-breakpoint-collapse: 1200px !default;
+
+/* ==========================================================================
+   Main Content Area
+   ========================================================================== */
+
+.main-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: $min-viewport-height;
+  margin-inline-start: var(--sidebar-width);
+  background-color: var(--content-wrapper-bg);
+
+  @include transition(
+    margin $content-transition-duration $content-transition-timing,
+    background-color $content-transition-duration $content-transition-timing
+  );
+
+  &.expanded {
+    margin-inline-start: 0;
+  }
+
+  &.expanded-mini {
+    margin-inline-start: var(--sidebar-mini-width);
+  }
+
+  @include media-breakpoint-down(xl) {
+    margin-inline-start: 0;
+  }
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  color: var(--content-wrapper-color);
+  background-color: var(--content-wrapper-bg);
+  @include transition(background-color $content-transition-duration $content-transition-timing);
+}

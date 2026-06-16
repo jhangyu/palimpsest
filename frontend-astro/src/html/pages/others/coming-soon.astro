@@ -1,0 +1,244 @@
+---
+import AuthenticationLayout from '../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix } from '../../../utils/path.js'
+
+const pageScript = `<script>
+    function updateCountdown() {
+        const launchDate = new Date('2025-08-28T00:00:00').getTime();
+
+        function update() {
+            const now = new Date().getTime();
+            const distance = launchDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const elements = {
+                days: document.querySelector('.countdown-days'),
+                hours: document.querySelector('.countdown-hours'),
+                minutes: document.querySelector('.countdown-minutes'),
+                seconds: document.querySelector('.countdown-seconds')
+            };
+
+            if (elements.days && elements.hours && elements.minutes && elements.seconds) {
+                elements.days.textContent = days.toString().padStart(3, '0');
+                elements.hours.textContent = hours.toString().padStart(2, '0');
+                elements.minutes.textContent = minutes.toString().padStart(2, '0');
+                elements.seconds.textContent = seconds.toString().padStart(2, '0');
+            }
+        }
+
+        update();
+        setInterval(update, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCountdown();
+    });
+</script>`
+---
+
+<AuthenticationLayout
+  title="Coming Soon"
+  description="Coming Soon Page - We're working hard to bring you something amazing!"
+  currentPath="others/coming-soon"
+  pageScript={pageScript}
+>
+  <div class="min-vh-100 d-flex flex-column justify-content-center py-4 py-sm-5">
+    <div class="container px-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8 col-xl-7 text-center">
+          <!-- Header -->
+          <h1 class="display-4 fw-bold mb-2">Coming Soon!</h1>
+          <p class="lead text-body-secondary mb-4 mb-lg-5">
+            We're working hard to bring you something amazing! Get ready for an incredible
+            experience.
+          </p>
+
+          <!-- Illustration -->
+          <div class="illustration-wrapper position-relative mx-auto mb-3 mb-lg-4">
+            <div class="position-relative">
+              <img
+                src={getAssetPrefix('/assets/img/pages/maintenance2.png')}
+                alt="Coming Soon Illustration"
+                class="img-fluid coming-soon-img rounded-4"
+                width="400"
+                height="320"
+              />
+            </div>
+          </div>
+
+          <!-- Countdown Timer -->
+          <div class="countdown-wrapper py-2">
+            <p class="h5 mb-3 text-body-secondary">Launch countdown</p>
+            <div class="row justify-content-center g-3 g-sm-4">
+              <div class="col-3">
+                <div class="countdown-item p-2 p-sm-3 rounded-4 bg-white shadow-sm">
+                  <div class="countdown-value text-primary">
+                    <span class="countdown-days fs-2 fs-sm-1 fw-bold">162</span>
+                  </div>
+                  <div class="countdown-label small text-muted">days</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="countdown-item p-2 p-sm-3 rounded-4 bg-white shadow-sm">
+                  <div class="countdown-value text-primary">
+                    <span class="countdown-hours fs-2 fs-sm-1 fw-bold">03</span>
+                  </div>
+                  <div class="countdown-label small text-muted">hours</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="countdown-item p-2 p-sm-3 rounded-4 bg-white shadow-sm">
+                  <div class="countdown-value text-primary">
+                    <span class="countdown-minutes fs-2 fs-sm-1 fw-bold">38</span>
+                  </div>
+                  <div class="countdown-label small text-muted">minutes</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="countdown-item p-2 p-sm-3 rounded-4 bg-white shadow-sm">
+                  <div class="countdown-value text-primary">
+                    <span class="countdown-seconds fs-2 fs-sm-1 fw-bold">32</span>
+                  </div>
+                  <div class="countdown-label small text-muted">seconds</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Newsletter Form -->
+          <div class="newsletter-form mx-auto mt-4 mt-lg-5" style="max-width: 420px;">
+            <h5 class="mb-3">Be the first to know!</h5>
+            <div class="input-group input-group-lg">
+              <input
+                type="email"
+                class="form-control"
+                placeholder="Enter your email"
+                aria-label="Email address"
+              />
+              <button class="btn btn-primary px-4 px-lg-5"> Notify me </button>
+            </div>
+            <p class="small text-muted mt-2">Get notified when we launch. No spam, we promise!</p>
+          </div>
+
+          <!-- Social Links -->
+          <div
+            class="social-links mt-4 pt-2 d-flex justify-content-center align-items-center gap-3"
+          >
+            <button type="button" class="btn btn-outline-primary btn-icon-sm" title="Twitter"
+              ><i class="ri-twitter-x-line"></i></button
+            >
+            <button type="button" class="btn btn-outline-primary btn-icon-sm" title="LinkedIn"
+              ><i class="ri-linkedin-line"></i></button
+            >
+            <button type="button" class="btn btn-outline-primary btn-icon-sm" title="YouTube"
+              ><i class="ri-youtube-line"></i></button
+            >
+          </div>
+
+          <!-- FAQ Section -->
+          <div class="faq-section mt-5 pt-4">
+            <h4 class="mb-4">Frequently Asked Questions</h4>
+            <div
+              class="accordion accordion-flush accordion-icon"
+              id="iconAccordion"
+              role="tablist"
+              aria-multiselectable="true"
+            >
+              <div class="accordion-item border rounded mb-3">
+                <h2 class="accordion-header">
+                  <button
+                    class="accordion-button collapsed rounded shadow-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#icon1"
+                    aria-expanded="false"
+                    aria-controls="icon1"
+                  >
+                    <i class="ri-calendar-line me-2"></i>When will the new platform be available?
+                  </button>
+                </h2>
+                <div id="icon1" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+                  <div class="accordion-body">
+                    <strong>We're launching on August 28, 2025!</strong> Our team is working around the
+                    clock to deliver an amazing experience with cutting-edge features, enhanced security,
+                    and improved performance. Mark your calendar and get ready for something extraordinary.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item border rounded mb-3">
+                <h2 class="accordion-header">
+                  <button
+                    class="accordion-button collapsed rounded shadow-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#icon2"
+                    aria-expanded="false"
+                    aria-controls="icon2"
+                  >
+                    <i class="ri-gift-line me-2"></i>What can I expect from the new platform?
+                  </button>
+                </h2>
+                <div id="icon2" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+                  <div class="accordion-body">
+                    <strong>Get ready for an incredible experience!</strong> The new platform will feature
+                    a modern, intuitive interface, lightning-fast performance, advanced analytics, seamless
+                    integrations, and powerful tools designed to help you achieve your goals more efficiently
+                    than ever before.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item border rounded mb-3">
+                <h2 class="accordion-header">
+                  <button
+                    class="accordion-button collapsed rounded shadow-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#icon3"
+                    aria-expanded="false"
+                    aria-controls="icon3"
+                  >
+                    <i class="ri-notification-line me-2"></i>How will I be notified when it's ready?
+                  </button>
+                </h2>
+                <div id="icon3" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+                  <div class="accordion-body">
+                    <strong>Stay in the loop!</strong> Simply enter your email address above and we'll
+                    send you a notification as soon as the platform goes live. You'll also receive exclusive
+                    updates, early access information, and special launch offers. No spam, we promise!
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item border rounded mb-3">
+                <h2 class="accordion-header">
+                  <button
+                    class="accordion-button collapsed rounded shadow-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#icon4"
+                    aria-expanded="false"
+                    aria-controls="icon4"
+                  >
+                    <i class="ri-shield-check-line me-2"></i>Will my current data be safe and
+                    migrated?
+                  </button>
+                </h2>
+                <div id="icon4" class="accordion-collapse collapse" data-bs-parent="#iconAccordion">
+                  <div class="accordion-body">
+                    <strong>Absolutely! Your data security is our top priority.</strong> We'll ensure
+                    a seamless transition of all your existing data to the new platform with bank-level
+                    encryption and zero data loss. Our dedicated migration team will handle everything,
+                    and you'll receive detailed instructions before the launch.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

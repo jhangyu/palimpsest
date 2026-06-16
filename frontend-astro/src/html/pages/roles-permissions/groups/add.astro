@@ -1,0 +1,240 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../utils/path.js'
+
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Add Group',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions') },
+    { label: 'Groups', href: getPathPrefix('/roles-permissions/groups/list') },
+    { label: 'Add Group', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Back',
+      href: getPathPrefix('/roles-permissions/groups/list'),
+      type: 'link',
+      variant: 'btn-outline-primary',
+      icon: 'ri-arrow-left-s-line'
+    }
+  ]
+}
+
+// Get the redirect URL for use in the script
+const redirectUrl = getPathPrefix('/roles-permissions/groups/list')
+
+// Add custom validation script
+const pageScript = `
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('groupForm');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const spinner = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>';
+      const redirectUrl = "${redirectUrl}"; // Use the pre-computed URL here
+
+      // Function to show error feedback
+      function showError(input, message) {
+        const formGroup = input.closest('.mb-3');
+        formGroup.classList.add('has-validation');
+        input.classList.add('is-invalid');
+
+        // Remove existing error message if any
+        const existingFeedback = formGroup.querySelector('.invalid-feedback');
+        if (existingFeedback) {
+          existingFeedback.remove();
+        }
+
+        // Add new error message
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = message;
+        input.after(feedback);
+      }
+
+      // Function to clear error feedback
+      function clearError(input) {
+        const formGroup = input.closest('.mb-3');
+        formGroup.classList.remove('has-validation');
+        input.classList.remove('is-invalid');
+        const feedback = formGroup.querySelector('.invalid-feedback');
+        if (feedback) {
+          feedback.remove();
+        }
+      }
+
+      // Function to generate slug from title
+      function generateSlug(title) {
+        return title.toLowerCase()
+                   .replace(/[^a-z0-9]+/g, '_')
+                   .replace(/^_+|_+$/g, '');
+      }
+
+      // Function to validate form
+      function validateForm() {
+        let isValid = true;
+        const groupTitle = form.querySelector('#groupTitle');
+        const groupSlug = form.querySelector('#groupSlug');
+
+        // Clear previous errors
+        [groupTitle, groupSlug].forEach(input => clearError(input));
+
+        // Validate Group Title
+        if (!groupTitle.value.trim()) {
+          showError(groupTitle, 'Group title is required');
+          isValid = false;
+        }
+
+        // Validate Group Slug
+        if (!groupSlug.value.trim()) {
+          showError(groupSlug, 'Group slug is required');
+          isValid = false;
+        } else if (!/^[a-z0-9_]+$/.test(groupSlug.value)) {
+          showError(groupSlug, 'Group slug should contain only lowercase letters, numbers and underscores');
+          isValid = false;
+        }
+
+        return isValid;
+      }
+
+      // Auto-generate slug from title
+      form.querySelector('#groupTitle').addEventListener('input', function() {
+        form.querySelector('#groupSlug').value = generateSlug(this.value);
+      });
+
+      // Form submission handler
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+          return;
+        }
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = spinner + 'Creating...';
+
+        try {
+          // Simulate API call (replace with your actual API endpoint)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // On success
+          window.location.href = redirectUrl; // Use the variable defined above
+        } catch (error) {
+          // On error
+          console.error('Error:', error);
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Create Group';
+
+          // Show error alert
+          const alert = document.createElement('div');
+          alert.className = 'alert alert-danger mt-3';
+          alert.textContent = 'An error occurred while creating the group. Please try again.';
+          form.insertBefore(alert, form.firstChild);
+
+          // Remove alert after 5 seconds
+          setTimeout(() => alert.remove(), 5000);
+        }
+      });
+
+      // Real-time validation on input
+      form.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', function() {
+          clearError(this);
+        });
+      });
+    });
+  </script>
+`
+---
+
+<AdminLayout
+  title="Add Group"
+  description="Create New Group"
+  currentPath="roles-permissions/groups/add"
+  pageScript={pageScript}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <form id="groupForm" novalidate>
+    <div class="row">
+      <div class="col-md-8 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Group Title -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="groupTitle" class="form-label"
+                    >Group Title <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="groupTitle"
+                    name="groupTitle"
+                    placeholder="Enter group title"
+                  />
+                  <div class="form-text">Example: Content Management, User Management, etc.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Group Slug -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="groupSlug" class="form-label"
+                    >Group Slug <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="groupSlug"
+                    name="groupSlug"
+                    placeholder="Enter group slug"
+                  />
+                  <div class="form-text">
+                    Auto-generated from title. Example: content_management, user_management
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Status -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="status" class="form-label"
+                    >Status <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="status" name="status" required>
+                    <option value="Active" selected>Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <!-- Form Actions -->
+            <div class="d-flex flex-column flex-lg-row justify-content-end gap-2">
+              <a
+                href={getPathPrefix('/roles-permissions/groups/list')}
+                class="btn btn-outline-secondary">Cancel</a
+              >
+              <button type="submit" class="btn btn-primary">Create Group</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</AdminLayout>

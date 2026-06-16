@@ -1,0 +1,92 @@
+---
+export interface Props {
+  title: string
+  actions?: Array<{
+    label: string
+    href?: string
+    type?: 'button' | 'link'
+    onClick?: () => void
+    variant?:
+      | 'btn-primary'
+      | 'btn-secondary'
+      | 'btn-success'
+      | 'btn-danger'
+      | 'btn-warning'
+      | 'btn-info'
+      | 'btn-dark'
+      | 'btn-light'
+      | 'btn-outline-primary'
+      | 'btn-outline-secondary'
+      | 'btn-outline-success'
+      | 'btn-outline-danger'
+      | 'btn-outline-warning'
+      | 'btn-outline-info'
+      | 'btn-outline-dark'
+      | 'btn-outline-light'
+    icon?: string
+    class?: string
+  }>
+  breadcrumbs?: Array<{
+    label: string
+    href?: string
+    class?: string
+  }>
+}
+
+const { title, actions = [], breadcrumbs = [] } = Astro.props
+---
+
+<div class="page-header-container mb-4 border-bottom pb-2">
+  <!-- First Row: Title and Actions -->
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center">
+      <h1 class="h3 mb-0">{title}</h1>
+    </div>
+
+    {
+      actions.length > 0 && (
+        <div class="page-actions d-flex gap-2">
+          {actions.map((action) => {
+            const commonProps = {
+              class: `btn ${action.variant || 'btn-primary'} ${action.class || ''}`,
+              ...(action.onClick && { 'data-action': 'click->header#handleAction' })
+            }
+
+            return action.type === 'button' ? (
+              <button {...commonProps} type="button">
+                {action.icon && <i class={action.icon} />}
+                <span class="mx-1 me-0 d-none d-sm-block">{action.label}</span>
+              </button>
+            ) : (
+              <a href={action.href} {...commonProps}>
+                {action.icon && <i class={action.icon} />}
+                <span class="mx-1 me-0 d-none d-sm-block">{action.label}</span>
+              </a>
+            )
+          })}
+        </div>
+      )
+    }
+  </div>
+
+  <!-- Second Row: Breadcrumbs -->
+  {
+    breadcrumbs.length > 0 && (
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          {breadcrumbs.map((item) => (
+            <li class={`breadcrumb-item ${item.class ? item.class : ''}`}>
+              {item.href ? (
+                <a href={item.href} class="text-decoration-none">
+                  {item.label}
+                </a>
+              ) : (
+                item.label
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    )
+  }
+</div>

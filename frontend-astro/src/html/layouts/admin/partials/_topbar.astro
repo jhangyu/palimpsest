@@ -1,0 +1,328 @@
+---
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<!-- Top Navigation -->
+<div class="topbar container">
+  <nav class="d-flex align-items-center justify-content-between py-2">
+    <!-- Left section -->
+    <div class="d-flex align-items-center gap-4">
+      <button
+        class="btn sidebar-toggle d-md-block d-lg-block d-xl-none p-0 border-0"
+        id="sidebar-toggle"
+      >
+        <i class="ri-menu-line fs-5"></i>
+      </button>
+      <!-- Search Modal Toggle Button -->
+      <button
+        class="btn search-toggle w-100 text-start d-flex align-items-center gap-2 border shadow-none"
+        id="search-toggle"
+        data-bs-toggle="modal"
+        data-bs-target="#searchModal"
+        type="button"
+      >
+        <i class="ri-search-line"></i>
+        <span class="search-placeholder d-none d-sm-inline">Search </span>
+        <span class="search-shortcut d-none d-sm-inline">Ctrl + K</span>
+      </button>
+    </div>
+
+    <!-- Right section -->
+    <div class="d-flex align-items-center gap-4">
+      <!-- Theme Toggle Button -->
+      <button class="btn p-0 border-0 shadow-none" id="theme-toggle">
+        <i class="ri-sun-line fs-5"></i>
+      </button>
+      <!-- GitHub Repository Link -->
+      <a
+        href="https://github.com/asterodigital/bootstrap-admin-template"
+        class="btn p-0 border-0 shadow-none"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="GitHub Repository"
+      >
+        <i class="ri-github-line fs-5"></i>
+      </a>
+      <!-- Notifications Dropdown -->
+      <div class="notifications-dropdown">
+        <button
+          class="btn p-0 border-0 shadow-none position-relative"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <i class="ri-notification-3-line fs-5"></i>
+          <span
+            class="badge topbar-badge bg-danger fw-medium position-absolute rounded-pill start-100 translate-middle"
+          >
+            3
+          </span>
+        </button>
+
+        <div class="dropdown-menu dropdown-menu-end notifications-menu overflow-visible p-0">
+          <!-- Header -->
+          <div
+            class="notifications-header p-3 border-bottom d-flex align-items-center justify-content-between"
+          >
+            <h6 class="mb-0">Notifications</h6>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary-subtle text-primary rounded-pill">3 New</span>
+              <button
+                class="btn btn-icon btn-sm btn-text"
+                data-toggle="tooltip"
+                data-toggle-position="bottom"
+                title="Mark all as read"
+                type="button"
+                aria-label="Mark all as read"
+              >
+                <i class="ri-mail-open-line"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Notifications List -->
+          <div class="notifications-list" data-simplebar>
+            <!-- Message Notification -->
+            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
+              <div class="d-flex">
+                <div class="flex-shrink-0">
+                  <div class="avatar avatar-sm">
+                    <img
+                      src={getAssetPrefix('/assets/img/avatars/avatar1.jpg')}
+                      alt="User"
+                      class="rounded-circle"
+                    />
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h6 class="mb-1 fs-14">New message from Sarah</h6>
+                  <p class="text-muted mb-1 fs-12">Hey, check out the new dashboard...</p>
+                  <small class="text-muted">5 mins ago</small>
+                </div>
+                <div class="notification-actions">
+                  <button class="btn notification-close shadow-none">
+                    <i class="ri-close-line"></i>
+                  </button>
+                  <div class="notification-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- System Update Notification (Read) -->
+            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
+              <div class="d-flex">
+                <div class="flex-shrink-0">
+                  <div class="avatar avatar-sm bg-info-subtle">
+                    <i class="ri-refresh-line text-info"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h6 class="mb-1 fs-14">System update completed</h6>
+                  <p class="text-muted mb-1 fs-12">Your system is now up to date</p>
+                  <small class="text-muted">1 hour ago</small>
+                </div>
+                <div class="notification-actions">
+                  <button class="btn notification-close shadow-none">
+                    <i class="ri-close-line"></i>
+                  </button>
+                  <div class="notification-indicator bg-secondary-subtle"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Notification -->
+            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
+              <div class="d-flex">
+                <div class="flex-shrink-0">
+                  <div class="avatar avatar-sm bg-primary-subtle">
+                    <i class="ri-shopping-cart-line text-primary"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h6 class="mb-1 fs-14">New order received</h6>
+                  <p class="text-muted mb-1 fs-12">Order #123 has been placed</p>
+                  <small class="text-muted">2 hours ago</small>
+                </div>
+                <div class="notification-actions">
+                  <button class="btn notification-close shadow-none">
+                    <i class="ri-close-line"></i>
+                  </button>
+                  <div class="notification-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Security Alert Notification -->
+            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
+              <div class="d-flex">
+                <div class="flex-shrink-0">
+                  <div class="avatar avatar-sm bg-danger-subtle">
+                    <i class="ri-shield-keyhole-line text-danger"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h6 class="mb-1 fs-14">Security alert</h6>
+                  <p class="text-muted mb-1 fs-12">Unusual login attempt detected</p>
+                  <small class="text-muted">3 hours ago</small>
+                </div>
+                <div class="notification-actions">
+                  <button class="btn notification-close shadow-none">
+                    <i class="ri-close-line"></i>
+                  </button>
+                  <div class="notification-indicator"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="notifications-footer p-2 text-center border-top">
+            <a
+              href={getPathPrefix('/users/notifications')}
+              class="btn btn-primary btn-sm rounded-pill w-100"
+            >
+              View All Notifications
+            </a>
+          </div>
+        </div>
+      </div>
+      <!-- User Profile Button -->
+      <div class="user-profile">
+        <button
+          class="btn p-0 border-0 shadow-none d-flex align-items-center"
+          type="button"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#userProfileOffcanvas"
+          aria-controls="userProfileOffcanvas"
+        >
+          <div class="avatar position-relative">
+            <img
+              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+              alt="User"
+              class="rounded-circle"
+            />
+            <span class="online-indicator"></span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<!-- User Profile Offcanvas -->
+<div
+  class="offcanvas offcanvas-end user-profile-offcanvas"
+  tabindex="-1"
+  id="userProfileOffcanvas"
+  aria-labelledby="userProfileOffcanvasLabel"
+>
+  <!-- Top Section -->
+  <div class="offcanvas-top">
+    <div class="user-profile-header text-center">
+      <div class="user-profile-cover"></div>
+      <div class="user-profile-avatar">
+        <div class="avatar-wrapper">
+          <img
+            src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+            alt="User"
+            class="rounded-circle"
+          />
+          <span class="status-badge online"></span>
+        </div>
+      </div>
+      <div class="user-profile-info">
+        <h5 class="user-name">Amara Evans</h5>
+        <p class="user-email">amara@example.com</p>
+      </div>
+
+      <button
+        type="button"
+        class="btn-close-custom d-flex align-items-center justify-content-center"
+        data-bs-dismiss="offcanvas"
+        aria-label="Close"
+      >
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Section -->
+  <div class="offcanvas-content">
+    <nav class="nav-tree p-0">
+      <ul class="list-unstyled">
+        <li class="nav-item">
+          <a class="nav-link" href={getPathPrefix('/users/profile')}>
+            <i class="ri-user-line"></i>
+            <span>Profile</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href={getPathPrefix('/users/security')}>
+            <i class="ri-shield-keyhole-line"></i>
+            <span>Security</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href={getPathPrefix('/users/billing')}>
+            <i class="ri-wallet-3-line"></i>
+            <span>Billing</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+            <i class="ri-notification-4-line"></i>
+            <span>Notifications</span>
+            <span class="badge text-bg-danger ms-2">3</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Bottom Section -->
+  <div class="offcanvas-bottom">
+    <!-- Pro Upgrade Card -->
+    <div class="upgrade-pro-card d-none d-md-block">
+      <div class="card-content">
+        <div class="pro-badge">
+          <i class="ri-vip-crown-line"></i>
+          <span>Pro</span>
+        </div>
+        <h3>Upgrade to Pro</h3>
+        <p>Get access to all features</p>
+        <ul class="feature-list">
+          <li><i class="ri-check-line"></i> Advanced Analytics</li>
+          <li><i class="ri-check-line"></i> Team Collaboration</li>
+          <li><i class="ri-check-line"></i> API Access</li>
+        </ul>
+        <a href="#" class="btn btn-upgrade d-flex align-items-center justify-content-center">
+          Upgrade Now
+          <i class="ri-arrow-right-line"></i>
+        </a>
+      </div>
+    </div>
+    <!-- Pro Upgrade Button -->
+    <div class="upgrade-pro-button d-md-none">
+      <a
+        href="#"
+        class="btn btn-upgrade btn-outline-primary d-flex align-items-center justify-content-center mb-2"
+      >
+        <i class="ri-vip-crown-2-line me-2"></i>
+        <span>Upgrade to Pro</span>
+      </a>
+    </div>
+
+    <!-- Logout Button -->
+    <div class="logout-section">
+      <a
+        href={getPathPrefix('#')}
+        class="btn-logout d-flex align-items-center justify-content-center"
+      >
+        <i class="ri-logout-box-r-line"></i>
+        <span>Log Out</span>
+      </a>
+    </div>
+  </div>
+</div>

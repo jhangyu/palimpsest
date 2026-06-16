@@ -1,0 +1,63 @@
+// ==========================================================================
+//   gentelella Chart Containers
+//   Namespace: .g-chart
+//   Provides responsive containers and loading states for ECharts
+// ==========================================================================
+
+.g-chart {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+}
+
+.g-chart-sm {
+  min-height: 150px;
+}
+
+.g-chart-md {
+  min-height: 300px;
+}
+
+.g-chart-lg {
+  min-height: 450px;
+}
+
+.g-chart-xl {
+  min-height: 600px;
+}
+
+.g-chart-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bs-body-bg) 80%, transparent);
+  border-radius: var(--radius);
+
+  &::after {
+    width: 32px;
+    height: 32px;
+    content: '';
+    border: 3px solid var(--bs-border-color);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: g-chart-spin 0.6s linear infinite;
+  }
+}
+
+.g-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: inherit;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+@keyframes g-chart-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

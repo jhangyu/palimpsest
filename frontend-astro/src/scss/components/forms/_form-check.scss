@@ -1,0 +1,60 @@
+// ==========================================================================
+//   Form Check Size Mixins
+// ==========================================================================
+
+@mixin form-check-size($input-size, $label-font-size, $container-height) {
+  .form-check-input {
+    width: $input-size !important;
+    height: $input-size !important;
+    border-width: 2px;
+  }
+
+  .form-check-label {
+    font-size: $label-font-size;
+    line-height: #{$container-height / $label-font-size};
+  }
+}
+
+.form-check {
+  display: flex;
+  align-items: center;
+  .form-check-label {
+    margin-top: 0.25rem;
+    margin-left: 0.25rem;
+  }
+  .form-check-input {
+    width: 1.0625rem;
+    height: 1.0625rem;
+    border-width: 2px;
+
+    &:not(:disabled):hover {
+      border-color: var(--bs-gray-500);
+    }
+
+    &:focus {
+      border-color: var(--bs-primary);
+      box-shadow: none;
+    }
+  }
+}
+
+// ==========================================================================
+//   Form Check Sizes - Following SIZING_CONSISTENCY.md Guidelines
+//   Default checkbox/radio: 17px x 17px (1.0625rem), others scale proportionally
+// ==========================================================================
+
+.form-check-xs {
+  @include form-check-size(0.67rem, $input-btn-font-size-xs, $input-btn-minheight-xs);
+}
+
+.form-check-sm {
+  @include form-check-size(0.84rem, $input-btn-font-size-sm, $input-btn-minheight-sm);
+}
+
+.form-check-lg {
+  @include form-check-size(1.29rem, $input-btn-font-size-lg, $input-btn-minheight-lg);
+}
+
+.form-check-xl {
+  @include form-check-size(1.57rem, $input-btn-font-size-xl, $input-btn-minheight-xl);
+}

@@ -1,0 +1,119 @@
+/* ==========================================================================
+   Theme Configuration & Variables
+   ========================================================================== */
+// Light Theme Variables
+:root,
+[data-bs-theme='light'] {
+  // Typography
+  --font-family-sans-serif:
+    'Source Sans 3',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    roboto,
+    'Helvetica Neue',
+    'Noto Sans',
+    'Liberation Sans',
+    arial,
+    sans-serif,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    'Noto Color Emoji';
+  --font-family-monospace:
+    sfmono-regular,
+    menlo,
+    monaco,
+    consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace;
+  // Layout
+  --sidebar-width: 260px;
+  --sidebar-mini-width: 65px;
+  --topbar-height: 60px;
+  --footer-height: 55px;
+  // Sidebar Theme
+  --sidebar-color: #5a5a5a;
+  --sidebar-bg: #fff;
+  --nav-section-text-color: #a5a5a5;
+  --nav-link-color: #5a5a5a;
+  --nav-link-bg: #fff;
+  --nav-link-hover-bg: #f3f3f4;
+  --nav-link-active-color: var(--bs-primary);
+  --nav-link-active-bg: var(--bs-primary-bg-subtle);
+  --has-submenu-open-color: #252525;
+  --has-submenu-open-bg: #f3f3f4;
+  --has-submenu-active-color: #252525;
+  --has-submenu-active-bg: #f3f3f4;
+  --submenu-active-color: #252525;
+  --submenu-active-bg: #f3f3f4;
+  --submenu-hover-color: #252525;
+  --submenu-hover-bg: #f3f3f4;
+  // Topbar Theme
+  --topbar-color: #5a5a5a;
+  --topbar-bg: #f3f3f4;
+  // Content Wrapper Theme
+  --content-wrapper-color: #252525;
+  --content-wrapper-bg: #f3f3f4;
+  // Footer Theme
+  --footer-color: #5a5a5a;
+  --footer-bg: #f3f3f4;
+  // Breadcrumb Theme
+  --breadcrumb-color: var(--bs-secondary-color);
+  --breadcrumb-active-color: var(--bs-body-color);
+  --breadcrumb-hover-color: var(--bs-body-color);
+
+  // Bootstrap muted color
+  --#{$prefix}text-muted: #{$text-muted};
+
+  // Grey colors
+  @each $name, $value in $grays {
+    --#{$prefix}gray-#{$name}-rgb: #{to-rgb($value)};
+    --#{$prefix}text-gray-#{$name}: #{$value};
+  }
+  // Table
+  --table-striped-bg: #f3f3f4;
+  --table-hover-bg: #f3f3f4;
+
+  // Card variables
+  /* stylelint-disable function-disallowed-list */
+  --bs-card-inner-border-radius: calc(var(--bs-border-radius-xl) - (var(--bs-border-width)));
+  /* stylelint-enable function-disallowed-list */
+}
+
+// Dark Theme Variables
+[data-bs-theme='dark'] {
+  // Sidebar Theme
+  --sidebar-color: #bfbfbf;
+  --sidebar-bg: #212529;
+  --nav-section-text-color: #a5a5a5;
+  --nav-link-color: #bfbfbf;
+  --nav-link-bg: #212529;
+  --nav-link-hover-bg: #2b3035;
+  --nav-link-active-color: var(--bs-primary-text-emphasis);
+  --nav-link-active-bg: var(--bs-primary-bg-subtle);
+  --has-submenu-open-color: #f2f4f7;
+  --has-submenu-open-bg: #2b3035;
+  --has-submenu-active-color: #f2f4f7;
+  --has-submenu-active-bg: #2b3035;
+  --submenu-active-color: #f2f4f7;
+  --submenu-active-bg: #2b3035;
+  --submenu-hover-color: #f2f4f7;
+  --submenu-hover-bg: #2b3035;
+  // Topbar Theme
+  --topbar-color: #f2f4f7;
+  --topbar-bg: #2b3035;
+  // Content Wrapper Theme
+  --content-wrapper-color: #f2f4f7;
+  --content-wrapper-bg: #2b3035;
+  // Footer Theme
+  --footer-color: #f2f4f7;
+  --footer-bg: #2b3035;
+
+  // Bootstrap muted color
+  --#{$prefix}text-muted: #{$text-muted-dark};
+  // Table
+  --table-hover-bg: #343a40;
+  --table-striped-bg: #343a40;
+}

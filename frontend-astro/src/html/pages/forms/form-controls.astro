@@ -1,0 +1,798 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+
+// Page header configuration
+const pageHeaderProps = {
+  title: 'Form Controls',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Forms', href: '' },
+    { label: 'Form Controls', class: 'active' }
+  ]
+}
+
+// Example code blocks with improved variable names and comments
+const formInputBasicExamples = `<div class="row">
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Basic Text Input</label>
+        <input type="text" class="form-control" placeholder="Type here...">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Input with Label</label>
+        <input type="text" class="form-control" placeholder="Enter text">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Input with Placeholder</label>
+        <input type="text" class="form-control" placeholder="Start typing...">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Input with Value</label>
+        <input type="text" class="form-control" value="Predefined value">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Custom Border Style</label>
+        <input type="text" class="form-control border-dashed" placeholder="Enter your name">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Password Input</label>
+        <div class="password-wrapper">
+          <input
+            type="password"
+            class="form-control password-input"
+            placeholder="Enter password"
+          />
+          <button class="password-toggle" type="button">
+            <i class="ri-eye-off-line"></i>
+          </button>
+        </div>
+    </div>
+</div>`
+
+const formInputStates = `<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label">Readonly Plain Text</label>
+        <input type="text" class="form-control-plaintext" value="Readonly text here" readonly>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Readonly Input</label>
+        <input type="text" class="form-control" value="Readonly input field" readonly>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Disabled Input</label>
+        <input type="text" class="form-control" value="Disabled input field" disabled>
+    </div>
+</div>`
+
+const specialInputs = `<div class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label">Input with Icon</label>
+        <div class="input-group">
+            <span class="input-group-text">@</span>
+            <input type="text" class="form-control" placeholder="example@gmail.com">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Input with Icon Right</label>
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="example@gmail.com">
+            <span class="input-group-text">@</span>
+        </div>
+    </div>
+</div>`
+
+const formDateTimeInputs = `<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label">Date Input</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-calendar-line"></i></span>
+            <input type="date" class="form-control">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Time Input</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-time-line"></i></span>
+            <input type="time" class="form-control">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Date & Time</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-calendar-2-line"></i></span>
+            <input type="datetime-local" class="form-control">
+        </div>
+    </div>
+</div>`
+
+const formTextareaAndColor = `<div class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label">Rich Text Area</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-file-text-line"></i></span>
+            <textarea class="form-control" rows="3" placeholder="Write your content here..."></textarea>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Color Selection</label>
+        <div class="input-group">
+            <input type="color" class="form-control form-control-color w-100" value="#5D87FF">
+        </div>
+        <small class="text-muted">Choose your preferred color</small>
+    </div>
+</div>`
+
+const formDataListAndRounded = `<div class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label">Country Selector</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-earth-line"></i></span>
+            <input class="form-control" list="countryOptions" placeholder="Search your country...">
+            <datalist id="countryOptions">
+                <option value="United States">
+                <option value="United Kingdom">
+                <option value="Canada">
+                <option value="Australia">
+                <option value="Germany">
+                <option value="France">
+                <option value="Japan">
+                <option value="India">
+            </datalist>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Search Input</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+            <input type="text" class="form-control rounded-end-pill" placeholder="Search anything...">
+        </div>
+    </div>
+</div>`
+
+const formInputSizing = `<div class="row g-3">
+    <div class="mb-3">
+        <div class="input-group input-group-xs">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control form-control-xs" placeholder="Extra Small Input">
+        </div>
+    </div>
+    <div class="mb-3">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control form-control-sm" placeholder="Small Input">
+        </div>
+    </div>
+    <div class="mb-3">
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control" placeholder="Default Input">
+        </div>
+    </div>
+    <div class="mb-3">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control form-control-lg" placeholder="Large Input">
+        </div>
+    </div>
+    <div class="mb-3">
+        <div class="input-group input-group-xl">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control form-control-xl" placeholder="Extra Large Input">
+        </div>
+    </div>
+</div>`
+
+const formFileInputs = `<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label">Single File Upload</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-upload-2-line"></i></span>
+            <input class="form-control" type="file">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Multiple Files Upload</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-upload-cloud-line"></i></span>
+            <input class="form-control" type="file" multiple>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Disabled File Upload</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-lock-line"></i></span>
+            <input class="form-control" type="file" disabled>
+        </div>
+    </div>
+</div>`
+
+const formFileInputSizing = `<div class="row g-3">
+    <div class="col-12 mb-3">
+        <div class="input-group input-group-xs">
+            <span class="input-group-text"><i class="ri-upload-line"></i></span>
+            <input class="form-control form-control-xs" type="file">
+        </div>
+    </div>
+    <div class="col-12 mb-3">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="ri-upload-line"></i></span>
+            <input class="form-control form-control-sm" type="file">
+        </div>
+    </div>
+    <div class="col-12 mb-3">
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-upload-line"></i></span>
+            <input class="form-control" type="file">
+        </div>
+    </div>
+    <div class="col-12 mb-3">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text"><i class="ri-upload-line"></i></span>
+            <input class="form-control form-control-lg" type="file">
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="input-group input-group-xl">
+            <span class="input-group-text"><i class="ri-upload-line"></i></span>
+            <input class="form-control form-control-xl" type="file">
+        </div>
+    </div>
+</div>`
+
+const formInputGroups = `<div class="row g-3">
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <span class="input-group-text"><i class="ri-user-line"></i></span>
+            <input type="text" class="form-control" placeholder="Username">
+        </div>
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Username">
+            <span class="input-group-text">@example.com</span>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <span class="input-group-text"><i class="ri-money-dollar-circle-line"></i></span>
+            <input type="text" class="form-control" placeholder="0.00">
+            <span class="input-group-text">.00</span>
+        </div>
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Username">
+            <span class="input-group-text"><i class="ri-at-line"></i></span>
+            <input type="text" class="form-control" placeholder="Server">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-message-2-line"></i></span>
+            <textarea class="form-control" placeholder="Type your message..."></textarea>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Website URL</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-global-line"></i></span>
+            <input type="text" class="form-control" placeholder="your-site">
+            <span class="input-group-text">.com</span>
+        </div>
+    </div>
+</div>`
+
+const inputGroupSizing = `<div class="row g-3">
+    <div class="row m-3">
+        <div class="input-group input-group-xs">
+            <span class="input-group-text">Group</span>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+    <div class="row m-3">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">Group</span>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+    <div class="row m-3">
+        <div class="input-group">
+            <span class="input-group-text">Group</span>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+    <div class="row m-3">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text">Group</span>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+    <div class="row m-3">
+        <div class="input-group input-group-xl">
+            <span class="input-group-text">Group</span>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+</div>`
+
+const formCheckboxesAndRadios = `<div class="row g-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="checkbox" id="inputGroupCheckbox">
+            </div>
+            <input type="text" class="form-control" placeholder="Checkbox with input">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="radio" id="inputGroupRadio">
+            </div>
+            <input type="text" class="form-control" placeholder="Radio with input">
+        </div>
+    </div>
+</div>`
+
+const floatingLabels = `<div class="row g-3">
+    <div class="col-md-6">
+        <h6>Outline Style</h6>
+        <div class="form-floating mb-3">
+            <input type="email" class="form-control form-control-outline" id="floatingOutlineEmail" placeholder="name@example.com">
+            <label for="floatingOutlineEmail">Email address</label>
+        </div>
+        <div class="form-floating">
+            <input type="password" class="form-control form-control-outline" id="floatingOutlinePassword" placeholder="Password">
+            <label for="floatingOutlinePassword">Password</label>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h6>Filled Style</h6>
+        <div class="form-floating mb-3">
+            <input type="email" class="form-control form-control-filled" id="floatingFilledEmail" placeholder="name@example.com">
+            <label for="floatingFilledEmail">Email address</label>
+        </div>
+        <div class="form-floating">
+            <input type="password" class="form-control form-control-filled" id="floatingFilledPassword" placeholder="Password">
+            <label for="floatingFilledPassword">Password</label>
+        </div>
+    </div>
+</div>`
+
+const formButtonsAndDropdowns = `<div class="row g-3">
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <button class="btn btn-outline-primary" type="button"><i class="ri-search-line me-1"></i>Search</button>
+            <input type="text" class="form-control" placeholder="Search term...">
+        </div>
+        <div class="input-group mb-3">
+            <button class="btn btn-primary" type="button"><i class="ri-save-line me-1"></i>Save</button>
+            <button class="btn btn-success" type="button"><i class="ri-send-plane-line me-1"></i>Send</button>
+            <input type="text" class="form-control">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Choose an action...">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="ri-menu-line me-1"></i>Actions
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#"><i class="ri-edit-line me-2"></i>Edit</a></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-delete-bin-line me-2"></i>Delete</a></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-share-line me-2"></i>Share</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-settings-line me-2"></i>Settings</a></li>
+            </ul>
+        </div>
+        <div class="input-group">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="ri-filter-line me-1"></i>Filter
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#"><i class="ri-sort-asc me-2"></i>Sort A-Z</a></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-sort-desc me-2"></i>Sort Z-A</a></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-filter-2-line me-2"></i>Custom</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#"><i class="ri-refresh-line me-2"></i>Reset</a></li>
+            </ul>
+            <input type="text" class="form-control" placeholder="Filtered results...">
+        </div>
+    </div>
+</div>`
+---
+
+<AdminLayout
+  title="Form Controls"
+  description="Create modern and user-friendly forms with Bootstrap's extensive collection of form controls"
+  currentPath="forms/form-controls"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            Form controls are essential UI components that enable seamless user interaction in web
+            applications. Our implementation combines Bootstrap's robust form elements with modern
+            design patterns and enhanced accessibility features. From basic inputs to complex input
+            groups, these controls help create intuitive and responsive forms.
+          </p>
+          <div class="alert alert-info mt-3">
+            <i class="ri-lightbulb-flash-line me-2"></i>
+            <strong>Pro Tip:</strong> Enhance user experience by combining form controls with appropriate
+            icons, validation feedback, and helper text. Always ensure proper ARIA attributes for accessibility.
+          </div>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <h2 class="my-3" id="basic-form-controls">Basic Form Controls</h2>
+
+          <!-- Basic Inputs -->
+          <div class="my-3">
+            <h3 class="mb-0" id="basic-inputs">Basic Inputs</h3>
+            <p class="py-2">
+              Basic form controls are the foundation of any form interface. Each type serves a
+              specific purpose:
+              <ul class="mt-2">
+                <li><strong>Basic Input:</strong> Standard text input for single-line text</li>
+                <li>
+                  <strong>Input with Label:</strong> Improves accessibility and user understanding
+                </li>
+                <li>
+                  <strong>Input with Placeholder:</strong> Provides hint text that disappears when typing
+                </li>
+                <li><strong>Input with Value:</strong> Pre-populated input field</li>
+                <li><strong>Border Style:</strong> Visual variation with dashed border</li>
+                <li><strong>Password Input:</strong> Secure input that masks characters</li>
+              </ul>
+            </p>
+            <ComponentPreview
+              title="Basic Input Examples"
+              height="550px"
+              component={formInputBasicExamples}
+              htmlCode={formInputBasicExamples}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- Floating Labels -->
+          <div class="my-3">
+            <h3 class="mb-0" id="floating-labels">Floating Labels</h3>
+            <p class="py-2">
+              Floating labels provide an enhanced user experience by combining labels and
+              placeholders. Available in two styles:
+              <ul class="mt-2">
+                <li><strong>Outline:</strong> Modern look with outlined border</li>
+                <li><strong>Filled:</strong> Solid background for stronger visual emphasis</li>
+              </ul>
+              <div class="mb-3">
+                The label floats above the input when focused or filled, maintaining context while
+                typing.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Floating Labels Examples"
+              height="450px"
+              component={floatingLabels}
+              htmlCode={floatingLabels}
+            />
+          </div>
+
+          <!-- Special Input Types -->
+          <div class="my-3">
+            <h3 class="mb-0" id="special-inputs">Special Input Types</h3>
+            <p class="py-2">
+              Enhance form inputs with icons and special styling to provide better visual cues and
+              improve usability:
+              <ul class="mt-2">
+                <li>
+                  <strong>Left Icon:</strong> Places an icon before the input text for context
+                </li>
+                <li><strong>Right Icon:</strong> Positions an icon after the input text</li>
+                <li>
+                  <strong>Combined:</strong> Can be used with other input features like validation states
+                </li>
+              </ul>
+              <div class="alert alert-warning mt-2">
+                <i class="ri-alert-line me-2"></i>
+                Choose icons that clearly represent the input's purpose to enhance user understanding.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Special Input Examples"
+              height="300px"
+              component={specialInputs}
+              htmlCode={specialInputs}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- Input States -->
+          <div class="my-3">
+            <h3 class="mb-0" id="input-states">Input States</h3>
+            <p class="py-2">
+              Form controls can be configured with different states to indicate their interaction
+              status:
+              <ul class="mt-2">
+                <li>
+                  <strong>Readonly Plain Text:</strong> Displays text that cannot be modified but can
+                  be copied
+                </li>
+                <li>
+                  <strong>Readonly Input:</strong> Non-editable input that maintains form styling
+                </li>
+                <li>
+                  <strong>Disabled Input:</strong> Completely inactive input that cannot be interacted
+                  with
+                </li>
+              </ul>
+              <div class="alert alert-info mt-2">
+                <i class="ri-information-line me-2"></i>
+                Use appropriate states to guide users about which fields they can interact with.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Input State Examples"
+              height="350px"
+              component={formInputStates}
+              htmlCode={formInputStates}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- Date and Time Inputs -->
+          <div class="my-3">
+            <h3 class="mb-0" id="date-time-inputs">Date and Time Inputs</h3>
+            <p class="py-2">
+              HTML5 provides specialized input types for handling dates and times:
+              <ul class="mt-2">
+                <li><strong>Date Input:</strong> Built-in calendar picker for selecting dates</li>
+                <li><strong>Time Input:</strong> Time selection with hours and minutes</li>
+              </ul>
+              <div class="alert alert-info mt-2">
+                <i class="ri-information-line me-2"></i>
+                These inputs provide native browser controls and validation, improving user experience
+                across devices.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Date and Time Input Examples"
+              height="350px"
+              component={formDateTimeInputs}
+              htmlCode={formDateTimeInputs}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- Textarea and Color -->
+          <div class="my-3">
+            <h3 class="mb-0" id="textarea-color">Textarea and Color Picker</h3>
+            <p class="py-2">
+              For more complex input needs:
+              <ul class="mt-2">
+                <li><strong>Textarea:</strong> Multi-line text input ideal for longer content</li>
+                <li>
+                  <strong>Color Picker:</strong> Native color selection interface with hex value support
+                </li>
+              </ul>
+              <div class="alert alert-warning mt-2">
+                <i class="ri-alert-line me-2"></i>
+                When using textareas, consider specifying an appropriate rows attribute based on the expected
+                content length.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Textarea and Color Picker Examples"
+              height="350px"
+              component={formTextareaAndColor}
+              htmlCode={formTextareaAndColor}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- Datalist and Rounded -->
+          <div class="my-3">
+            <h3 class="mb-0" id="datalist-rounded">Datalist and Rounded Inputs</h3>
+            <p class="py-2">
+              Datalists provide suggestions as users type, while rounded inputs offer a softer
+              visual style.
+            </p>
+            <ComponentPreview
+              title="Datalist and Rounded Input Examples"
+              height="300px"
+              component={formDataListAndRounded}
+              htmlCode={formDataListAndRounded}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <h2 class="mb-4 mt-5" id="input-variations">Input Variations</h2>
+
+          <!-- Input Sizing -->
+          <div class="my-3">
+            <h3 class="mb-0" id="input-sizing">Input Sizing</h3>
+            <p class="py-2">
+              Adjust input sizes to create visual hierarchy and emphasis:
+              <ul class="mt-2">
+                <li>
+                  <strong>Extra Small (<code>.form-control-xs</code>):</strong> Compact inputs for dense
+                  forms
+                </li>
+                <li>
+                  <strong>Small (<code>.form-control-sm</code>):</strong> Reduced size for secondary inputs
+                </li>
+                <li><strong>Default:</strong> Standard size for most use cases</li>
+                <li>
+                  <strong>Large (<code>.form-control-lg</code>):</strong> Enhanced visibility for important
+                  fields
+                </li>
+                <li>
+                  <strong>Extra Large (<code>.form-control-xl</code>):</strong> Maximum visibility for
+                  critical inputs
+                </li>
+              </ul>
+              <div class="alert alert-info mt-2">
+                <i class="ri-information-line me-2"></i>
+                Maintain consistent sizing within form sections to ensure visual harmony.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Input Sizing Examples"
+              height="400px"
+              component={formInputSizing}
+              htmlCode={formInputSizing}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+
+          <!-- File Inputs -->
+          <div class="my-3">
+            <h3 class="mb-0" id="file-inputs">File Inputs</h3>
+            <p class="py-2">
+              File inputs enable users to upload files to your application:
+              <ul class="mt-2">
+                <li><strong>Default:</strong> Basic file selection with browser-native dialog</li>
+                <li>
+                  <strong>Multiple:</strong> Allows selection of multiple files simultaneously
+                </li>
+                <li><strong>Disabled:</strong> Prevents file uploads when needed</li>
+              </ul>
+              <div class="alert alert-warning mt-2">
+                <i class="ri-alert-line me-2"></i>
+                Consider adding accept attributes to limit file types and prevent invalid uploads.
+              </div>
+            </p>
+            <ComponentPreview
+              title="File Input Examples"
+              height="300px"
+              component={formFileInputs}
+              htmlCode={formFileInputs}
+              cssCode={``}
+              jsCode={``}
+            />
+
+            <h4 class="mt-4" id="file-inputs-sizing">File Input Sizing</h4>
+            <p>
+              File inputs can be sized using the same classes as regular inputs, from extra small (<code
+                >.form-control-xs</code
+              >) to extra large (<code>.form-group-xl</code>), providing flexibility in your form
+              design.
+            </p>
+            <ComponentPreview
+              title="File Input Sizing Examples"
+              height="500px"
+              component={formFileInputSizing}
+              htmlCode={formFileInputSizing}
+            />
+          </div>
+
+          <!-- Input Groups -->
+          <div class="my-3">
+            <h3 class="mb-0" id="input-groups">Input Groups</h3>
+            <p class="py-2">
+              Input groups combine form controls with additional elements:
+              <ul class="mt-2">
+                <li>
+                  <strong>Text Add-ons:</strong> Add context before or after inputs (e.g., @, $)
+                </li>
+                <li><strong>Button Add-ons:</strong> Add interactive elements like buttons</li>
+                <li>
+                  <strong>Multiple Add-ons:</strong> Combine multiple elements for complex inputs
+                </li>
+                <li><strong>Textarea Support:</strong> Works with multi-line inputs as well</li>
+              </ul>
+              <div class="alert alert-info mt-2">
+                <i class="ri-information-line me-2"></i>
+                Input groups enhance form functionality while maintaining a cohesive visual style.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Input Group Examples"
+              height="500px"
+              component={formInputGroups}
+              htmlCode={formInputGroups}
+            />
+
+            <h4 class="mt-4" id="input-group-sizing">Input Group Sizing</h4>
+            <p>
+              Use size classes from <code>input-group-xs</code> to <code>input-group-xl</code> to modify
+              the size of input groups. Each size is optimized for different use cases, from compact layouts
+              to prominent form elements.
+            </p>
+            <ComponentPreview
+              title="Input Group Sizing Examples"
+              height="400px"
+              component={inputGroupSizing}
+              htmlCode={inputGroupSizing}
+            />
+          </div>
+
+          <!-- Checkboxes and Radios -->
+          <div class="my-3">
+            <h3 class="mb-0" id="checkboxes-radios">Checkboxes and Radios in Input Groups</h3>
+            <p class="py-2">
+              Combine selection controls with text inputs for advanced functionality:
+              <ul class="mt-2">
+                <li>
+                  <strong>Checkbox Groups:</strong> Toggle features or enable/disable input functionality
+                </li>
+                <li>
+                  <strong>Radio Groups:</strong> Switch between different input modes or options
+                </li>
+              </ul>
+              <div class="alert alert-warning mt-2">
+                <i class="ri-alert-line me-2"></i>
+                Always provide clear labels and proper ARIA attributes for accessibility.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Checkbox and Radio Examples"
+              height="200px"
+              component={formCheckboxesAndRadios}
+              htmlCode={formCheckboxesAndRadios}
+            />
+          </div>
+
+          <!-- Buttons and Dropdowns -->
+          <div class="my-3">
+            <h3 class="mb-0" id="buttons-dropdowns">Buttons and Dropdowns in Input Groups</h3>
+            <p class="py-2">
+              Enhance input functionality with interactive elements:
+              <ul class="mt-2">
+                <li>
+                  <strong>Button Add-ons:</strong> Trigger actions directly related to the input
+                </li>
+                <li>
+                  <strong>Multiple Buttons:</strong> Combine multiple actions in a single input group
+                </li>
+                <li>
+                  <strong>Dropdown Integration:</strong> Add dropdown menus for additional options
+                </li>
+              </ul>
+              <div class="alert alert-info mt-2">
+                <i class="ri-information-line me-2"></i>
+                Keep button actions contextually relevant to the input field they accompany.
+              </div>
+            </p>
+            <ComponentPreview
+              title="Buttons and Dropdowns Examples"
+              height="280px"
+              component={formButtonsAndDropdowns}
+              htmlCode={formButtonsAndDropdowns}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

@@ -1,0 +1,14 @@
+/* ==========================================================================
+   Text Animations
+   ========================================================================== */
+
+// Fade animation
+.fade-animation {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.fade-animation.active {
+  opacity: 1;
+}

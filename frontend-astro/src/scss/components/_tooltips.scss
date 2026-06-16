@@ -1,0 +1,143 @@
+/* ==========================================================================
+     Shared Tooltip Styles
+     ========================================================================== */
+
+// Tooltip Variables
+$tooltip-transition: 0.3s ease-in-out !default;
+$tooltip-z-index: 1080 !default;
+$tooltip-arrow-z-index: 1081 !default;
+$tooltip-arrow-size: 5px !default;
+$tooltip-offset: 5px !default;
+$tooltip-min-width: 3rem !default;
+$tooltip-max-width: 21rem !default;
+$tooltip-padding: 0.4rem 0.8rem !default;
+
+// Tooltip positions map for dynamic generation
+$tooltip-positions: (
+  'top': (
+    arrow: 'border-top-color',
+    arrow-position: (bottom: 100%, left: 50%),
+    content-position: (bottom: 100%, left: 50%),
+    transform-offset: (x: -50%, y: 0.5rem)
+  ),
+  'bottom': (
+    arrow: 'border-bottom-color',
+    arrow-position: (top: 100%, left: 50%),
+    content-position: (top: 100%, left: 50%),
+    transform-offset: (x: -50%, y: -0.5rem)
+  ),
+  'left': (
+    arrow: 'border-left-color',
+    arrow-position: (top: 50%, right: 100%),
+    content-position: (top: 50%, right: 100%),
+    transform-offset: (x: 0.5rem, y: -50%)
+  ),
+  'right': (
+    arrow: 'border-right-color',
+    arrow-position: (top: 50%, left: 100%),
+    content-position: (top: 50%, left: 100%),
+    transform-offset: (x: -0.5rem, y: -50%)
+  )
+) !default;
+
+/* Base Tooltip Styles */
+[data-toggle='tooltip'][title] {
+  position: relative;
+  cursor: pointer;
+
+  // Shared pseudo-element styles
+  &::before,
+  &::after {
+    position: absolute;
+    z-index: $tooltip-z-index;
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    @include transition(all $tooltip-transition);
+  }
+
+  /* Tooltip Arrow */
+  &::before {
+    z-index: $tooltip-arrow-z-index;
+    content: '';
+    border: $tooltip-arrow-size solid transparent;
+  }
+
+  /* Tooltip Content */
+  &::after {
+    min-width: $tooltip-min-width;
+    max-width: $tooltip-max-width;
+    padding: $tooltip-padding;
+    overflow: hidden;
+    font-family: var(--bs-font-sans-serif, sans-serif);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #fff;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    content: attr(title);
+    background: var(--bs-dark);
+    box-shadow: $box-shadow-sm;
+    @include border-radius($border-radius-sm);
+  }
+
+  /* Show tooltip on hover */
+  &:hover::before,
+  &:hover::after {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+// Tooltip Position Mixin
+@mixin tooltip-position($position, $config) {
+  &::before {
+    @each $prop, $value in map-get($config, arrow-position) {
+      #{$prop}: $value;
+    }
+    #{map-get($config, arrow)}: var(--bs-dark);
+    transform:
+      translate3d(
+        map-get(map-get($config, transform-offset), x),
+        map-get(map-get($config, transform-offset), y),
+        0
+      );
+  }
+
+  &::after {
+    @each $prop, $value in map-get($config, content-position) {
+      #{$prop}: $value;
+    }
+    transform:
+      translate3d(
+        if($position == 'top' or $position == 'bottom', -50%, if($position == 'left', -$tooltip-offset, $tooltip-offset)),
+        if($position == 'left' or $position == 'right', -50%, if($position == 'top', -$tooltip-offset, $tooltip-offset)),
+        0
+      );
+  }
+
+  &:hover::before,
+  &:hover::after {
+    transform:
+      translate3d(
+        if($position == 'top' or $position == 'bottom', -50%, 0),
+        if($position == 'left' or $position == 'right', -50%, 0),
+        0
+      );
+  }
+}
+
+// Generate tooltip positions
+[data-toggle='tooltip']:not([data-toggle-position]),
+[data-toggle='tooltip'][data-toggle-position='top'] {
+  @include tooltip-position('top', map-get($tooltip-positions, 'top'));
+}
+
+@each $position, $config in $tooltip-positions {
+  @if $position != 'top' {
+    [data-toggle='tooltip'][data-toggle-position='#{$position}'] {
+      @include tooltip-position($position, $config);
+    }
+  }
+}

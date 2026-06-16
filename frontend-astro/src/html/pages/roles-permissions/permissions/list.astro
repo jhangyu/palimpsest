@@ -1,0 +1,787 @@
+---
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import ConfirmationModal from '../../../components/common/confirmation-modal.astro'
+
+// Register DataTables styles
+const pageStyles = `
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.7/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css">
+`
+
+// Register DataTables scripts
+const pageScript = `<!-- Add this scripts before body close -->
+<!-- Jquery -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.7/js/jquery.dataTables.min.js"></script>
+
+<script src="${getAssetPrefix('/assets/vendor/datatables/datatables.init.js')}"></script>
+<script type="module" src="${getAssetPrefix('/assets/js/pages/roles-permissions/permissions/table.js')}"></script>
+`
+
+// Page header configuration with breadcrumb navigation
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Permissions',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions'), class: '' },
+    { label: 'Permissions', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Add Permission',
+      href: getPathPrefix('/roles-permissions/permissions/add'),
+      type: 'link',
+      variant: 'btn-primary',
+      icon: 'ri-add-line'
+    }
+  ]
+}
+
+// Fetch permissions data from JSON file
+const permissions = [
+  {
+    id: 1,
+    title: 'view_pages',
+    display_name: 'View Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 2,
+    title: 'add_pages',
+    display_name: 'Create New Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 3,
+    title: 'edit_pages',
+    display_name: 'Edit Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 4,
+    title: 'delete_pages',
+    display_name: 'Delete Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 5,
+    title: 'restore_pages',
+    display_name: 'Restore Deleted Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 6,
+    title: 'publish_pages',
+    display_name: 'Publish/Unpublish Pages',
+    module: 'CMS',
+    group: 'Pages Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 7,
+    title: 'view_posts',
+    display_name: 'View Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 8,
+    title: 'add_posts',
+    display_name: 'Create New Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 9,
+    title: 'edit_posts',
+    display_name: 'Edit Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 10,
+    title: 'delete_posts',
+    display_name: 'Delete Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 11,
+    title: 'restore_posts',
+    display_name: 'Restore Deleted Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 12,
+    title: 'publish_posts',
+    display_name: 'Publish/Unpublish Posts',
+    module: 'CMS',
+    group: 'Posts Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 13,
+    title: 'view_media',
+    display_name: 'View Media Files',
+    module: 'CMS',
+    group: 'Media Library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 14,
+    title: 'upload_media',
+    display_name: 'Upload Media Files',
+    module: 'CMS',
+    group: 'Media Library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 15,
+    title: 'edit_media',
+    display_name: 'Edit Media Details',
+    module: 'CMS',
+    group: 'Media Library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 16,
+    title: 'delete_media',
+    display_name: 'Delete Media Files',
+    module: 'CMS',
+    group: 'Media Library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 17,
+    title: 'restore_media',
+    display_name: 'Restore Deleted Media',
+    module: 'CMS',
+    group: 'Media Library',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 18,
+    title: 'view_categories',
+    display_name: 'View Categories',
+    module: 'CMS',
+    group: 'Categories Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 19,
+    title: 'add_categories',
+    display_name: 'Create Categories',
+    module: 'CMS',
+    group: 'Categories Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 20,
+    title: 'edit_categories',
+    display_name: 'Edit Categories',
+    module: 'CMS',
+    group: 'Categories Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 21,
+    title: 'delete_categories',
+    display_name: 'Delete Categories',
+    module: 'CMS',
+    group: 'Categories Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 22,
+    title: 'restore_categories',
+    display_name: 'Restore Categories',
+    module: 'CMS',
+    group: 'Categories Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 23,
+    title: 'view_seo_settings',
+    display_name: 'View SEO Settings',
+    module: 'SEO',
+    group: 'SEO Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 24,
+    title: 'edit_seo_settings',
+    display_name: 'Edit SEO Settings',
+    module: 'SEO',
+    group: 'SEO Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 25,
+    title: 'manage_meta_tags',
+    display_name: 'Manage Meta Tags',
+    module: 'SEO',
+    group: 'SEO Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 26,
+    title: 'manage_sitemaps',
+    display_name: 'Manage Sitemaps',
+    module: 'SEO',
+    group: 'SEO Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 27,
+    title: 'view_redirects',
+    display_name: 'View Redirects',
+    module: 'SEO',
+    group: 'URL Redirects',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 28,
+    title: 'add_redirects',
+    display_name: 'Add Redirects',
+    module: 'SEO',
+    group: 'URL Redirects',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 29,
+    title: 'edit_redirects',
+    display_name: 'Edit Redirects',
+    module: 'SEO',
+    group: 'URL Redirects',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 30,
+    title: 'delete_redirects',
+    display_name: 'Delete Redirects',
+    module: 'SEO',
+    group: 'URL Redirects',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 31,
+    title: 'view_analytics',
+    display_name: 'View Analytics Dashboard',
+    module: 'SEO',
+    group: 'Analytics',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 32,
+    title: 'export_analytics',
+    display_name: 'Export Analytics Data',
+    module: 'SEO',
+    group: 'Analytics',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 33,
+    title: 'manage_analytics_settings',
+    display_name: 'Manage Analytics Settings',
+    module: 'SEO',
+    group: 'Analytics',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 34,
+    title: 'view_users',
+    display_name: 'View Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 35,
+    title: 'add_users',
+    display_name: 'Create Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 36,
+    title: 'edit_users',
+    display_name: 'Edit Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 37,
+    title: 'delete_users',
+    display_name: 'Delete Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 38,
+    title: 'restore_users',
+    display_name: 'Restore Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 39,
+    title: 'block_users',
+    display_name: 'Block/Unblock Users',
+    module: 'System',
+    group: 'User Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 40,
+    title: 'view_roles',
+    display_name: 'View Roles',
+    module: 'System',
+    group: 'Role Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 41,
+    title: 'add_roles',
+    display_name: 'Create Roles',
+    module: 'System',
+    group: 'Role Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 42,
+    title: 'edit_roles',
+    display_name: 'Edit Roles',
+    module: 'System',
+    group: 'Role Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 43,
+    title: 'delete_roles',
+    display_name: 'Delete Roles',
+    module: 'System',
+    group: 'Role Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 44,
+    title: 'assign_permissions',
+    display_name: 'Assign Role Permissions',
+    module: 'System',
+    group: 'Role Management',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 45,
+    title: 'view_settings',
+    display_name: 'View System Settings',
+    module: 'System',
+    group: 'System Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 46,
+    title: 'edit_settings',
+    display_name: 'Edit System Settings',
+    module: 'System',
+    group: 'System Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 47,
+    title: 'manage_backups',
+    display_name: 'Manage System Backups',
+    module: 'System',
+    group: 'System Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 48,
+    title: 'manage_cache',
+    display_name: 'Manage System Cache',
+    module: 'System',
+    group: 'System Settings',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 49,
+    title: 'view_logs',
+    display_name: 'View System Logs',
+    module: 'System',
+    group: 'System Logs',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 50,
+    title: 'delete_logs',
+    display_name: 'Delete System Logs',
+    module: 'System',
+    group: 'System Logs',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  },
+  {
+    id: 51,
+    title: 'export_logs',
+    display_name: 'Export System Logs',
+    module: 'System',
+    group: 'System Logs',
+    status: 'Active',
+    added_at: '2024-03-15T10:30:00'
+  }
+]
+---
+
+<AdminLayout
+  title="Permissions"
+  description="Permissions Management"
+  currentPath="roles-permissions/permissions/list"
+  pageScript={pageScript}
+  pageCss={pageStyles}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <!-- Permissions Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="astero-table">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+              <!--begin::Search-->
+              <div class="search-wrapper">
+                <i class="ri-search-line search-icon"></i>
+                <input
+                  type="text"
+                  class="form-control search-input"
+                  data-table-filter="search"
+                  placeholder="Search permissions..."
+                />
+                <button type="button" class="btn-clear search-clear" style="display: none;">
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+              <!--end::Search-->
+              <!--begin::Table toolbar-->
+              <div class="d-flex gap-2 flex-wrap">
+                <!--begin::Filters-->
+                <button
+                  class="btn btn-outline-primary gap-1"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#filterDrawer"
+                  data-table-toolbar="filter"
+                >
+                  <i class="ri-filter-2-line"></i> Filters
+                </button>
+                <!--begin::Filter Drawer-->
+                <div
+                  class="offcanvas offcanvas-end filter-drawer datatable-filters"
+                  tabindex="-1"
+                  id="filterDrawer"
+                  aria-labelledby="filterDrawerLabel"
+                  data-table-toolbar="filter"
+                >
+                  <div class="offcanvas-header border-bottom">
+                    <h5 class="offcanvas-title" id="filterDrawerLabel">Filter Options</h5>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="offcanvas"
+                      aria-label="Close"></button>
+                  </div>
+                  <div class="offcanvas-body p-0">
+                    <div data-table-filter-form="form" class="filter-form h-100 d-flex flex-column">
+                      <div class="filter-form-fields p-4">
+                        <!-- Status -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">Status</label>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="active"
+                              id="active"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Active"
+                            />
+                            <label class="form-check-label" for="active">
+                              <span class="badge bg-success-subtle text-success">Active</span>
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="inactive"
+                              id="inactive"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Inactive"
+                            />
+                            <label class="form-check-label" for="inactive">
+                              <span class="badge bg-warning-subtle text-warning">Inactive</span>
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              value="trashed"
+                              id="trashed"
+                              name="status"
+                              data-table-filter="status"
+                              data-type="checkbox"
+                              data-label="Status"
+                              data-title="Trashed"
+                            />
+                            <label class="form-check-label" for="trashed">
+                              <span class="badge bg-danger-subtle text-danger">Trashed</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <!-- Module -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">Module</label>
+                          <select
+                            class="form-select"
+                            id="module"
+                            name="module"
+                            data-table-filter="module"
+                          >
+                            <option value="">All Modules</option>
+                            <option value="CMS">CMS</option>
+                            <option value="SEO">SEO</option>
+                            <option value="System">System</option>
+                          </select>
+                        </div>
+
+                        <!-- Group -->
+                        <div class="mb-4">
+                          <label class="form-label fw-medium">Permission Group</label>
+                          <select
+                            class="form-select"
+                            id="group"
+                            name="group"
+                            data-table-filter="group"
+                          >
+                            <option value="">All Groups</option>
+                            <option value="Pages Management">Pages Management</option>
+                            <option value="Posts Management">Posts Management</option>
+                            <option value="Media Library">Media Library</option>
+                            <option value="Categories Management">Categories Management</option>
+                            <option value="SEO Settings">SEO Settings</option>
+                            <option value="URL Redirects">URL Redirects</option>
+                            <option value="Analytics">Analytics</option>
+                            <option value="User Management">User Management</option>
+                            <option value="Role Management">Role Management</option>
+                            <option value="System Settings">System Settings</option>
+                            <option value="System Logs">System Logs</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Filter Actions -->
+                      <div class="border-top p-3 mt-auto">
+                        <div class="d-flex gap-2">
+                          <button
+                            type="submit"
+                            class="btn btn-primary flex-grow-1"
+                            data-table-filter-btn="filter">Apply Filters</button
+                          >
+                          <button type="button" class="btn btn-light" data-table-filter-btn="reset"
+                            >Reset</button
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!--end::Filter Drawer-->
+                <!--end::Filters-->
+
+                <!--begin::Bulk Actions-->
+                <div class="bulk-actions-div d-none" data-table-toolbar="bulk_selected">
+                  <span class="selected-count me-2"
+                    ><span data-table-select="selected_count"></span> items selected</span
+                  >
+                  <button
+                    class="btn btn-light-danger shadow-none align-items-center gap-2 bulk-delete"
+                    data-table-select="delete_selected"
+                  >
+                    <i class="ri-delete-bin-line"></i> Delete Selected
+                  </button>
+                </div>
+                <!--end::Bulk Actions-->
+              </div>
+              <!--end::Table toolbar-->
+            </div>
+            <div class="table-container">
+              <div
+                class="d-none flex-column flex-lg-row justify-content-start filter-datas mb-3"
+                data-filters
+              >
+                <strong class="fs-6 me-2 text-primary">Filters : </strong>
+                <div class="d-flex flex-row flex-wrap align-items-center" data-filters-data></div>
+              </div>
+
+              <div class="table-responsive border-0">
+                <table id="table_permissions" class="table align-middle">
+                  <thead>
+                    <tr>
+                      <th class="fs-6">
+                        <div class="form-check">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            data-table-select="select_all"
+                          />
+                        </div>
+                      </th>
+                      <th>PERMISSION</th>
+                      <th>DISPLAY NAME</th>
+                      <th>MODULE</th>
+                      <th>GROUP</th>
+                      <th>STATUS</th>
+                      <th>ADDED AT</th>
+                      <th class="text-end pe-3">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {
+                      permissions.map((permission) => (
+                        <tr>
+                          <td />
+                          <td>{permission.title}</td>
+                          <td>{permission.display_name}</td>
+                          <td>{permission.module}</td>
+                          <td>{permission.group}</td>
+                          <td>{permission.status}</td>
+                          <td>{permission.added_at}</td>
+                          <td class="text-end">
+                            <div class="dropdown text-end">
+                              <button
+                                class="btn btn-light btn-active-light-primary dropdown-toggle shadow-none action-btn"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                              >
+                                Actions
+                              </button>
+                              <ul class="dropdown-menu">
+                                <li>
+                                  <a
+                                    class="dropdown-item d-flex align-items-center gap-2"
+                                    href={getPathPrefix('/roles-permissions/permissions/edit')}
+                                  >
+                                    <i class="ri-pencil-line" /> Edit
+                                  </a>
+                                </li>
+                                <li>
+                                  <hr class="dropdown-divider" />
+                                </li>
+                                <li>
+                                  <a
+                                    class="dropdown-item d-flex align-items-center gap-2 text-danger delete-button"
+                                    href="#"
+                                  >
+                                    <i class="ri-delete-bin-line" /> Delete
+                                  </a>
+                                </li>
+                              </ul>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ConfirmationModal />
+</AdminLayout>

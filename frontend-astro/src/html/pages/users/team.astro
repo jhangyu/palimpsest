@@ -1,0 +1,434 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+
+const teamManagementConfig: PageHeaderProps = {
+  title: 'Team Management',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Users', href: getPathPrefix('/users'), class: '' },
+    { label: 'Team', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Team Management"
+  description="Manage your team members and their roles"
+  currentPath="users/team"
+>
+  <PageHeader {...teamManagementConfig} />
+  <div class="row g-4">
+    <!-- User Profile Sidebar -->
+    <div class="col-lg-3">
+      <div class="card p-3">
+        <div class="card-header text-center pt-3">
+          <div class="position-relative d-inline-block mb-4">
+            <img
+              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+              alt="User Avatar"
+              class="rounded-circle"
+              width="120"
+              height="120"
+              style="object-fit: cover;"
+            />
+            <button
+              class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
+              title="Change Profile Picture"
+            >
+              <i class="ri-camera-line"></i>
+            </button>
+          </div>
+          <h5 class="mb-1">Amara Evans</h5>
+          <p class="text-muted mb-0">
+            <i class="ri-mail-line me-1"></i>amara@example.com
+          </p>
+        </div>
+        <div class="card-body">
+          <!-- Navigation Menu -->
+          <nav class="nav-tree">
+            <ul class="list-unstyled">
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Personal</span>
+              </li>
+              <!-- Profile -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/profile')}>
+                  <i class="ri-user-line"></i>
+                  <span>Profile</span>
+                </a>
+              </li>
+              <!-- Notifications -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+                  <i class="ri-notification-4-line"></i>
+                  <span>Notifications</span>
+                </a>
+              </li>
+              <!-- Security -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/security')}>
+                  <i class="ri-shield-check-line"></i>
+                  <span>Security</span>
+                </a>
+              </li>
+              <li class="nav-section">
+                <span class="nav-section-text text-uppercase px-2">Other</span>
+              </li>
+              <!-- Billing -->
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/billing')}>
+                  <i class="ri-bank-card-line"></i>
+                  <span>Billing</span>
+                </a>
+              </li>
+              <!-- Team -->
+              <li class="nav-item active">
+                <a class="nav-link" href={getPathPrefix('/users/team')}>
+                  <i class="ri-group-line"></i>
+                  <span>Team</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Management Content -->
+    <div class="col-lg-9">
+      <!-- Team Members List -->
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-team-line me-2"></i>
+            <h5 class="card-title mb-0">Team Members</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>
+                    <i class="ri-user-line me-1"></i>Team Member
+                  </th>
+                  <th>
+                    <i class="ri-shield-star-line me-1"></i>Role
+                  </th>
+                  <th>
+                    <i class="ri-settings-3-line me-1"></i>Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Amara Evans</h6>
+                        <small class="text-muted">amara@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-primary">Team Lead</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar1.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Jane Smith</h6>
+                        <small class="text-muted">janesmith@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-success">Developer</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar3.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Neha Gupta</h6>
+                        <small class="text-muted">nehagupta@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-warning">Designer</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar4.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Reena Paul</h6>
+                        <small class="text-muted">reenapaul@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-danger">Engineer</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar5.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Aaron Thomas</h6>
+                        <small class="text-muted">aaronthomas@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-success">Developer</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img
+                        src={getAssetPrefix('/assets/img/avatars/avatar6.jpg')}
+                        alt="Profile"
+                        class="rounded-circle me-3"
+                        width="40"
+                        height="40"
+                        style="object-fit: cover;"
+                      />
+                      <div>
+                        <h6 class="mb-0">Rahul Mehta</h6>
+                        <small class="text-muted">rahulmehta@example.com</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle"><span class="badge text-bg-warning">Designer</span></td>
+                  <td style="width: 60px;">
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-link text-decoration-none"
+                        type="button"
+                        id="dropdownMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        <i class="ri-more-fill text-muted fs-5"></i>
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <li>
+                          <a class="dropdown-item" href="#"
+                            ><i class="ri-edit-line me-2"></i> Edit</a
+                          >
+                        </li>
+                        <li>
+                          <a class="dropdown-item text-danger" href="#"
+                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invite Team Members Form -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-user-add-line me-2"></i>
+            <h5 class="card-title mb-0">Invite New Team Member</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="inviteTeamMemberForm">
+            <div class="mb-3">
+              <label for="inviteEmail" class="form-label required">Email Address</label>
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="ri-mail-line"></i>
+                </span>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="inviteEmail"
+                  placeholder="m@example.com"
+                  required
+                />
+              </div>
+              <div class="form-text">
+                <i class="ri-information-line me-1"></i>
+                An invitation email will be sent with instructions to join the team.
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="ri-send-plane-line me-1"></i>Send Invitation
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

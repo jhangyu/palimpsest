@@ -1,0 +1,89 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import Kanban from '../../components/app/Kanban.astro'
+
+const sampleColumns = [
+  {
+    id: 'todo',
+    title: 'To Do',
+    cards: [
+      {
+        id: 'card-1',
+        title: 'Research competitors',
+        description: 'Analyze top 5 competitor products',
+        color: '#6f42c1'
+      },
+      {
+        id: 'card-2',
+        title: 'Update documentation',
+        description: 'Review and update API docs',
+        color: '#0d6efd'
+      },
+      {
+        id: 'card-3',
+        title: 'Design system audit',
+        description: 'Check component consistency',
+        color: '#fd7e14'
+      }
+    ]
+  },
+  {
+    id: 'in-progress',
+    title: 'In Progress',
+    cards: [
+      {
+        id: 'card-4',
+        title: 'User authentication flow',
+        description: 'Implement OAuth2 login',
+        color: '#0dcaf0'
+      },
+      {
+        id: 'card-5',
+        title: 'Dashboard redesign',
+        description: 'New layout with widgets',
+        color: '#198754'
+      }
+    ]
+  },
+  {
+    id: 'review',
+    title: 'Review',
+    cards: [
+      {
+        id: 'card-6',
+        title: 'API rate limiting',
+        description: 'Add throttling middleware',
+        color: '#ffc107'
+      }
+    ]
+  },
+  {
+    id: 'done',
+    title: 'Done',
+    cards: [
+      {
+        id: 'card-7',
+        title: 'Setup CI/CD pipeline',
+        description: 'GitHub Actions configured',
+        color: '#198754'
+      },
+      {
+        id: 'card-8',
+        title: 'Database migration',
+        description: 'Migrated to PostgreSQL',
+        color: '#198754'
+      }
+    ]
+  }
+]
+---
+
+<AdminLayout
+  currentPath="apps/kanban"
+  title="Kanban Board"
+  description="Drag and drop task management board"
+>
+  <PageHeader title="Kanban Board" />
+  <Kanban columns={sampleColumns} storageKey="kanban-demo" />
+</AdminLayout>

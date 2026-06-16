@@ -1,0 +1,28 @@
+/* ==========================================================================
+     Base Layout Variables
+     ========================================================================== */
+
+$min-viewport-width: 320px !default;
+$min-viewport-height: 100vh !default;
+
+/* ==========================================================================
+     Base Layout Styles
+     ========================================================================== */
+
+body {
+  width: 100%;
+  min-width: $min-viewport-width;
+  min-height: $min-viewport-height;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+
+.wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: $min-viewport-width;
+  min-height: $min-viewport-height;
+  background: var(--bs-body-bg);
+  @include transition(background-color 0.3s ease);
+}

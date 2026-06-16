@@ -1,0 +1,203 @@
+//
+// Pagination
+//
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+
+  // Pagination circle
+  &.pagination-circle {
+    .page-link {
+      @extend .rounded;
+    }
+  }
+
+  // Pagination rounded - Creates circular pagination buttons
+  &.pagination-rounded {
+    .page-link {
+      @extend .rounded-circle;
+    }
+  }
+
+  // Pagination outline
+  &.pagination-outline {
+    .page-link {
+      border: 1px solid var(--#{$prefix}border-color);
+    }
+
+    .page-item {
+      &:hover:not(.disabled),
+      &.active {
+        .page-link {
+          border-color: var(--#{$prefix}primary-light);
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+   Pagination Size Variants - Following Consistent Sizing Guidelines
+   ========================================================================== */
+
+  // Extra Small - 24px height with 11px font
+  &.pagination-xs {
+    .page-item .page-link {
+      min-width: $input-btn-minheight-xs;
+      height: $input-btn-minheight-xs;
+      padding: $input-btn-padding-xs;
+      font-size: $input-btn-font-size-xs;
+
+      i {
+        font-size: #{$input-btn-font-size-xs * 0.85};
+      }
+    }
+  }
+
+  // Small - 30px height with 13px font
+  &.pagination-sm {
+    .page-item .page-link {
+      min-width: $input-btn-minheight-sm;
+      height: $input-btn-minheight-sm;
+      padding: $input-btn-padding-sm;
+      font-size: $input-btn-font-size-sm;
+
+      i {
+        font-size: #{$input-btn-font-size-sm * 0.85};
+      }
+    }
+  }
+
+  // Large - 46px height with 18px font
+  &.pagination-lg {
+    .page-item .page-link {
+      min-width: $input-btn-minheight-lg;
+      height: $input-btn-minheight-lg;
+      padding: $input-btn-padding-lg;
+      font-size: $input-btn-font-size-lg;
+
+      i {
+        font-size: #{$input-btn-font-size-lg * 0.85};
+      }
+    }
+  }
+
+  // Extra Large - 56px height with 20px font
+  &.pagination-xl {
+    .page-item .page-link {
+      min-width: $input-btn-minheight-xl;
+      height: $input-btn-minheight-xl;
+      padding: $input-btn-padding-xl;
+      font-size: $input-btn-font-size-xl;
+
+      i {
+        font-size: #{$input-btn-font-size-xl * 0.85};
+      }
+    }
+  }
+}
+
+.page-item {
+  margin-right: $pagination-item-space;
+
+  &:last-child {
+    margin-right: 0;
+  }
+
+  .page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: $input-btn-minheight;
+    height: $input-btn-minheight;
+    padding: $input-btn-padding-y $input-btn-padding-x;
+    font-size: 1rem;
+    font-weight: var(--#{$prefix}pagination-font-weight);
+    @include border-radius($btn-border-radius);
+
+    i {
+      font-size: #{1rem * 0.85};
+    }
+
+    /* rtl:options:{"autoRename":false} */
+    .previous,
+    .next {
+      display: block;
+      width: #{$input-btn-minheight * 0.35};
+      height: #{$input-btn-minheight * 0.35};
+
+      /* rtl:raw:transform: rotateZ(-180deg); */
+    }
+
+    /* rtl:end:ignore */
+  }
+
+  &:focus {
+    .page-link {
+      color: var(--#{$prefix}pagination-focus-color);
+
+      i {
+        color: var(--#{$prefix}pagination-focus-color);
+      }
+    }
+  }
+
+  &:hover:not(.active):not(.offset):not(.disabled) {
+    .page-link {
+      color: var(--#{$prefix}pagination-hover-color);
+
+      &.page-text {
+        background-color: transparent;
+      }
+
+      i {
+        color: var(--#{$prefix}pagination-hover-color);
+      }
+    }
+  }
+
+  &.active {
+    .page-link {
+      color: var(--#{$prefix}pagination-active-color);
+
+      &.page-text {
+        background-color: transparent;
+      }
+
+      i {
+        color: var(--#{$prefix}pagination-active-color);
+      }
+    }
+  }
+
+  &.disabled {
+    .page-link {
+      color: var(--#{$prefix}pagination-disabled-color);
+
+      i {
+        color: var(--#{$prefix}pagination-disabled-color);
+      }
+    }
+  }
+
+  /* rtl:end:ignore */
+}
+
+.pagination-section {
+  .rowsPerPage {
+    min-width: 60px;
+  }
+}
+
+// Tablet & mobile modes - Updated to use consistent sizing
+@include media-breakpoint-down(lg) {
+  .page-item {
+    margin-right: $pagination-item-space-tablet-and-mobile;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}

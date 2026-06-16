@@ -1,0 +1,282 @@
+/* ==========================================================================
+   Dropdown Styles
+   ========================================================================== */
+
+/* Enhanced dropdown menu with Bootstrap's shadow */
+.dropdown-menu {
+  // Base styles inherited from Bootstrap
+  @extend .shadow-sm;
+  border-color: rgb(0, 0, 0, 0.075);
+
+  // Simple fade transition
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+
+  &.show {
+    opacity: 1;
+  }
+}
+
+/* Improved dropdown toggle arrow */
+.dropdown-toggle {
+  &::after {
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    vertical-align: 0.15em;
+    content: '';
+    border: 0;
+    border-right: 0.15em solid;
+    border-bottom: 0.15em solid;
+    transition: transform 0.3s ease-in-out;
+    transform: rotate(45deg);
+  }
+
+  /* Ensure proper border-radius on different sides */
+  &.btn:not(:last-child):not(.dropdown-toggle) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &.btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
+/* Button group styling improvements for split buttons */
+.btn-group > .btn:not(:last-child):not(.dropdown-toggle),
+.btn-group > .btn-group:not(:last-child) > .btn {
+  /* Ensure no rounding on right side for first button */
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.btn-group > .btn:nth-child(n + 3),
+.btn-group > :not(.btn-check) + .btn,
+.btn-group > .btn-group:not(:first-child) > .btn {
+  margin-left: -1px; /* Remove gap between buttons */
+
+  /* Ensure no rounding on left side for split button */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Dropdown header improvements */
+.dropdown-header {
+  display: block;
+  padding: $dropdown-item-padding-y $dropdown-item-padding-x;
+  margin: 0 0.5rem 0.25rem;
+  font-size: $font-size-sm;
+  font-weight: 600;
+  color: $dropdown-header-color;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* Dropdown item sizes */
+.dropdown-item-xs {
+  padding: $dropdown-item-padding-y * 0.5 $dropdown-item-padding-x * 0.5;
+  font-size: $font-size-xs;
+}
+
+.dropdown-item-sm {
+  padding: $dropdown-item-padding-y * 0.75 $dropdown-item-padding-x * 0.75;
+  font-size: $font-size-sm;
+}
+
+.dropdown-item-lg {
+  padding: $dropdown-item-padding-y * 1.25 $dropdown-item-padding-x * 1.25;
+  font-size: $font-size-lg;
+}
+
+.dropdown-item-xl {
+  padding: $dropdown-item-padding-y * 1.5 $dropdown-item-padding-x * 1.5;
+  font-size: $font-size-xl;
+}
+
+/* Direction variants */
+.dropup .dropdown-menu {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.125rem;
+}
+
+/* Specific styling for dropup toggle arrow - point upward */
+.dropup .dropdown-toggle::after {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  vertical-align: 0;
+  content: '';
+  border: 0;
+  border-right: 0.15em solid;
+  border-bottom: 0.15em solid;
+  transition: transform 0.3s ease-in-out;
+  transform: rotate(225deg);
+}
+
+.dropend .dropdown-menu {
+  top: 0;
+  right: auto;
+  left: 100%;
+  margin-top: 0;
+  margin-left: 0.125rem;
+}
+
+/* Styling for dropend toggle arrow */
+.dropend .dropdown-toggle::after {
+  width: 0.5em;
+  height: 0.5em;
+  vertical-align: 0;
+  border: 0;
+  border-top: 0.15em solid;
+  border-right: 0.15em solid;
+  transition: transform 0.3s ease-in-out;
+  transform: rotate(45deg);
+}
+
+.dropstart .dropdown-menu {
+  top: 0;
+  right: 100%;
+  left: auto;
+  margin-top: 0;
+  margin-right: 0.125rem;
+}
+
+/* Styling for dropstart toggle arrow */
+.dropstart .dropdown-toggle::before {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  vertical-align: 0;
+  border: 0;
+  border-top: 0.15em solid;
+  border-left: 0.15em solid;
+  transition: transform 0.3s ease-in-out;
+  transform: rotate(-45deg);
+}
+
+.dropstart .dropdown-toggle::after {
+  display: none;
+}
+
+/* Position and style nested dropdown menus - universal with all dropdown types */
+.dropdown-menu,
+.dropup .dropdown-menu,
+.dropend .dropdown-menu,
+.dropstart .dropdown-menu,
+.btn-group .dropdown-menu {
+  li {
+    position: relative;
+
+    /* When a list item is shown, display its child dropdown menu */
+    &.show > .dropdown-menu {
+      display: block;
+    }
+
+    /* Style the submenu */
+    > .dropdown-menu {
+      position: absolute;
+      top: 0;
+      left: 100%;
+      z-index: 1001;
+      display: none;
+      margin-top: -0.5rem;
+      margin-left: 0.1rem;
+      border-radius: 6px;
+      opacity: 0;
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+      transform: translateY(10px);
+
+      &.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+}
+
+/* Handle submenu positioning for different dropdown directions */
+.dropup .dropdown-menu li > .dropdown-menu {
+  top: auto;
+  bottom: 0;
+}
+
+.dropstart .dropdown-menu li > .dropdown-menu {
+  right: 100%;
+  left: auto;
+  margin-right: 0.1rem;
+  margin-left: 0;
+}
+
+/* Improve RTL support */
+[dir='rtl'] {
+  .dropdown-menu li > .dropdown-menu {
+    right: 100%;
+    left: auto;
+    margin-right: 0.1rem;
+    margin-left: 0;
+  }
+
+  .dropstart .dropdown-menu li > .dropdown-menu {
+    right: auto;
+    left: 100%;
+    margin-right: 0;
+    margin-left: 0.1rem;
+  }
+}
+
+/* Make dropdown items with icons align properly */
+.dropdown-item {
+  display: flex;
+  align-items: center;
+
+  i,
+  .ri {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Fix for dropdown menus in tables and overflowing containers */
+.table-responsive,
+.overflow-auto,
+.overflow-hidden,
+.overflow-scroll {
+  .dropdown-menu {
+    position: fixed;
+    transform: none !important;
+  }
+}
+
+/* Fix for dropdown margin in button groups */
+.btn-group > .dropdown-menu {
+  margin-top: 0.125rem;
+}
+
+/* Fix for submenus z-index to ensure they stack properly */
+.dropdown-menu .dropdown-menu {
+  z-index: 1002;
+  margin-top: -0.25rem !important;
+  margin-left: 0.25rem !important;
+  border: 1px solid rgb(0, 0, 0, 0.05);
+  box-shadow: 0 0.5rem 1rem rgb(0, 0, 0, 0.1);
+}
+
+/* Better spacing for nested menus */
+.dropdown-menu .dropdown-item {
+  padding-right: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.dropdown-menu .dropdown-menu .dropdown-item {
+  padding-right: 2rem;
+  padding-left: 2rem;
+}

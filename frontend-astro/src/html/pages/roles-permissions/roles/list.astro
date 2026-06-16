@@ -1,0 +1,124 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Roles',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions'), class: '' },
+    { label: 'Roles', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Add Role',
+      href: getPathPrefix('/roles-permissions/roles/add'),
+      type: 'link',
+      variant: 'btn-primary',
+      icon: 'ri-add-line'
+    }
+  ]
+}
+
+const roles = [
+  {
+    title: 'administrator',
+    totalUsers: 2,
+    permissions: [
+      'View System Settings',
+      'View Admin Bar',
+      'Edit System Settings',
+      'View Users',
+      'Create Users',
+      'Manage System Backups'
+    ],
+    totalPermissions: 48
+  },
+  {
+    title: 'editor',
+    totalUsers: 1,
+    permissions: [
+      'View Posts',
+      'Create New Posts',
+      'Edit Posts',
+      'Delete Posts',
+      'Publish/Unpublish Posts',
+      'View Media Files'
+    ],
+    totalPermissions: 39
+  },
+  {
+    title: 'author',
+    totalUsers: 0,
+    permissions: [
+      'View Posts',
+      'Create New Posts',
+      'Edit Posts',
+      'Delete Posts',
+      'Restore Deleted Posts'
+    ],
+    totalPermissions: 5
+  },
+  {
+    title: 'user',
+    totalUsers: 184,
+    permissions: [],
+    totalPermissions: 0
+  }
+]
+---
+
+<AdminLayout
+  title="Roles"
+  description="Roles Management"
+  currentPath="roles-permissions/roles/list"
+>
+  <PageHeader {...pageHeaderProps} />
+  <!-- Roles Cards -->
+  <div class="row g-4">
+    {
+      roles.map((role) => (
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="card h-100">
+            <div class="card-header pb-2">
+              <h5 class="fw-semibold text-capitalize mb-2">{role.title}</h5>
+              <p class="text-muted small mb-0">Total users with this role: {role.totalUsers}</p>
+            </div>
+            <div class="card-body p-2 d-flex flex-column">
+              <ul class="list-unstyled mb-0">
+                {role.permissions.map((permission) => (
+                  <li class="mb-2 d-flex align-items-center">
+                    <i class="ri-subtract-line text-primary me-2" />
+                    <span class="text-muted small">{permission}</span>
+                  </li>
+                ))}
+                {role.totalPermissions > role.permissions.length && (
+                  <li class="text-muted fst-italic small">
+                    and {role.totalPermissions - role.permissions.length} more...
+                  </li>
+                )}
+              </ul>
+            </div>
+            <div class="card-footer d-flex justify-content-between gap-2">
+              <a
+                href={getPathPrefix('/roles-permissions/roles/view')}
+                class="btn btn-sm btn-outline-primary px-3 py-1"
+              >
+                View Role
+              </a>
+              <a
+                href={getPathPrefix('/roles-permissions/roles/edit')}
+                class="btn btn-sm btn-outline-secondary px-3 py-1"
+              >
+                Edit Role
+              </a>
+            </div>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</AdminLayout>

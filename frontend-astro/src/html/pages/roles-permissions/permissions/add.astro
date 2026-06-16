@@ -1,0 +1,275 @@
+---
+import AdminLayout from '../../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../../components/common/page-header.astro'
+import type { Props as PageHeaderProps } from '../../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../../utils/path.js'
+
+const pageHeaderProps: PageHeaderProps = {
+  title: 'Add Permission',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Roles & Permissions', href: getPathPrefix('/roles-permissions') },
+    { label: 'Permissions', href: getPathPrefix('/roles-permissions/permissions/list') },
+    { label: 'Add Permission', class: 'active' }
+  ],
+  actions: [
+    {
+      label: 'Back',
+      href: getPathPrefix('/roles-permissions/permissions/list'),
+      type: 'link',
+      variant: 'btn-outline-primary',
+      icon: 'ri-arrow-left-s-line'
+    }
+  ]
+}
+
+// Get the redirect URL for use in the script
+const redirectUrl = getPathPrefix('/roles-permissions/permissions/list')
+
+// Add custom validation script
+const pageScript = `
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('permissionForm');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const spinner = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>';
+      const redirectUrl = "${redirectUrl}"; // Use the pre-computed URL here
+
+      // Function to show error feedback
+      function showError(input, message) {
+        const formGroup = input.closest('.mb-3');
+        formGroup.classList.add('has-validation');
+        input.classList.add('is-invalid');
+
+        // Remove existing error message if any
+        const existingFeedback = formGroup.querySelector('.invalid-feedback');
+        if (existingFeedback) {
+          existingFeedback.remove();
+        }
+
+        // Add new error message
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = message;
+        input.after(feedback);
+      }
+
+      // Function to clear error feedback
+      function clearError(input) {
+        const formGroup = input.closest('.mb-3');
+        formGroup.classList.remove('has-validation');
+        input.classList.remove('is-invalid');
+        const feedback = formGroup.querySelector('.invalid-feedback');
+        if (feedback) {
+          feedback.remove();
+        }
+      }
+
+      // Function to validate form
+      function validateForm() {
+        let isValid = true;
+        const permissionTitle = form.querySelector('#permissionTitle');
+        const displayName = form.querySelector('#displayName');
+        const module = form.querySelector('#module');
+
+        // Clear previous errors
+        [permissionTitle, displayName, module].forEach(input => clearError(input));
+
+        // Validate Permission Title
+        if (!permissionTitle.value.trim()) {
+          showError(permissionTitle, 'Permission title is required');
+          isValid = false;
+        } else if (!/^[a-z_]+$/.test(permissionTitle.value)) {
+          showError(permissionTitle, 'Permission title should contain only lowercase letters and underscores');
+          isValid = false;
+        }
+
+        // Validate Display Name
+        if (!displayName.value.trim()) {
+          showError(displayName, 'Display name is required');
+          isValid = false;
+        }
+
+        // Validate Module
+        if (!module.value) {
+          showError(module, 'Please select a module');
+          isValid = false;
+        }
+
+        return isValid;
+      }
+
+      // Form submission handler
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+          return;
+        }
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = spinner + 'Creating...';
+
+        try {
+          // Simulate API call (replace with your actual API endpoint)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // On success
+          window.location.href = redirectUrl; // Use the variable defined above
+        } catch (error) {
+          // On error
+          console.error('Error:', error);
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Create Permission';
+
+          // Show error alert
+          const alert = document.createElement('div');
+          alert.className = 'alert alert-danger mt-3';
+          alert.textContent = 'An error occurred while creating the permission. Please try again.';
+          form.insertBefore(alert, form.firstChild);
+
+          // Remove alert after 5 seconds
+          setTimeout(() => alert.remove(), 5000);
+        }
+      });
+
+      // Real-time validation on input
+      form.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('input', function() {
+          clearError(this);
+        });
+      });
+    });
+  </script>
+`
+---
+
+<AdminLayout
+  title="Add Permission"
+  description="Create New Permission"
+  currentPath="roles-permissions/permissions/add"
+  pageScript={pageScript}
+>
+  <PageHeader {...pageHeaderProps} />
+
+  <form id="permissionForm" novalidate>
+    <div class="row">
+      <div class="col-md-8 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Permission Title -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="permissionTitle" class="form-label"
+                    >Permission Title <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="permissionTitle"
+                    name="permissionTitle"
+                    placeholder="Enter permission title"
+                  />
+                  <div class="form-text">Example: manage_users, view_dashboard, etc.</div>
+                </div>
+              </div>
+            </div>
+            <!-- Display Name -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="displayName" class="form-label"
+                    >Display Name <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="displayName"
+                    name="displayName"
+                    placeholder="Enter display name"
+                  />
+                  <div class="form-text">Human-readable name for the permission</div>
+                </div>
+              </div>
+            </div>
+            <!-- Module -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="module" class="form-label"
+                    >Module <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="module" name="module" required>
+                    <option value="">Select Module</option>
+                    <option value="CMS">CMS</option>
+                    <option value="SEO">SEO</option>
+                    <option value="System">System</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- Permission Group -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="group" class="form-label"
+                    >Permission Group <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="group" name="group" required>
+                    <option value="">Select Group</option>
+                    <option value="Pages Management">Pages Management</option>
+                    <option value="Posts Management">Posts Management</option>
+                    <option value="Media Library">Media Library</option>
+                    <option value="Categories Management">Categories Management</option>
+                    <option value="SEO Settings">SEO Settings</option>
+                    <option value="URL Redirects">URL Redirects</option>
+                    <option value="Analytics">Analytics</option>
+                    <option value="User Management">User Management</option>
+                    <option value="Role Management">Role Management</option>
+                    <option value="System Settings">System Settings</option>
+                    <option value="System Logs">System Logs</option>
+                  </select>
+                  <div class="form-text">
+                    Group helps in organizing permissions by their purpose
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <!-- Status -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="status" class="form-label"
+                    >Status <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="status" name="status" required>
+                    <option value="Active" selected>Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <!-- Form Actions -->
+            <div class="d-flex flex-column flex-lg-row justify-content-end gap-2">
+              <a
+                href={getPathPrefix('/roles-permissions/permissions/list')}
+                class="btn btn-outline-secondary">Cancel</a
+              >
+              <button type="submit" class="btn btn-primary">Create Permission</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</AdminLayout>

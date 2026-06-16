@@ -1,0 +1,12 @@
+/*
+ * This is the skin CSS file for the theme.
+ * It is used to override the default Bootstrap CSS.
+ * It is also used to add the skin specific CSS.
+ */
+:root,
+[data-bs-theme='light'] {
+  --bs-primary: #7533f9;
+  --bs-primary-rgb: 117, 51, 249;
+  --bs-secondary: #6c757d;
+  --bs-secondary-rgb: 108, 117, 125;
+}

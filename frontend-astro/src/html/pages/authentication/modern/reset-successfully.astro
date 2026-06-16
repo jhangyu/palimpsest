@@ -1,0 +1,55 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="Password Reset Successfully"
+  description="Password reset successfully example"
+  currentPath="authentication/modern/reset-successfully"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <a
+      href={getPathPrefix('/')}
+      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
+    >
+      Back
+    </a>
+    <a
+      href={getPathPrefix('/authentication/modern/register')}
+      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
+    >
+      Create Account
+    </a>
+    <div class="text-center w-100" style="max-width: 500px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-2">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="AsteroAdmin Logo"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-2 fs-4">Password Reset Successfully</h4>
+          <p class="text-muted mb-3">
+            Your password has been successfully reset. You can now log in with your new password.
+          </p>
+
+          <div class="text-center mb-3">
+            <a href={getPathPrefix('/authentication/modern/login')} class="btn btn-primary w-100">
+              Login Now
+            </a>
+          </div>
+
+          <div class="text-center text-muted mb-2">
+            If you did not request a password reset, please contact support immediately.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>

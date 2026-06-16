@@ -1,0 +1,72 @@
+  .codemirror-editor-container {
+    position: relative;
+    min-height: 150px;
+    max-height: 400px;
+    overflow: hidden;
+  }
+
+  .CodeMirror {
+    height: auto !important;
+    min-height: 150px;
+    max-height: 400px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: var(--bs-body-bg);
+  }
+
+  .CodeMirror-vscrollbar,.CodeMirror-hscrollbar{
+    scrollbar-width: thin;
+    scrollbar-color: #F1F1F4 transparent;
+  }
+
+  .CodeMirror-scroll {
+    min-height: 150px;
+    max-height: 400px;
+    overflow-y: scroll !important;
+    overflow-x: auto !important;
+  }
+
+  .CodeMirror-scrollbar-filler {
+    background-color: transparent;
+  }
+
+  .CodeMirror ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .CodeMirror ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  .CodeMirror ::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.5);
+    border-radius: 4px;
+  }
+
+  .CodeMirror ::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 128, 128, 0.7);
+  }
+
+  .code-preview-box {
+    overflow: hidden;
+  }
+
+  .code-preview-content {
+    overflow: hidden;
+  }
+
+  .edit-mode-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 10;
+    margin: 8px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border-radius: 12px;
+    opacity: 0.8;
+    pointer-events: none;
+  }

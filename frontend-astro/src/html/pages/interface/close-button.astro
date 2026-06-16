@@ -1,0 +1,91 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import ComponentPreview from '../../components/component-preview/component-preview.astro'
+import Toc from '../../components/toc/toc.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+// Page header configuration with breadcrumb navigation and icons
+const pageHeaderConfig = {
+  title: 'Close Button',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard'), icon: 'ri-dashboard-line' },
+    { label: 'Interface', href: getPathPrefix('/interface'), icon: 'ri-layout-line' },
+    { label: 'Close Button', class: 'active', icon: 'ri-close-circle-line' }
+  ]
+}
+
+// Basic close button example with accessibility attributes
+const basicCloseButtonExample = `<button type="button" class="btn-close" aria-label="Close">
+  <span class="visually-hidden">Close content</span>
+</button>`
+
+// Disabled close button example with accessibility support
+const disabledCloseButtonExample = `<button type="button" class="btn-close" disabled aria-label="Close" aria-disabled="true">
+  <span class="visually-hidden">Close content (disabled)</span>
+</button>`
+---
+
+<AdminLayout
+  title="Close Button"
+  description="A versatile dismissal component for closing content across your application"
+  currentPath="interface/close-button"
+  enableComponentPreview={true}
+>
+  <PageHeader {...pageHeaderConfig} />
+  <div class="row">
+    <div class="col-lg-9 col-xl-9 order-1 order-lg-0">
+      <div class="row">
+        <div class="col-12">
+          <p class="my-0">
+            A close button is an essential UI component that provides users with a clear and
+            consistent way to dismiss, hide, or remove content from view. Built with accessibility
+            in mind, it includes proper ARIA attributes and supports keyboard navigation, making it
+            suitable for modals, alerts, notifications, and other dismissible elements.
+          </p>
+        </div>
+      </div>
+      <div class="row js-toc-content">
+        <div class="col-12">
+          <div class="my-3">
+            <h3 class="mb-0" id="example">Basic Example</h3>
+            <p class="py-2">
+              The standard close button uses the <code>btn-close</code> class to create a visually distinct
+              "×" symbol. It includes the <code>aria-label="Close"</code> attribute to ensure screen readers
+              properly announce its purpose. The button is styled to be easily recognizable while maintaining
+              a clean, minimal appearance.
+            </p>
+
+            <ComponentPreview
+              title="Basic Close Button"
+              height="100px"
+              component={basicCloseButtonExample}
+              htmlCode={basicCloseButtonExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+          <div class="my-3">
+            <h3 class="mb-0" id="disabled-state">Disabled State</h3>
+            <p class="py-2">
+              Add the <code>disabled</code> attribute to create an inactive close button. The button will
+              appear visually muted and won't respond to user interactions. Include <code
+                >aria-disabled="true"</code
+              > to properly communicate the disabled state to assistive technologies.
+            </p>
+
+            <ComponentPreview
+              title="Disabled Close Button"
+              height="100px"
+              component={disabledCloseButtonExample}
+              htmlCode={disabledCloseButtonExample}
+              cssCode={``}
+              jsCode={``}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <Toc />
+  </div>
+</AdminLayout>

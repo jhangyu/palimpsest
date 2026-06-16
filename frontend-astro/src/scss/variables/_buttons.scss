@@ -1,0 +1,89 @@
+// ==========================================================================
+// Shared Input & Button Variables
+// ==========================================================================
+
+// Focus styles
+$input-btn-focus-width: $focus-ring-width !default;
+$input-btn-focus-color-opacity: $focus-ring-opacity !default;
+$input-btn-focus-color: $focus-ring-color !default;
+$input-btn-focus-blur: $focus-ring-blur !default;
+$input-btn-focus-box-shadow: $focus-ring-box-shadow !default;
+
+// Size System - Custom Optimized Heights with Proportional Font Sizes
+// XS size - 24px height
+$input-btn-font-size-xs: 0.6875rem !default; // 11px - compact font for 24px height
+$input-btn-minheight-xs: 1.5rem !default; // 24px
+$input-btn-padding-xs: 0.125rem 0.5rem !default;
+
+// SM size - 30px height
+$input-btn-font-size-sm: 0.8125rem !default; // 13px - proportional to 30px height
+$input-btn-minheight-sm: 1.875rem !default; // 30px
+$input-btn-padding-sm: 0.25rem 0.75rem !default;
+
+// Base size - 38px height
+// Note: Some variables are set from _config.scss:
+// $input-btn-padding-y, $input-btn-padding-x,
+// $input-btn-font-size, $input-btn-line-height
+$input-btn-minheight: 2.375rem !default; // 38px
+// Default font size remains 1rem (16px) from _config.scss
+
+// LG size - 46px height
+$input-btn-font-size-lg: 1.125rem !default; // 18px - proportional to 46px height
+$input-btn-minheight-lg: 2.875rem !default; // 46px
+$input-btn-padding-lg: 0.5rem 1rem !default;
+
+// XL size - 56px height
+$input-btn-font-size-xl: 1.25rem !default; // 20px - proportional to 56px height
+$input-btn-minheight-xl: 3.5rem !default; // 56px
+$input-btn-padding-xl: 0.75rem 1.25rem !default;
+
+// ==========================================================================
+// Button-Specific Variables
+// ==========================================================================
+
+// Base Styles
+$btn-color: var(--#{$prefix}body-color) !default;
+$btn-padding-y: $input-btn-padding-y !default;
+$btn-padding-x: $input-btn-padding-x !default;
+$btn-font-family: $input-btn-font-family !default;
+$btn-font-size: $input-btn-font-size !default;
+$btn-line-height: $input-btn-line-height !default;
+$btn-white-space: null !default;
+$btn-font-weight: $font-weight-normal !default;
+$btn-border-width: $input-btn-border-width !default;
+
+// Visual Effects
+$btn-box-shadow: 0 1px 1px rgb(0, 0, 0, 0.1) !default;
+$btn-focus-width: $input-btn-focus-width !default;
+$btn-focus-box-shadow: $input-btn-focus-box-shadow !default;
+$btn-disabled-opacity: 0.65 !default;
+$btn-active-box-shadow: inset 0 3px 5px rgba($black, 0.125) !default;
+
+// Link Button Styles
+$btn-link-color: var(--#{$prefix}link-color) !default;
+$btn-link-hover-color: var(--#{$prefix}link-hover-color) !default;
+$btn-link-disabled-color: $gray-600 !default;
+$btn-link-focus-shadow-rgb: to-rgb(mix(color-contrast($link-color), $link-color, 15%)) !default;
+
+// Border Radius
+$btn-border-radius: var(--#{$prefix}border-radius) !default;
+$btn-border-radius-sm: var(--#{$prefix}border-radius-sm) !default;
+$btn-border-radius-lg: var(--#{$prefix}border-radius-lg) !default;
+
+// Transitions
+// stylelint-disable-next-line scss/dollar-variable-colon-space-after
+$btn-transition:
+  color 0.15s ease-in-out,
+  background-color 0.15s ease-in-out,
+  border-color 0.15s ease-in-out,
+  box-shadow 0.15s ease-in-out !default;
+
+// State Modifiers
+$btn-hover-bg-shade-amount: 25% !default;
+$btn-hover-bg-tint-amount: 25% !default;
+$btn-hover-border-shade-amount: 20% !default;
+$btn-hover-border-tint-amount: 10% !default;
+$btn-active-bg-shade-amount: 25% !default;
+$btn-active-bg-tint-amount: 25% !default;
+$btn-active-border-shade-amount: 20% !default;
+$btn-active-border-tint-amount: 10% !default;

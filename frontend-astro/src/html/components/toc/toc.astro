@@ -1,0 +1,127 @@
+---
+// Using Bootstrap scrollspy
+---
+
+<div class="col-lg-3 col-xl-3 order-0 order-lg-1 mb-4">
+  <div class="card toc text-muted position-sticky">
+    <p class="fw-bold mb-0" style="font-size: 1.1rem;">On this page</p>
+    <hr class="my-2" />
+    <nav id="table-of-contents" class="nav flex-column">
+      <!-- Scrollspy nav items will be populated by JavaScript -->
+    </nav>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Find all headings within content-wrapper
+    const contentArea = document.querySelector('.content-wrapper')
+    const tocNav = document.getElementById('table-of-contents')
+    const mainContent = document.querySelector('.main-content')
+
+    if (!contentArea || !tocNav || !mainContent) return
+
+    // Find all headings but exclude those inside elements with data-toc-skip
+    const headings = Array.from(contentArea.querySelectorAll('h2, h3, h4, h5, h6')).filter(
+      (heading) => {
+        // Check if the heading itself or any of its parent elements has data-toc-skip
+        const hasSkipAttribute = heading.closest('[data-toc-skip]') !== null
+        return !hasSkipAttribute
+      }
+    )
+
+    // Generate TOC items
+    headings.forEach((heading: Element) => {
+      const headingText = heading.textContent?.trim() || ''
+      const headingLevel = parseInt(heading.tagName.charAt(1))
+
+      // Create or ensure unique ID for the heading
+      if (!heading.id) {
+        heading.id = headingText
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+      }
+
+      // Create TOC entry
+      const listItem = document.createElement('a')
+      listItem.classList.add('nav-link')
+      listItem.textContent = headingText
+      listItem.href = `#${heading.id}`
+      listItem.setAttribute('data-level', headingLevel.toString())
+
+      // Add small class for deeper levels
+      if (headingLevel > 2) {
+        listItem.classList.add('small')
+      }
+
+      tocNav.appendChild(listItem)
+    })
+
+    // Initialize Bootstrap scrollspy
+    if (headings.length > 0) {
+      // Apply scrollspy to main-content instead of body
+      mainContent.setAttribute('data-bs-spy', 'scroll')
+      mainContent.setAttribute('data-bs-target', '#table-of-contents')
+      mainContent.setAttribute('data-bs-offset', '80')
+      mainContent.setAttribute('data-bs-method', 'offset')
+      mainContent.setAttribute('tabindex', '0') // Make it focusable for scrolling
+
+      // Refresh scrollspy after dynamic content updates
+      // @ts-ignore - Bootstrap is loaded globally
+      const scrollspy = new (window as any).bootstrap.ScrollSpy(mainContent, {
+        target: '#table-of-contents',
+        offset: 80,
+        method: 'offset'
+      })
+
+      // Add smooth scroll behavior
+      document.querySelectorAll('#table-of-contents .nav-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault()
+          const targetId = (link as HTMLAnchorElement).getAttribute('href')
+          if (!targetId) return
+
+          const targetElement = document.querySelector(targetId)
+
+          if (targetElement) {
+            const offset = 80 // Same as scrollspy offset
+            const targetPosition =
+              targetElement.getBoundingClientRect().top + window.scrollY - offset
+
+            window.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            })
+
+            // Update URL without scrolling
+            history.pushState(null, '', targetId)
+          }
+        })
+      })
+
+      // Handle initial hash in URL
+      if (window.location.hash) {
+        const targetElement = document.querySelector(window.location.hash)
+        if (targetElement) {
+          setTimeout(() => {
+            const offset = 80
+            const targetPosition =
+              targetElement.getBoundingClientRect().top + window.scrollY - offset
+            window.scrollTo({
+              top: targetPosition,
+              behavior: 'instant'
+            })
+          }, 100)
+        }
+      }
+
+      // Refresh scrollspy when needed
+      scrollspy.refresh()
+
+      // Refresh scrollspy when images load (they can affect layout)
+      contentArea.querySelectorAll('img').forEach((img) => {
+        img.addEventListener('load', () => scrollspy.refresh())
+      })
+    }
+  })
+</script>

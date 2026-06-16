@@ -1,0 +1,76 @@
+// ==========================================================================
+//   Navigation Size Mixins
+// ==========================================================================
+
+@mixin nav-link-size($font-size, $line-height: null) {
+  font-size: $font-size !important;
+
+  @if $line-height {
+    line-height: $line-height !important;
+  }
+}
+
+// ==========================================================================
+//   Nav Link Sizes
+// ==========================================================================
+
+.nav-link-xs {
+  @include nav-link-size(
+    $font-size-xs,
+    $line-height-xs
+  );
+}
+
+.nav-link-sm {
+  @include nav-link-size(
+    $font-size-sm,
+    $line-height-sm
+  );
+}
+
+.nav-link-lg {
+  @include nav-link-size(
+    $font-size-lg,
+    $line-height-lg
+  );
+}
+
+.nav-link-xl {
+  @include nav-link-size(
+    $font-size-xl,
+    $line-height-xl
+  );
+}
+
+// ==========================================================================
+//   Nav Item Sizes - inherits sizing from nav-link
+// ==========================================================================
+
+.nav-item-xs{
+  padding: $input-btn-padding-xs;
+  .nav-link {
+    @extend .nav-link-xs;
+  }
+}
+
+.nav-item-sm {
+  padding: $input-btn-padding-sm;
+  .nav-link {
+    @extend .nav-link-sm;
+  }
+}
+
+.nav-item-lg{
+  padding: $input-btn-padding-lg;
+  .nav-link {
+    @extend .nav-link-lg;
+  }
+}
+
+
+.nav-item-xl {
+  padding: $input-btn-padding-xl;
+  .nav-link {
+    @extend .nav-link-xl;
+  }
+}

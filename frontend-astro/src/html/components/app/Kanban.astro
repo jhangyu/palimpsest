@@ -1,0 +1,88 @@
+---
+/**
+ * Kanban Board - Drag and drop task management
+ * Pure HTML5 Drag and Drop API, no external libraries.
+ * Persists state to localStorage.
+ */
+interface Props {
+  columns: Array<{
+    id: string
+    title: string
+    cards: Array<{
+      id: string
+      title: string
+      description?: string
+      color?: string
+    }>
+  }>
+  storageKey?: string
+}
+
+const { columns, storageKey = 'kanban-state' } = Astro.props
+---
+
+<div
+  id="kanban-board"
+  class="row g-3"
+  data-storage-key={storageKey}
+  data-default-columns={JSON.stringify(columns)}
+>
+  <!-- Rendered by kanban.ts -->
+</div>
+
+<!-- Kanban Card Modal -->
+<div
+  class="modal fade"
+  id="kanban-modal"
+  tabindex="-1"
+  aria-labelledby="kanban-modal-label"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="kanban-modal-label">Add Card</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="kanban-card-form">
+        <div class="modal-body">
+          <input type="hidden" id="kanban-card-id" />
+          <input type="hidden" id="kanban-col-id" />
+          <div class="mb-3">
+            <label for="kanban-card-title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="kanban-card-title" required />
+          </div>
+          <div class="mb-3">
+            <label for="kanban-card-desc" class="form-label">Description</label>
+            <textarea class="form-control" id="kanban-card-desc" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="kanban-card-color" class="form-label">Color</label>
+            <input
+              type="color"
+              class="form-control form-control-color"
+              id="kanban-card-color"
+              value="#0d6efd"
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { initKanban, destroyKanban } from '../../../scripts/kanban'
+
+  document.addEventListener('astro:page-load', () => {
+    initKanban()
+  })
+
+  document.addEventListener('astro:before-swap', () => {
+    destroyKanban()
+  })
+</script>

@@ -1,0 +1,205 @@
+/* ==========================================================================
+    Component Preview (Specific to documentation/preview pages)
+ ========================================================================== */
+.preview-box {
+  .preview-container {
+    max-width: 100% !important;
+    margin: 0 auto;
+    transition: width 0.3s ease, max-width 0.3s ease;
+  }
+
+  .preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: var(--bs-body-bg);
+    transition: width 0.3s ease;
+  }
+
+  .lh-0 {
+    line-height: 0;
+  }
+  .code-preview-nav {
+    display: flex;
+
+    .nav-link {
+      &:hover {
+        color: inherit;
+        background-color: var(--bs-secondary-bg);
+      }
+
+      &.active {
+        color: inherit;
+        background-color: var(--bs-secondary-bg);
+      }
+    }
+  }
+  pre[class*="language-"] {
+    max-height: 475px;
+    margin: unset !important;
+  }
+
+  /* Code Preview Styles */
+  .code-preview-box {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+  }
+
+  .code-preview-box.show {
+    max-height: 1000px; /* Adjust this value based on your maximum expected height */
+    overflow: visible;
+  }
+
+  .code-preview-header {
+    background: transparent;
+  }
+
+  .card-footer {
+    padding: 0 !important;
+    background: transparent;
+    border-top: none;
+  }
+}
+
+/* Preview Modal Styles */
+.preview-modal {
+  .preview-container {
+    max-width: 100% !important;
+    margin: 0 auto;
+    transition: width 0.3s ease, max-width 0.3s ease;
+  }
+
+  .preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: var(--bs-body-bg);
+    transition: width 0.3s ease;
+  }
+}
+
+/* Preview Device Buttons */
+.preview-devices .btn {
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.preview-devices .btn.active {
+  background-color: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+}
+
+/* ==========================================================================
+   Component Preview - Core Variables
+   ========================================================================== */
+:root {
+  --preview-transition-duration: 0.3s;
+  --preview-max-height: 475px;
+  --preview-code-max-height: 1000px;
+}
+
+/* ==========================================================================
+   Preview Box Component
+   ========================================================================== */
+.preview-box {
+  /* Container Styles */
+  .preview-container {
+    max-width: 100% !important;
+    margin: 0 auto;
+    transition: width var(--preview-transition-duration) ease,
+                max-width var(--preview-transition-duration) ease;
+  }
+
+  /* Iframe Styles */
+  .preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: var(--bs-body-bg);
+    transition: width var(--preview-transition-duration) ease;
+  }
+
+  /* Navigation Styles */
+  .code-preview-nav {
+    display: flex;
+
+    .nav-link {
+      &:hover,
+      &.active {
+        color: inherit;
+        background-color: var(--bs-secondary-bg);
+      }
+    }
+  }
+
+  /* Code Preview Styles */
+  .code-preview-box {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--preview-transition-duration) ease-out;
+
+    &.show {
+      max-height: var(--preview-code-max-height);
+      overflow: visible;
+    }
+  }
+
+  /* Footer Styles */
+  .card-footer {
+    padding: 0 !important;
+    background: transparent;
+    border-top: none;
+  }
+
+  /* Code Preview Header */
+  .code-preview-header {
+    background: transparent;
+  }
+
+  /* Language-specific Code Blocks */
+  pre[class*="language-"] {
+    max-height: var(--preview-max-height);
+    margin: unset !important;
+  }
+
+  /* Utility Classes */
+  .lh-0 {
+    line-height: 0;
+  }
+}
+
+/* ==========================================================================
+   Preview Modal Component
+   ========================================================================== */
+.preview-modal {
+  .preview-container {
+    max-width: 100% !important;
+    margin: 0 auto;
+    transition: width var(--preview-transition-duration) ease,
+                max-width var(--preview-transition-duration) ease;
+  }
+
+  .preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: var(--bs-body-bg);
+    transition: width var(--preview-transition-duration) ease;
+  }
+}
+
+/* ==========================================================================
+   Preview Device Controls
+   ========================================================================== */
+.preview-devices .btn {
+  transition: background-color var(--preview-transition-duration),
+              color var(--preview-transition-duration),
+              border-color var(--preview-transition-duration);
+
+  &.active {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+  }
+}
