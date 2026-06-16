@@ -17,8 +17,8 @@ const PreviewTable = forwardRef(({ url, listRules, contentRules, debugMode = fal
   const handlePreview = async (testMode = 'both', customUrl = null) => {
     const targetUrl = customUrl || url;
 
-    if (testMode === 'list' && (!targetUrl || !listRules?.item)) {
-        setError("Please ensure Target URL and List Item rules are filled.");
+    if (testMode === 'list' && !targetUrl) {
+        setError("Please enter a Target URL first.");
         return;
     }
     if (testMode === 'content' && !targetUrl) {

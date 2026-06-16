@@ -18,6 +18,7 @@ const CreateFeedWizard = () => {
   const [loadingList, setLoadingList] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [rulesExpanded, setRulesExpanded] = useState(false);
 
   const handleAnalyzeList = async () => {
     if (!url) return alert("Please enter Target URL first");
@@ -73,7 +74,7 @@ const CreateFeedWizard = () => {
 
   return (
     <>
-      <div className="wizard-container">
+      <div className="wizard-container" style={rulesExpanded ? {} : { gridTemplateColumns: '1fr' }}>
         <div className="wizard-form">
           <h2 style={{ fontSize: '24px', fontWeight: 600 }}>Create New Feed</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Provide the website details and let our AI figure out the extraction rules.</p>
@@ -119,6 +120,12 @@ const CreateFeedWizard = () => {
             <input type="text" placeholder="Sample Article URL (e.g. https://example.com/blog/post-1)" value={sampleUrl} onChange={e => setSampleUrl(e.target.value)} style={{ marginTop: '8px' }} />
           </div>
 
+          <div style={{ marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '13px' }} onClick={() => setRulesExpanded(!rulesExpanded)}>
+              {rulesExpanded ? '▶ Hide Rules JSON' : '◀ Show Rules JSON'}
+            </button>
+          </div>
+
           <div className="footer-actions">
             <button
               className="btn btn-success"
@@ -137,28 +144,30 @@ const CreateFeedWizard = () => {
           </div>
         </div>
 
-        <div className="wizard-preview">
-          <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Rules Preview JSON</h2>
-          <p style={{ color: '#9CA3AF', fontSize: '13px', marginBottom: '24px' }}>You can manually tweak the rules here before saving.</p>
+        {rulesExpanded && (
+          <div className="wizard-preview">
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Rules Preview JSON</h2>
+            <p style={{ color: '#9CA3AF', fontSize: '13px', marginBottom: '24px' }}>You can manually tweak the rules here before saving.</p>
 
-          <div className="section-title">List Rules</div>
-          <textarea
-            className="preview-block"
-            spellCheck="false"
-            value={listRules}
-            onChange={e => setListRules(e.target.value)}
-            style={{ minHeight: '200px', background: '#1F2937', color: '#60A5FA', border: '1px solid #374151' }}
-          />
+            <div className="section-title">List Rules</div>
+            <textarea
+              className="preview-block"
+              spellCheck="false"
+              value={listRules}
+              onChange={e => setListRules(e.target.value)}
+              style={{ minHeight: '200px', background: '#1F2937', color: '#60A5FA', border: '1px solid #374151' }}
+            />
 
-          <div className="section-title" style={{ marginTop: '24px' }}>Content Rules</div>
-          <textarea
-            className="preview-block"
-            spellCheck="false"
-            value={contentRules}
-            onChange={e => setContentRules(e.target.value)}
-            style={{ minHeight: '220px', background: '#1F2937', color: '#34D399', border: '1px solid #374151' }}
-          />
-        </div>
+            <div className="section-title" style={{ marginTop: '24px' }}>Content Rules</div>
+            <textarea
+              className="preview-block"
+              spellCheck="false"
+              value={contentRules}
+              onChange={e => setContentRules(e.target.value)}
+              style={{ minHeight: '220px', background: '#1F2937', color: '#34D399', border: '1px solid #374151' }}
+            />
+          </div>
+        )}
       </div>
 
       <PreviewTable

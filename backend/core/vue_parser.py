@@ -116,7 +116,3 @@ def extract_vue_content(html_content: str) -> Tuple[Optional[str], Optional[dict
 
     return None, data
 
-
-def detect_vue_template(html_content: str) -> bool:
-    """Check if HTML contains a Vue template structure"""
-    return extract_vue_json(html_content) is not None

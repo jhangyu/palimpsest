@@ -10,6 +10,7 @@ from typing import Optional
 import json
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -20,7 +21,12 @@ load_dotenv()
 # Fixed imports: use core module
 from core.ai import analyze_structure
 from core.crawler import crawl_site_logic, get_page_content
+from core.scraper import fetch_page
 from core.debug import create_debug_writer
+
+# Helper for timestamped logging
+def log_with_time(msg):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from rfeed import Item, Feed
@@ -40,6 +46,7 @@ sites = sqlalchemy.Table(
     # NEW: For self-healing mechanism
     sqlalchemy.Column("consecutive_failure_count", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("refresh_frequency", sqlalchemy.Integer, default=60), # In minutes
+    sqlalchemy.Column("scrape_method", sqlalchemy.String, default="scrapling"),
 )
 
 articles = sqlalchemy.Table(
@@ -69,7 +76,8 @@ async def scheduled_crawl_job():
                 list_rules=site['list_rules'] if isinstance(site['list_rules'], dict) else json.loads(site['list_rules']),
                 content_rules=site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules']),
                 db=database,
-                force_update=False  # 排程模式：不覆蓋，只更新時間改變的文章
+                force_update=False,  # 排程模式：不覆蓋，只更新時間改變的文章
+                scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
             )
         except Exception as e:
             print(f"[Scheduler] Error crawling site {site['id']}: {e}")
@@ -144,6 +152,7 @@ class SiteCreate(BaseModel):
     url: str
     name: str
     refresh_frequency: Optional[int] = 60
+    scrape_method: Optional[str] = "scrapling"
 
     @field_validator('url')
     @classmethod
@@ -158,6 +167,7 @@ class SiteUpdate(BaseModel):
     refresh_frequency: Optional[int] = None
     list_rules: Optional[dict] = None
     content_rules: Optional[dict] = None
+    scrape_method: Optional[str] = None
 
 class RulesInput(BaseModel):
     list_rules: dict
@@ -170,48 +180,75 @@ class PreviewRequest(BaseModel):
     mode: Optional[str] = "both"  # "list", "content", or "both"
     target_url: Optional[str] = None  # 用於 content 模式下的單篇文章測試
     debug: Optional[bool] = False
+    scrape_method: Optional[str] = "scrapling"
 
 # --- API Endpoints ---
 
 @app.post("/analyze/list")
 async def analyze_list_structure(url: str, debug: bool = False):
     """Parse website list page structure (calls AI)"""
-    # Disable debug mode in production unless explicitly enabled
-    if debug and os.getenv("DEBUG_MODE") != "enabled":
-        debug = False
-    html = await get_page_content(url)
-    if not html:
+    start_time = time.time()
+    log_with_time(f"[Analyze List] Starting analysis for: {url}")
+
+    fetch_start = time.time()
+    page = await fetch_page(url)
+    fetch_duration = time.time() - fetch_start
+    log_with_time(f"[Analyze List] fetch_page completed: {fetch_duration:.2f}s")
+
+    if page is None:
         return {"rules": None, "error": "Failed to fetch page content. The website may be blocking crawlers or taking too long to load."}
-    
+    html = page.html_content
+
     dw = create_debug_writer(debug, "analyze_list", url.replace("https://", "").replace("http://", "").split("/")[0][:30])
     if debug:
         dw.save("01", "raw_html.html", html)
-    
+
+    ai_start = time.time()
     rules = await analyze_structure(html, mode="list", debug_writer=dw)
+    ai_duration = time.time() - ai_start
+    log_with_time(f"[Analyze List] analyze_structure completed: {ai_duration:.2f}s")
+
     if not rules:
         return {"rules": None, "error": "AI analysis failed. Check backend logs for details (possibly API quota exceeded)."}
-    
+
     response = {"rules": rules, "preview_html": html[:500], "error": None}
     if debug:
         response["debug_dir"] = dw.debug_dir
+
+    total_duration = time.time() - start_time
+    log_with_time(f"[Analyze List] Total duration: {total_duration:.2f}s")
     return response
 
 @app.post("/analyze/content")
 async def analyze_content_structure(url: str, debug: bool = False):
     """解析網站內容頁結構 (呼叫 AI)"""
-    html = await get_page_content(url)
-    if not html:
+    start_time = time.time()
+    log_with_time(f"[Analyze Content] Starting analysis for: {url}")
+
+    fetch_start = time.time()
+    page = await fetch_page(url)
+    fetch_duration = time.time() - fetch_start
+    log_with_time(f"[Analyze Content] fetch_page completed: {fetch_duration:.2f}s")
+
+    if page is None:
         raise HTTPException(status_code=500, detail="Failed to fetch page content")
-    
+    html = page.html_content
+
     dw = create_debug_writer(debug, "analyze_content", url.replace("https://", "").replace("http://", "").split("/")[0][:30])
     if debug:
         dw.save("01", "raw_html.html", html)
-    
+
+    ai_start = time.time()
     rules = await analyze_structure(html, mode="content", debug_writer=dw)
-    
+    ai_duration = time.time() - ai_start
+    log_with_time(f"[Analyze Content] analyze_structure completed: {ai_duration:.2f}s")
+
     response = {"rules": rules}
     if debug:
         response["debug_dir"] = dw.debug_dir
+
+    total_duration = time.time() - start_time
+    log_with_time(f"[Analyze Content] Total duration: {total_duration:.2f}s")
     return response
 
 @app.post("/crawl/preview")
@@ -222,12 +259,13 @@ async def preview_crawl(req: PreviewRequest):
     dw = create_debug_writer(req.debug, "preview", req.url.replace("https://", "").replace("http://", "").split("/")[0][:30])
     
     results = await test_crawl_logic(
-        req.url, 
-        req.list_rules, 
-        req.content_rules, 
-        mode=req.mode, 
+        req.url,
+        req.list_rules,
+        req.content_rules,
+        mode=req.mode,
         target_url=req.target_url,
-        debug_writer=dw
+        debug_writer=dw,
+        scrape_method=req.scrape_method or "scrapling",
     )
     
     response = {"status": "success", "data": results}
@@ -248,7 +286,8 @@ async def create_site(
         list_rules=rules.list_rules,
         content_rules=rules.content_rules,
         consecutive_failure_count=0,
-        refresh_frequency=site.refresh_frequency
+        refresh_frequency=site.refresh_frequency,
+        scrape_method=site.scrape_method or "scrapling",
     )
     site_id = await database.execute(query)
     # 背景觸發爬蟲（初始抓取視為手動重爬）
@@ -257,7 +296,8 @@ async def create_site(
         site_id, site.url,
         rules.list_rules, rules.content_rules,
         database,
-        force_update=True  # 初始抓取：強制更新所有文章
+        force_update=True,  # 初始抓取：強制更新所有文章
+        scrape_method=site.scrape_method or "scrapling",
     )
     return {"id": site_id, "status": "created and crawling started"}
 
@@ -300,7 +340,8 @@ async def duplicate_site(site_id: int):
         list_rules=site['list_rules'],
         content_rules=site['content_rules'],
         refresh_frequency=site['refresh_frequency'],
-        consecutive_failure_count=0
+        consecutive_failure_count=0,
+        scrape_method=site['scrape_method'] or "scrapling",
     )
     new_id = await database.execute(new_query)
     return {"id": new_id, "status": "duplicated"}
@@ -355,7 +396,7 @@ async def get_rss(site_identifier: str, limit: int = 10):
             try:
                 from dateutil import parser
                 pub_date = parser.parse(pub_date)
-            except:
+            except Exception:
                 pub_date = datetime.now()
         
         items.append(Item(
@@ -397,7 +438,8 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
         content_rules,
         database,
         debug_writer=dw,
-        force_update=True  # 手動重爬模式：強制更新所有文章
+        force_update=True,  # 手動重爬模式：強制更新所有文章
+        scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
     )
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] Background task added")
     

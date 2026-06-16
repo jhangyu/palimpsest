@@ -39,6 +39,7 @@ const EditFeedPage = ({ initialSiteId = null }) => {
     const [analyzing, setAnalyzing] = useState(null); // 'list' or 'content'
     const [crawlingId, setCrawlingId] = useState(null);
     const [debugMode, setDebugMode] = useState(false);
+    const [rulesExpanded, setRulesExpanded] = useState(false);
 
     useEffect(() => {
         fetchSites();
@@ -215,7 +216,7 @@ const EditFeedPage = ({ initialSiteId = null }) => {
 
             {/* Bottom Section: Detail Editor */}
             {selectedSite && (
-                <div id="editor-view" className="editor-section wizard-container" style={{ gridTemplateColumns: '1fr 1fr', padding: 0, gap: '24px' }}>
+                <div id="editor-view" className="editor-section wizard-container" style={{ gridTemplateColumns: rulesExpanded ? '1fr 1fr' : '1fr', padding: 0, gap: '24px' }}>
                     <div className="management-card" style={{ boxShadow: 'none', border: '1px solid var(--border-color)' }}>
                         <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span>✏️</span> Editing: {selectedSite.name}
@@ -288,7 +289,13 @@ const EditFeedPage = ({ initialSiteId = null }) => {
                             />
                         </div>
 
-                        <div style={{ marginTop: 40, display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '13px' }} onClick={() => setRulesExpanded(!rulesExpanded)}>
+                                {rulesExpanded ? '▶ Hide Rules' : '◀ Show Rules'}
+                            </button>
+                        </div>
+
+                        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
                             <button className="btn btn-success" style={{ flex: 1, padding: '0 24px' }} onClick={handleUpdate} disabled={saving}>
                                 {saving ? <span className="animate-spin">⏳</span> : <span>💾</span>}
                                 {saving ? "Updating..." : "Save Changes"}
@@ -305,25 +312,27 @@ const EditFeedPage = ({ initialSiteId = null }) => {
                         </div>
                     </div>
 
-                    <div className="wizard-preview">
-                        <div className="section-title">List Rules JSON</div>
-                        <textarea
-                            className="preview-block"
-                            spellCheck="false"
-                            value={editData.list_rules}
-                            onChange={e => setEditData({...editData, list_rules: e.target.value})}
-                            style={{ height: '240px' }}
-                        />
+                    {rulesExpanded && (
+                        <div className="wizard-preview">
+                            <div className="section-title">List Rules JSON</div>
+                            <textarea
+                                className="preview-block"
+                                spellCheck="false"
+                                value={editData.list_rules}
+                                onChange={e => setEditData({...editData, list_rules: e.target.value})}
+                                style={{ height: '240px' }}
+                            />
 
-                        <div className="section-title" style={{ marginTop: 20 }}>Content Rules JSON</div>
-                        <textarea
-                            className="preview-block"
-                            spellCheck="false"
-                            value={editData.content_rules}
-                            onChange={e => setEditData({...editData, content_rules: e.target.value})}
-                            style={{ height: '240px' }}
-                        />
-                    </div>
+                            <div className="section-title" style={{ marginTop: 20 }}>Content Rules JSON</div>
+                            <textarea
+                                className="preview-block"
+                                spellCheck="false"
+                                value={editData.content_rules}
+                                onChange={e => setEditData({...editData, content_rules: e.target.value})}
+                                style={{ height: '240px' }}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -10,3 +10,4 @@ beautifulsoup4
 rfeed
 apscheduler
 python-dotenv
+scrapling
