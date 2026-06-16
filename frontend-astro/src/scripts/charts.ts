@@ -28,7 +28,7 @@ const tokens = () => {
   }
 }
 
-function buildOption(type: ChartType, data: Record<string, unknown>, t: ReturnType<typeof tokens>): echarts.EChartsCoreOption {
+function buildOption(type: ChartType, data: Record<string, unknown>, t: ReturnType<typeof tokens>, stacked = false): echarts.EChartsCoreOption {
   const base: echarts.EChartsCoreOption = {
     textStyle: { color: t.text, fontFamily: 'Inter, system-ui, sans-serif' },
     tooltip: { trigger: type === 'pie' || type === 'doughnut' ? 'item' : 'axis' }
@@ -60,7 +60,8 @@ function buildOption(type: ChartType, data: Record<string, unknown>, t: ReturnTy
           name: ds.label,
           type: 'bar' as const,
           data: ds.data,
-          itemStyle: { color: ds.color || (i === 0 ? t.primary : t.primaryLt), borderRadius: [4, 4, 0, 0] }
+          stack: stacked ? 'total' : undefined,
+          itemStyle: { color: ds.color || (i === 0 ? t.primary : t.primaryLt), borderRadius: stacked ? [0, 0, 0, 0] : [4, 4, 0, 0] }
         })),
         legend: { textStyle: { color: t.textSecondary } }
       }
@@ -91,15 +92,35 @@ export function initCharts() {
   document.querySelectorAll<HTMLElement>('.chart:not([data-inited])').forEach((el) => {
     el.dataset.inited = 'true'
     const type = (el.dataset.chartType || 'line') as ChartType
+    const stacked = el.dataset.chartStacked === 'true'
     let data: Record<string, unknown> = {}
     try {
       data = JSON.parse(el.dataset.chartData || '{}')
     } catch { /* empty */ }
 
     const chart = echarts.init(el, undefined, { renderer: 'svg' })
-    chart.setOption(buildOption(type, data, tokens()))
+    chart.setOption(buildOption(type, data, tokens(), stacked))
     new ResizeObserver(() => chart.resize()).observe(el)
   })
+}
+
+/**
+ * Update a chart element with new data at runtime.
+ * If the chart isn't initialized yet, it will be initialized first.
+ */
+export function updateChart(el: HTMLElement, type: ChartType, data: Record<string, unknown>, stacked = false) {
+  // Update the data attribute for theme refresh compatibility
+  el.dataset.chartData = JSON.stringify(data)
+  el.dataset.chartType = type
+  if (stacked) el.dataset.chartStacked = 'true'
+
+  let inst = echarts.getInstanceByDom(el)
+  if (!inst) {
+    el.dataset.inited = 'true'
+    inst = echarts.init(el, undefined, { renderer: 'svg' })
+    new ResizeObserver(() => inst!.resize()).observe(el)
+  }
+  inst.setOption(buildOption(type, data, tokens(), stacked), { notMerge: true })
 }
 
 export function refreshChartsTheme() {
@@ -108,11 +129,12 @@ export function refreshChartsTheme() {
     const inst = echarts.getInstanceByDom(el)
     if (!inst) return
     const type = (el.dataset.chartType || 'line') as ChartType
+    const stacked = el.dataset.chartStacked === 'true'
     let data: Record<string, unknown> = {}
     try {
       data = JSON.parse(el.dataset.chartData || '{}')
     } catch { /* empty */ }
-    inst.setOption(buildOption(type, data, t), { notMerge: true })
+    inst.setOption(buildOption(type, data, t, stacked), { notMerge: true })
   })
 }
 

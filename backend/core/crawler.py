@@ -24,6 +24,81 @@ MODERN_CHROME_UA = (
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
+# --- Shared Helpers ---
+# These are the canonical definitions. main.py imports them from here.
+
+def _utcnow_iso() -> str:
+    """Return current UTC time as timezone-aware ISO string."""
+    from datetime import timezone
+    return datetime.now(timezone.utc).isoformat()
+
+
+def compute_visible_word_count(content: str) -> int:
+    """Compute visible word count from HTML content.
+
+    Single shared implementation used by both crawler insert/update and main.py backfill.
+    Strips HTML tags, script/style/template elements.
+    CJK characters are counted individually; English tokens counted by whitespace split.
+    """
+    if not content:
+        return 0
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(content, "html.parser")
+    # Remove non-visible elements
+    for tag in soup.find_all(["script", "style", "template", "noscript"]):
+        tag.decompose()
+    text = soup.get_text(separator=" ", strip=True)
+    if not text:
+        return 0
+
+    count = 0
+    buf = []  # buffer for non-CJK tokens
+
+    for ch in text:
+        cp = ord(ch)
+        is_cjk = (
+            (0x4E00 <= cp <= 0x9FFF) or    # CJK Unified Ideographs
+            (0x3400 <= cp <= 0x4DBF) or    # CJK Extension A
+            (0xF900 <= cp <= 0xFAFF) or    # CJK Compatibility Ideographs
+            (0xAC00 <= cp <= 0xD7AF) or    # Hangul Syllables
+            (0x3040 <= cp <= 0x309F) or    # Hiragana
+            (0x30A0 <= cp <= 0x30FF)       # Katakana
+        )
+        is_cjk_punct = (
+            (0x3000 <= cp <= 0x303F) or    # CJK Symbols and Punctuation
+            (0xFF00 <= cp <= 0xFF0F) or    # Fullwidth digits/symbols
+            (0xFF1A <= cp <= 0xFF20) or    # Fullwidth punctuation
+            (0xFF3B <= cp <= 0xFF40) or
+            (0xFF5B <= cp <= 0xFF65)
+        )
+        if is_cjk and not is_cjk_punct:
+            # Flush English buffer
+            if buf:
+                token = "".join(buf).strip()
+                if token:
+                    count += len(token.split())
+                buf = []
+            count += 1
+        elif is_cjk_punct:
+            # Flush English buffer but don't count punctuation
+            if buf:
+                token = "".join(buf).strip()
+                if token:
+                    count += len(token.split())
+                buf = []
+        else:
+            buf.append(ch)
+
+    # Flush remaining English buffer
+    if buf:
+        token = "".join(buf).strip()
+        if token:
+            count += len(token.split())
+
+    return count
+
+
+
 async def get_page_content(url: str, wait_for_selector: str = None, browser=None, fast_mode=False) -> str:
     """連線到遠端 Chrome (Browserless) 取得渲染後的 HTML
 
@@ -147,9 +222,27 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
     Args:
         force_update: 如果為 True，即使 URL 已存在也會用最新內容覆蓋（手動重爬模式）
-                      如果為 False，會比對 published_at，只插入時間更新的文章（排程模式）
+                      如果為 False，會比對 published_at，只插入時間改變的文章（排程模式）
         scrape_method: 抓取方式，'scrapling'（預設）或 'playwright'
+
+    Returns:
+        dict with keys: status, articles_found, articles_saved, articles_updated,
+        articles_failed, content_fetch_failed, parse_failed, error_message
     """
+    _compute_wc = compute_visible_word_count
+    _utc_now = _utcnow_iso
+
+    result = {
+        "status": "success",
+        "articles_found": 0,
+        "articles_saved": 0,
+        "articles_updated": 0,
+        "articles_failed": 0,
+        "content_fetch_failed": 0,
+        "parse_failed": 0,
+        "error_message": None,
+    }
+
     try:
         log_with_time(f"[Crawl] >>>>>>>> Starting crawl for site {site_id}: {url}")
 
@@ -157,20 +250,23 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         page = await fetch_page(url, method=scrape_method)
         if page is None:
             log_with_time(f"[Crawl] Failed to get page for site {site_id}")
-            return
+            result["status"] = "fail"
+            result["error_message"] = "Failed to fetch listing page"
+            return result
 
         if debug_writer is not None:
             debug_writer.save("01", "list_raw_html.html", page.html_content or "")
 
         # 解析文章列表
         articles_found = parse_listing(page, list_rules, url)
+        result["articles_found"] = len(articles_found)
 
         # 自動修復邏輯
         if len(articles_found) == 0:
             log_with_time(f"[Crawl] Warning: No items found for site {site_id}. Rules might be broken.")
             query = "SELECT consecutive_failure_count FROM sites WHERE id = :id"
-            result = await db.fetch_one(query=query, values={"id": site_id})
-            current_count = result[0] if result else 0
+            row = await db.fetch_one(query=query, values={"id": site_id})
+            current_count = row[0] if row else 0
             new_count = current_count + 1
             await db.execute("UPDATE sites SET consecutive_failure_count = :count WHERE id = :id", values={"count": new_count, "id": site_id})
 
@@ -182,9 +278,10 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                                      values={"rules": json.dumps(new_list_rules), "id": site_id})
                     list_rules = new_list_rules
                     articles_found = parse_listing(page, list_rules, url)
+                    result["articles_found"] = len(articles_found)
 
             if len(articles_found) == 0:
-                return
+                return result
         else:
             await db.execute("UPDATE sites SET consecutive_failure_count = 0 WHERE id = :id", values={"id": site_id})
 
@@ -204,7 +301,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             debug_writer.save("02", "list_items.json", json.dumps(articles_to_crawl, ensure_ascii=False, indent=2))
 
         if not articles_to_crawl:
-            return
+            return result
 
         # Stage 2: 並行抓取內文 (控制併發)
         semaphore = asyncio.Semaphore(3)
@@ -218,66 +315,107 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
                 a_page = await fetch_page(a_url, method=scrape_method)
                 if a_page is None:
+                    result["content_fetch_failed"] += 1
+                    result["articles_failed"] += 1
                     return
 
                 if debug_writer is not None:
                     debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
 
                 pub_date = datetime.now().isoformat()
-                content_text, parsed_date, image_url = parse_article(a_page, content_rules, a_url)
+                try:
+                    content_text, parsed_date, image_url = parse_article(a_page, content_rules, a_url)
+                except Exception as parse_err:
+                    log_with_time(f"[Crawl] Parse error for {a_url}: {parse_err}")
+                    result["parse_failed"] += 1
+                    result["articles_failed"] += 1
+                    return
+
                 if parsed_date:
                     pub_date = parsed_date
+
+                # Compute word count
+                wc = _compute_wc(content_text)
+                now_utc = _utc_now()
 
                 if debug_writer is not None:
                     debug_writer.save(f"03_article_cleaned_{uhash}", "cleaned.html", content_text[:5000])
 
-                if force_update:
-                    # 手動重爬模式：直接用最新內容覆蓋（INSERT OR REPLACE）
-                    await db.execute("""
-                        INSERT INTO articles (site_id, title, url, content, image_url, published_at)
-                        VALUES (:sid, :title, :url, :content, :image_url, :pub_date)
-                        ON CONFLICT (url) DO UPDATE SET
-                            site_id = :sid, title = :title, content = :content,
-                            image_url = :image_url, published_at = :pub_date
-                    """, values={"sid": site_id, "title": title, "url": a_url, "content": content_text, "image_url": image_url, "pub_date": pub_date})
-                    log_with_time(f"[Crawl] Force updated: {title[:30]}...")
-                    crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
-                else:
-                    # 排程模式：檢查 published_at 是否改變
-                    existing = await db.fetch_one("SELECT id, published_at FROM articles WHERE url = :url", values={"url": a_url})
-                    if existing:
-                        old_pub_date = existing['published_at']
-                        if old_pub_date == pub_date:
-                            # 時間相同，不用更新
-                            log_with_time(f"[Crawl] Skipped (no change): {title[:30]}...")
-                            return
-                        # 時間改變了，更新內容
+                try:
+                    if force_update:
+                        # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
                         await db.execute("""
-                            UPDATE articles SET title = :title, content = :content, image_url = :image_url, published_at = :pub_date
-                            WHERE url = :url
-                        """, values={"title": title, "content": content_text, "image_url": image_url, "pub_date": pub_date, "url": a_url})
-                        log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
-                        crawl_results.append({"url": a_url, "title": title, "status": "updated"})
+                            INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count)
+                            VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count)
+                            ON CONFLICT (url) DO UPDATE SET
+                                site_id = :sid, title = :title, content = :content,
+                                image_url = :image_url, published_at = :pub_date,
+                                updated_at = :updated_at, word_count = :word_count
+                        """, values={
+                            "sid": site_id, "title": title, "url": a_url,
+                            "content": content_text, "image_url": image_url,
+                            "pub_date": pub_date, "created_at": now_utc,
+                            "updated_at": now_utc, "word_count": wc,
+                        })
+                        log_with_time(f"[Crawl] Force updated: {title[:30]}...")
+                        crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
+                        result["articles_updated"] += 1
                     else:
-                        # 不存在，直接插入
-                        await db.execute("""
-                            INSERT INTO articles (site_id, title, url, content, image_url, published_at)
-                            VALUES (:sid, :title, :url, :content, :image_url, :pub_date)
-                        """, values={"sid": site_id, "title": title, "url": a_url, "content": content_text, "image_url": image_url, "pub_date": pub_date})
-                        log_with_time(f"[Crawl] Saved: {title[:30]}...")
-                        crawl_results.append({"url": a_url, "title": title, "status": "saved"})
+                        # 排程模式：檢查 published_at 是否改變
+                        existing = await db.fetch_one("SELECT id, published_at, created_at FROM articles WHERE url = :url", values={"url": a_url})
+                        if existing:
+                            old_pub_date = existing['published_at']
+                            if old_pub_date == pub_date:
+                                # 時間相同，不用更新
+                                log_with_time(f"[Crawl] Skipped (no change): {title[:30]}...")
+                                return
+                            # 時間改變了，更新內容, preserve created_at
+                            await db.execute("""
+                                UPDATE articles SET title = :title, content = :content,
+                                    image_url = :image_url, published_at = :pub_date,
+                                    updated_at = :updated_at, word_count = :word_count
+                                WHERE url = :url
+                            """, values={
+                                "title": title, "content": content_text,
+                                "image_url": image_url, "pub_date": pub_date,
+                                "url": a_url, "updated_at": now_utc, "word_count": wc,
+                            })
+                            log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
+                            crawl_results.append({"url": a_url, "title": title, "status": "updated"})
+                            result["articles_updated"] += 1
+                        else:
+                            # 不存在，直接插入
+                            await db.execute("""
+                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count)
+                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count)
+                            """, values={
+                                "sid": site_id, "title": title, "url": a_url,
+                                "content": content_text, "image_url": image_url,
+                                "pub_date": pub_date, "created_at": now_utc,
+                                "updated_at": now_utc, "word_count": wc,
+                            })
+                            log_with_time(f"[Crawl] Saved: {title[:30]}...")
+                            crawl_results.append({"url": a_url, "title": title, "status": "saved"})
+                            result["articles_saved"] += 1
+                except Exception as db_err:
+                    log_with_time(f"[Crawl] DB error saving {a_url}: {db_err}")
+                    result["articles_failed"] += 1
 
         await asyncio.gather(*[fetch_and_save_content(a) for a in articles_to_crawl])
 
         if debug_writer is not None:
             debug_writer.save("04", "crawl_results.json", json.dumps(crawl_results, ensure_ascii=False, indent=2))
 
-        log_with_time(f"[Crawl] Completed for site {site_id}")
+        log_with_time(f"[Crawl] Completed for site {site_id}: saved={result['articles_saved']}, updated={result['articles_updated']}, failed={result['articles_failed']}")
+        return result
 
     except Exception as e:
         import traceback
         log_with_time(f"[Crawl] !!!!! UNHANDLED ERROR: {type(e).__name__}: {e}")
         log_with_time(traceback.format_exc())
+        result["status"] = "fail"
+        result["error_message"] = str(e)
+        return result
 
 
 async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode: str = "both", target_url: str = None, debug_writer=None, scrape_method: str = "scrapling") -> list:

@@ -1,0 +1,7 @@
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  sharp: true
+
+overrides:
+  '@bufbuild/protobuf': '>=2.5.0'

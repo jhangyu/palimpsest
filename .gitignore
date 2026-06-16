@@ -37,8 +37,8 @@ Thumbs.db
 .idea/
 
 # Local scripts and tests
-scripts/
-tests/
+/scripts/
+/tests/
 
 # Local tool/runtime artifacts
 .claw/

@@ -1,7 +1,6 @@
 ---
 import AdminLayout from '../layouts/admin/admin-layout.astro'
 import PageHeader from '../components/common/page-header.astro'
-import Chart from '../components/charts/Chart.astro'
 import { getPathPrefix } from '../../utils/path.js'
 
 const pageHeaderProps = {
@@ -11,171 +10,114 @@ const pageHeaderProps = {
     { label: 'Analytics', class: 'active' }
   ]
 }
-
-// Website Traffic Overview - bar chart data
-const trafficOverviewData = {
-  labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'],
-  datasets: [
-    { label: 'Organic Traffic', data: [40, 30, 20, 35, 65, 65, 35, 22, 52], color: '#198754' },
-    { label: 'Paid Traffic', data: [48, 65, 45, 65, 38, 35, 22, 65, 22], color: '#7533f9' }
-  ]
-}
-
-// Device Distribution - doughnut chart data
-const deviceDistributionData = {
-  items: [
-    { name: 'Desktop Users', value: 45, color: '#7533f9' },
-    { name: 'Mobile Users', value: 35, color: '#198754' },
-    { name: 'Tablet Users', value: 20, color: '#ffc107' }
-  ]
-}
-
-// Inbound Traffic Trend - line chart data (sparkline-style)
-const inboundTrendData = {
-  labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
-  datasets: [
-    {
-      label: 'Inbound',
-      data: [600, 580, 590, 570, 580, 560, 550, 540, 530, 520, 510, 500],
-      color: '#dc3545'
-    }
-  ]
-}
-
-// Outbound Traffic Trend - line chart data (sparkline-style)
-const outboundTrendData = {
-  labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
-  datasets: [
-    {
-      label: 'Outbound',
-      data: [1800, 1850, 1900, 1950, 1980, 2000, 2020, 2030, 2035, 2038, 2040, 2045],
-      color: '#198754'
-    }
-  ]
-}
-
-// User Growth Trends - line chart data
-const userGrowthData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-  datasets: [
-    {
-      label: 'Daily Active Users (DAU)',
-      data: [1200, 1350, 1250, 1400, 1300, 1450, 1500, 1550, 1600, 1650, 1700, 1800],
-      color: '#7533f9'
-    },
-    {
-      label: 'Weekly Active Users (WAU)',
-      data: [5500, 6000, 5800, 6200, 6100, 6400, 6600, 6800, 7000, 7200, 7400, 7600],
-      color: '#198754'
-    },
-    {
-      label: 'Monthly Active Users (MAU)',
-      data: [18000, 19500, 19000, 20000, 20500, 21000, 21500, 22000, 22500, 23000, 23500, 24000],
-      color: '#ffc107'
-    }
-  ]
-}
-
-// Daily Traffic Distribution - bar chart data
-const dailyTrafficData = {
-  labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-  datasets: [
-    { label: 'Visits', data: [45, 82, 35, 93, 56, 68, 47], color: 'rgba(105, 108, 255, 1)' }
-  ]
-}
 ---
 
 <AdminLayout
   title="Analytics Dashboard"
-  description="Comprehensive analytics dashboard showing key performance metrics and user engagement trends"
+  description="RSS and article analytics dashboard showing feed metrics, crawl activity, and content statistics"
   currentPath="analytics"
 >
   <PageHeader {...pageHeaderProps} />
   <div class="row">
     <div class="col">
+      <!-- Loading State -->
+      <div id="analyticsLoadingState" class="text-center py-5" style="display:none;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading analytics data...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="analyticsErrorState" class="alert alert-danger" role="alert" style="display:none;">
+        Failed to load analytics data.
+      </div>
+
       <!-- Key Performance Metrics -->
       <div class="row mb-4">
         <div class="col-lg-3">
           <div class="info-box info-box-outline info-box-outline-primary">
             <div class="info-box-icon bg-primary">
-              <i class="ri-team-line"></i>
+              <i class="ri-article-line"></i>
             </div>
             <div class="info-box-content">
-              <span class="info-box-text">Total Active Users</span>
-              <span class="info-box-number">24,850</span>
-              <div class="info-box-trend">
-                <i class="ri-arrow-up-line"></i> 12% increase from last month
-              </div>
+              <span class="info-box-text">Total Article Scrap</span>
+              <span class="info-box-number" id="analytics-total-article-scrap">—</span>
+              <div class="info-box-trend" id="analytics-total-article-scrap-trend">Loading...</div>
             </div>
           </div>
         </div>
         <div class="col-lg-3">
           <div class="info-box info-box-outline info-box-outline-success">
             <div class="info-box-icon bg-success">
-              <i class="ri-pulse-line"></i>
+              <i class="ri-add-circle-line"></i>
             </div>
             <div class="info-box-content">
-              <span class="info-box-text">Current Active Sessions</span>
-              <span class="info-box-number">1,280</span>
-              <div class="info-box-trend">
-                <i class="ri-arrow-up-line"></i> 5% increase from last week
-              </div>
+              <span class="info-box-text">New Articles This Week</span>
+              <span class="info-box-number" id="analytics-new-articles-week">—</span>
+              <div class="info-box-trend" id="analytics-new-articles-week-trend">Loading...</div>
             </div>
           </div>
         </div>
         <div class="col-lg-3">
           <div class="info-box info-box-outline info-box-outline-warning">
             <div class="info-box-icon bg-warning">
-              <i class="ri-logout-circle-line"></i>
+              <i class="ri-time-line"></i>
             </div>
             <div class="info-box-content">
-              <span class="info-box-text">Average Bounce Rate</span>
-              <span class="info-box-number">32.5%</span>
-              <div class="info-box-trend text-danger">
-                <i class="ri-arrow-down-line"></i> 2.3% higher than last week
-              </div>
+              <span class="info-box-text">Median Feed Update Time</span>
+              <span class="info-box-number" id="analytics-median-feed-update">—</span>
+              <div class="info-box-trend" id="analytics-median-feed-update-trend">Loading...</div>
             </div>
           </div>
         </div>
         <div class="col-lg-3">
           <div class="info-box info-box-outline info-box-outline-info">
             <div class="info-box-icon bg-info">
-              <i class="ri-timer-line"></i>
+              <i class="ri-file-text-line"></i>
             </div>
             <div class="info-box-content">
-              <span class="info-box-text">Avg. Session Duration</span>
-              <span class="info-box-number">4m 38s</span>
-              <div class="info-box-trend">
-                <i class="ri-arrow-up-line"></i> 10% increase from last week
-              </div>
+              <span class="info-box-text">Median Article Word Count</span>
+              <span class="info-box-number" id="analytics-median-word-count">—</span>
+              <div class="info-box-trend" id="analytics-median-word-count-trend">Loading...</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Traffic Overview and Device Distribution -->
+      <!-- Articles Overview and Feeds Distribution -->
       <div class="row mb-4">
         <div class="col-md-8">
           <div class="card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="card-title mb-0">Website Traffic Overview</h5>
-                <div class="text-muted small">30% growth compared to last year</div>
+                <h5 class="card-title mb-0">Articles Counts Overview</h5>
+                <div class="text-muted small">Daily new articles by feed source</div>
               </div>
-              <Chart id="websiteVisitsChart" type="bar" data={trafficOverviewData} height="320px" />
+              <div
+                class="chart"
+                id="articlesCountsChart"
+                data-chart-type="bar"
+                data-chart-stacked="true"
+                data-chart-data="{}"
+                style="height:320px;width:100%"
+              >
+              </div>
             </div>
           </div>
         </div>
         <div class="col-md-4 mt-4 mt-md-0">
           <div class="card h-100">
             <div class="card-body">
-              <h5 class="card-title">Device Distribution</h5>
-              <Chart
-                id="usersByDeviceChart"
-                type="doughnut"
-                data={deviceDistributionData}
-                height="330px"
-              />
+              <h5 class="card-title">Monthly Feeds Distribution</h5>
+              <div
+                class="chart"
+                id="feedsDistributionChart"
+                data-chart-type="doughnut"
+                data-chart-data="{}"
+                style="height:330px;width:100%"
+              >
+              </div>
             </div>
           </div>
         </div>
@@ -191,25 +133,40 @@ const dailyTrafficData = {
               </div>
 
               <div class="mb-4">
-                <div class="small text-muted mb-1">Inbound Traffic</div>
+                <div class="small text-muted mb-1">RSS Query Traffic</div>
                 <div class="d-flex align-items-center gap-2">
-                  <h3 class="mb-0">560</h3>
-                  <span class="badge bg-danger-subtle text-danger">
-                    <i class="ri-arrow-down-line"></i> 25% decrease
-                  </span>
+                  <h3 class="mb-0" id="rssQueryTotal">—</h3>
+                  <span class="badge bg-primary-subtle text-primary">queries</span>
                 </div>
-                <Chart id="inboundChart" type="line" data={inboundTrendData} height="50px" />
+                <div
+                  class="chart"
+                  id="rssQueryMetricChart"
+                  data-chart-type="line"
+                  data-chart-data="{}"
+                  style="height:50px;width:100%"
+                >
+                </div>
               </div>
 
               <div>
-                <div class="small text-muted mb-1">Outbound Traffic</div>
+                <div class="small text-muted mb-1">Article Scrap Traffic</div>
                 <div class="d-flex align-items-center gap-2">
-                  <h3 class="mb-0">2040</h3>
-                  <span class="badge bg-success-subtle text-success">
-                    <i class="ri-arrow-up-line"></i> 10% increase
-                  </span>
+                  <h3 class="mb-0">
+                    <span id="articleScrapSuccessTotal">—</span> / <span
+                      id="articleScrapFailTotal"
+                      class="text-danger">—</span
+                    >
+                  </h3>
+                  <span class="badge bg-success-subtle text-success">ok/fail</span>
                 </div>
-                <Chart id="outboundChart" type="line" data={outboundTrendData} height="50px" />
+                <div
+                  class="chart"
+                  id="articleScrapMetricChart"
+                  data-chart-type="line"
+                  data-chart-data="{}"
+                  style="height:50px;width:100%"
+                >
+                </div>
               </div>
             </div>
           </div>
@@ -217,105 +174,64 @@ const dailyTrafficData = {
         <div class="col-md-9 mt-4 mt-md-0">
           <div class="card h-100">
             <div class="card-body">
-              <h5 class="card-title">User Growth Trends</h5>
-              <Chart id="activeUsersChart" type="line" data={userGrowthData} height="300px" />
+              <h5 class="card-title">Articles Growth Trends</h5>
+              <div
+                class="chart"
+                id="articleGrowthChart"
+                data-chart-type="line"
+                data-chart-data="{}"
+                style="height:300px;width:100%"
+              >
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="row mb-4">
-        <!-- Daily Traffic Distribution -->
+        <!-- Daily RSS Query Distribution -->
         <div class="col-lg-4">
           <div class="card h-100">
             <div class="card-body d-flex flex-column">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                  <h5 class="card-title mb-1">Daily Traffic Distribution</h5>
-                  <p class="text-muted small mb-0">Total Weekly Visits: 424k</p>
+                  <h5 class="card-title mb-1">RSS Query Traffic</h5>
+                  <p class="text-muted small mb-0">Daily RSS endpoint visits</p>
                 </div>
               </div>
 
               <div class="flex-grow-1" style="min-height: 250px;">
-                <Chart id="visitsChart" type="bar" data={dailyTrafficData} height="250px" />
-              </div>
-
-              <div class="mt-4">
-                <div class="d-flex align-items-center">
-                  <span class="text-muted">Peak Traffic Day</span>
-                  <a href="#" class="ms-auto text-primary text-decoration-none">
-                    93k visits on Wednesday <i class="ri-arrow-right-line"></i>
-                  </a>
+                <div
+                  class="chart"
+                  id="dailyRssQueryChart"
+                  data-chart-type="bar"
+                  data-chart-data="{}"
+                  style="height:250px;width:100%"
+                >
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <!-- User Activity Log -->
+        <!-- Real-time Scrap Activity -->
         <div class="col-lg-8 mt-4 mt-lg-0">
           <div class="card h-100">
             <div class="card-body">
-              <h5 class="card-title">Real-time User Activity</h5>
+              <h5 class="card-title">Real-time Scrap Activity</h5>
               <div class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>User Name</th>
-                      <th>Current Page</th>
-                      <th>Session Duration</th>
-                      <th>User Location</th>
-                      <th>Device Type</th>
+                      <th>Feed Name</th>
+                      <th>Article Title</th>
+                      <th>Update Time</th>
+                      <th>Word Count</th>
+                      <th>Ori URL</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody id="latestArticlesTableBody">
                     <tr>
-                      <td>John Doe</td>
-                      <td>/dashboard</td>
-                      <td>5m 12s</td>
-                      <td>New York, USA</td>
-                      <td><i class="ri-computer-line"></i> Desktop</td>
-                    </tr>
-                    <tr>
-                      <td>Jane Smith</td>
-                      <td>/users/profile</td>
-                      <td>2m 45s</td>
-                      <td>London, UK</td>
-                      <td><i class="ri-smartphone-line"></i> Mobile</td>
-                    </tr>
-                    <tr>
-                      <td>Mike Johnson</td>
-                      <td>/analytics</td>
-                      <td>8m 30s</td>
-                      <td>Toronto, CA</td>
-                      <td><i class="ri-tablet-line"></i> Tablet</td>
-                    </tr>
-                    <tr>
-                      <td>Sarah Wilson</td>
-                      <td>/reports/sales</td>
-                      <td>4m 18s</td>
-                      <td>Sydney, AU</td>
-                      <td><i class="ri-computer-line"></i> Desktop</td>
-                    </tr>
-                    <tr>
-                      <td>Alex Chen</td>
-                      <td>/settings</td>
-                      <td>1m 55s</td>
-                      <td>Singapore, SG</td>
-                      <td><i class="ri-smartphone-line"></i> Mobile</td>
-                    </tr>
-                    <tr>
-                      <td>Emily Brown</td>
-                      <td>/products</td>
-                      <td>6m 40s</td>
-                      <td>Berlin, DE</td>
-                      <td><i class="ri-computer-line"></i> Desktop</td>
-                    </tr>
-                    <tr>
-                      <td>David Lee</td>
-                      <td>/customers</td>
-                      <td>3m 22s</td>
-                      <td>Tokyo, JP</td>
-                      <td><i class="ri-tablet-line"></i> Tablet</td>
+                      <td colspan="5" class="text-muted text-center">Loading...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -324,6 +240,12 @@ const dailyTrafficData = {
           </div>
         </div>
       </div>
+
+      <!-- ============================================================
+           PRESERVED PANELS: The following two panels are kept as-is
+           from the AdminLTE demo and are NOT part of the analytics
+           data alignment scope.
+           ============================================================ -->
 
       <div class="row mb-4">
         <div class="col-xl-8">
@@ -678,3 +600,9 @@ const dailyTrafficData = {
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  import { initAnalytics } from '@/scripts/analytics'
+
+  document.addEventListener('astro:page-load', () => initAnalytics())
+</script>

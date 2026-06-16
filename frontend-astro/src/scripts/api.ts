@@ -58,6 +58,63 @@ export interface PreviewCrawlPayload {
   scrape_method?: string
 }
 
+// --- Analytics Types ---
+
+export interface AnalyticsSummary {
+  total_article_scrap: number
+  new_articles_last_week: number
+  new_articles_this_week: number
+  new_articles_weekly_change_pct: number | null
+  median_feed_update_minutes: number | null
+  median_feed_update_change_pct: number | null
+  median_article_word_count: number | null
+  median_article_word_count_trend_label: string
+}
+
+export interface ChartDataset {
+  label: string
+  data: number[]
+  color?: string
+}
+
+export interface ChartData {
+  labels: string[]
+  datasets: ChartDataset[]
+}
+
+export interface FeedsDistributionItem {
+  name: string
+  value: number
+  color: string
+}
+
+export interface FeedsDistribution {
+  items: FeedsDistributionItem[]
+}
+
+export interface TrafficMetrics {
+  rss_query: ChartData
+  article_scrap: ChartData
+}
+
+export interface LatestArticle {
+  feed_name: string
+  article_title: string
+  update_time: string
+  word_count: number
+  ori_url: string
+}
+
+export interface AnalyticsOverview {
+  summary: AnalyticsSummary
+  articles_counts_overview: ChartData
+  feeds_distribution: FeedsDistribution
+  traffic_metrics: TrafficMetrics
+  article_growth: ChartData
+  daily_rss_query: ChartData
+  latest_articles: LatestArticle[]
+}
+
 async function throwOnError(res: Response): Promise<void> {
   if (!res.ok) {
     let detail: string
@@ -167,6 +224,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, debug })
     })
+    await throwOnError(res)
+    return res.json()
+  },
+
+  getAnalyticsOverview: async (days = 30): Promise<AnalyticsOverview> => {
+    const res = await fetch(`${API_BASE}/analytics/overview?days=${days}`)
     await throwOnError(res)
     return res.json()
   }
