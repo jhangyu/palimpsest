@@ -68,6 +68,7 @@ articles = sqlalchemy.Table(
     sqlalchemy.Column("url", sqlalchemy.String, unique=True),
     sqlalchemy.Column("content", sqlalchemy.Text),
     sqlalchemy.Column("image_url", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("author", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("published_at", sqlalchemy.String),
     # Analytics columns
     sqlalchemy.Column("created_at", sqlalchemy.String, nullable=True),
@@ -1028,7 +1029,7 @@ async def list_articles(
     # --- Paginated main query ---
     offset = (page - 1) * page_size
     main_sql = (
-        "SELECT a.site_id, a.title, a.url, a.image_url, a.created_at, a.word_count "
+        "SELECT a.site_id, a.title, a.url, a.image_url, a.author, a.created_at, a.word_count "
         "FROM articles a WHERE 1=1"
         + search_sql
         + time_sql
@@ -1046,6 +1047,7 @@ async def list_articles(
             "word_count": row['word_count'] or 0,
             "update_time": row['created_at'] or "",
             "ori_url": row['url'],
+            "author": row['author'],
         }
         for row in rows
     ]

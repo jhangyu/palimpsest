@@ -13,7 +13,9 @@ def log_with_time(msg: str):
 # Keys to search for date extraction (order matters)
 DATE_KEYS = ['to_publish_time', 'updated_at', 'date', 'my_publish_date', 'publish_time']
 # Keys to search for image extraction (order matters)
-IMAGE_KEYS = ['large', 'medium', 'feature_picture']
+IMAGE_KEYS = ['large', 'medium', 'feature_picture', 'thumbnail', 'cover', 'hero_image', 'cover_image']
+# Keys to search for author extraction (order matters)
+AUTHOR_KEYS = ['author', 'writer', 'editor', 'author_name', 'nickname']
 
 
 def strip_vue_bindings(text: str) -> str:
@@ -89,6 +91,17 @@ def extract_image_from_vue_data(data: dict) -> Optional[str]:
     for key in IMAGE_KEYS:
         if key in data and data[key]:
             return data[key]
+    return None
+
+
+def extract_author_from_vue_data(data: dict) -> Optional[str]:
+    """Extract author name from parsed Vue JSON data"""
+    for key in AUTHOR_KEYS:
+        if key in data and data[key]:
+            val = data[key]
+            if isinstance(val, dict):
+                return val.get('nickname') or val.get('name') or str(val)
+            return str(val)
     return None
 
 

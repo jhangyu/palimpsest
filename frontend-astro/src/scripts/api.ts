@@ -58,6 +58,26 @@ export interface PreviewCrawlPayload {
   scrape_method?: string
 }
 
+// --- Articles Types ---
+
+export interface ArticleListItem {
+  article_title: string
+  image_url: string | null
+  feed_name: string
+  word_count: number
+  update_time: string
+  ori_url: string
+  author: string | null
+}
+
+export interface ArticleListResponse {
+  articles: ArticleListItem[]
+  filter_counts: { today: number; week: number; month: number; all: number }
+  total: number
+  page: number
+  page_size: number
+}
+
 // --- Analytics Types ---
 
 export interface AnalyticsSummary {
@@ -230,6 +250,13 @@ export const api = {
 
   getAnalyticsOverview: async (days = 30): Promise<AnalyticsOverview> => {
     const res = await fetch(`${API_BASE}/analytics/overview?days=${days}`)
+    await throwOnError(res)
+    return res.json()
+  },
+
+  getArticlesList: async (filter = 'all', search = '', page = 1, pageSize = 100): Promise<ArticleListResponse> => {
+    const params = new URLSearchParams({ filter, search, page: String(page), page_size: String(pageSize) })
+    const res = await fetch(`${API_BASE}/articles/list?${params}`)
     await throwOnError(res)
     return res.json()
   }

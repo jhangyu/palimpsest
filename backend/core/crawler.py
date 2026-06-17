@@ -324,7 +324,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
                 pub_date = datetime.now().isoformat()
                 try:
-                    content_text, parsed_date, image_url = parse_article(a_page, content_rules, a_url)
+                    content_text, parsed_date, image_url, author = parse_article(a_page, content_rules, a_url)
                 except Exception as parse_err:
                     log_with_time(f"[Crawl] Parse error for {a_url}: {parse_err}")
                     result["parse_failed"] += 1
@@ -345,17 +345,19 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                     if force_update:
                         # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
                         await db.execute("""
-                            INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count)
-                            VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count)
+                            INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
+                            VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
                             ON CONFLICT (url) DO UPDATE SET
                                 site_id = :sid, title = :title, content = :content,
                                 image_url = :image_url, published_at = :pub_date,
-                                updated_at = :updated_at, word_count = :word_count
+                                updated_at = :updated_at, word_count = :word_count,
+                                author = :author
                         """, values={
                             "sid": site_id, "title": title, "url": a_url,
                             "content": content_text, "image_url": image_url,
                             "pub_date": pub_date, "created_at": now_utc,
                             "updated_at": now_utc, "word_count": wc,
+                            "author": author,
                         })
                         log_with_time(f"[Crawl] Force updated: {title[:30]}...")
                         crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
@@ -373,12 +375,14 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                             await db.execute("""
                                 UPDATE articles SET title = :title, content = :content,
                                     image_url = :image_url, published_at = :pub_date,
-                                    updated_at = :updated_at, word_count = :word_count
+                                    updated_at = :updated_at, word_count = :word_count,
+                                    author = :author
                                 WHERE url = :url
                             """, values={
                                 "title": title, "content": content_text,
                                 "image_url": image_url, "pub_date": pub_date,
                                 "url": a_url, "updated_at": now_utc, "word_count": wc,
+                                "author": author,
                             })
                             log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "updated"})
@@ -386,13 +390,14 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                         else:
                             # 不存在，直接插入
                             await db.execute("""
-                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count)
-                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count)
+                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
+                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
                             """, values={
                                 "sid": site_id, "title": title, "url": a_url,
                                 "content": content_text, "image_url": image_url,
                                 "pub_date": pub_date, "created_at": now_utc,
                                 "updated_at": now_utc, "word_count": wc,
+                                "author": author,
                             })
                             log_with_time(f"[Crawl] Saved: {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "saved"})
@@ -462,7 +467,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
                 debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
 
             pub_date = datetime.now().isoformat()
-            content_text, parsed_date, image_url = parse_article(a_page, content_rules, a_url)
+            content_text, parsed_date, image_url, author = parse_article(a_page, content_rules, a_url)
             if parsed_date:
                 pub_date = parsed_date
 

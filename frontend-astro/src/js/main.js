@@ -38,10 +38,6 @@ const AsteroAdmin = (function () {
   }
 
   function initializeAll() {
-    if (initialized) {
-      return
-    }
-
     try {
       darkMode()
       initSidebar()
@@ -50,10 +46,7 @@ const AsteroAdmin = (function () {
       initPasswordWrapper()
       initBootstrap()
       initSimpleBar()
-
-      // Initialize skin system
       initSkin()
-
       initialized = true
     } catch (error) {
       console.error('Error during initialization:', error)
@@ -68,13 +61,9 @@ const AsteroAdmin = (function () {
   }
 })()
 
-// Auto-initialize when DOM is ready
+// Auto-initialize on first load and after View Transitions navigation
 if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', AsteroAdmin.init)
-  } else {
-    AsteroAdmin.init()
-  }
+  document.addEventListener('astro:page-load', AsteroAdmin.init)
 }
 
 export default AsteroAdmin

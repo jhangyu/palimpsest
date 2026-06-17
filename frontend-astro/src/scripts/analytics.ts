@@ -86,7 +86,7 @@ function populateSummary(data: AnalyticsOverview) {
 
   // Total Article Scrap
   setText('analytics-total-article-scrap', fmtNumber(s.total_article_scrap))
-  setText('analytics-total-article-scrap-trend', `${fmtNumber(s.new_articles_last_week)} new articles from last week`)
+  setText('analytics-total-article-scrap-trend', `${fmtNumber(s.new_articles_last_week)} new from last week`)
 
   // New Articles This Week
   setText('analytics-new-articles-week', fmtNumber(s.new_articles_this_week))
@@ -148,12 +148,6 @@ function populateCharts(data: AnalyticsOverview) {
   const growthEl = document.getElementById('articleGrowthChart')
   if (growthEl) {
     updateChart(growthEl, 'line', data.article_growth as unknown as Record<string, unknown>)
-  }
-
-  // Daily RSS query bar chart
-  const dailyRssEl = document.getElementById('dailyRssQueryChart')
-  if (dailyRssEl) {
-    updateChart(dailyRssEl, 'bar', data.daily_rss_query as unknown as Record<string, unknown>)
   }
 
   // Update summary totals for traffic metrics card

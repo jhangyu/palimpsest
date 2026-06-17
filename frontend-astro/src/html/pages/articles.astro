@@ -1,0 +1,158 @@
+---
+import AdminLayout from '../layouts/admin/admin-layout.astro'
+import PageHeader from '../components/common/page-header.astro'
+import { getPathPrefix } from '../../utils/path.js'
+
+const pageHeaderProps = {
+  title: 'Articles',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Articles', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Articles"
+  description="Browse all scraped articles from RSS feeds"
+  currentPath="articles"
+>
+  <PageHeader {...pageHeaderProps} />
+  <div class="row">
+    <div class="col">
+      <!-- Loading State -->
+      <div id="articlesLoadingState" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading articles...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="articlesErrorState" class="alert alert-danger" role="alert" style="display:none;">
+        Failed to load articles.
+      </div>
+
+      <!-- Main Content (hidden until loaded) -->
+      <div id="articlesContent" style="display:none;">
+        <div class="card">
+          <div class="card-body">
+            <div class="astero-table">
+              <!-- Filter Tabs -->
+              <nav class="navbar navbar-expand overflow-auto p-0 mb-4" id="articlesFilterTabs">
+                <div class="navbar-nav gap-3">
+                  <a
+                    href="javascript:void(0)"
+                    data-filter="today"
+                    class="nav-link fw-medium px-1 d-flex align-items-start"
+                  >
+                    <i class="ri-sun-line me-1"></i> Today
+                    <span class="badge bg-success-subtle text-success ms-1">0</span>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    data-filter="week"
+                    class="nav-link fw-medium px-1 d-flex align-items-start"
+                  >
+                    <i class="ri-calendar-check-line me-1"></i> This Week
+                    <span class="badge bg-info-subtle text-info ms-1">0</span>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    data-filter="month"
+                    class="nav-link fw-medium px-1 d-flex align-items-start"
+                  >
+                    <i class="ri-calendar-2-line me-1"></i> This Month
+                    <span class="badge bg-warning-subtle text-warning ms-1">0</span>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    data-filter="all"
+                    class="nav-link fw-medium px-1 active border-bottom border-2 border-dark d-flex align-items-start"
+                  >
+                    <i class="ri-article-line me-1"></i> All
+                    <span class="badge bg-primary-subtle text-primary ms-1">0</span>
+                  </a>
+                </div>
+              </nav>
+
+              <!-- Toolbar -->
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div class="search-wrapper">
+                  <i class="ri-search-line search-icon"></i>
+                  <input type="text" id="articlesSearchInput" class="form-control search-input" placeholder="Search articles..." />
+                  <button type="button" class="btn-clear search-clear" style="display: none;">
+                    <i class="ri-close-line"></i>
+                  </button>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                  <button class="btn btn-outline-primary gap-1" data-bs-toggle="offcanvas" data-bs-target="#articlesFilterDrawer">
+                    <i class="ri-filter-3-line"></i> Filters
+                  </button>
+                  <button class="btn btn-outline-primary gap-1" id="articlesExportBtn">
+                    <i class="ri-download-line"></i> Export CSV
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filter Offcanvas -->
+              <div class="offcanvas offcanvas-end filter-drawer" tabindex="-1" id="articlesFilterDrawer" aria-labelledby="articlesFilterDrawerLabel">
+                <div class="offcanvas-header border-bottom">
+                  <h5 class="offcanvas-title" id="articlesFilterDrawerLabel">Filter Options</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+                <div class="offcanvas-body p-0">
+                  <div class="filter-form h-100 d-flex flex-column">
+                    <div class="filter-form-fields p-4">
+                      <div class="mb-3">
+                        <label for="filterFeedSource" class="form-label">Feed Source</label>
+                        <select id="filterFeedSource" class="form-select">
+                          <option value="">All Feeds</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Word Count</label>
+                        <div class="d-flex gap-2 align-items-center">
+                          <input type="number" id="filterWordCountMin" class="form-control" placeholder="Min" min="0" />
+                          <span class="text-muted">–</span>
+                          <input type="number" id="filterWordCountMax" class="form-control" placeholder="Max" min="0" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="border-top p-3 mt-auto">
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary flex-grow-1" id="articlesApplyFilter">
+                          <i class="ri-filter-3-line me-1"></i> Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-light" id="articlesResetFilter">
+                          <i class="ri-refresh-line me-1"></i> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Articles DataTable -->
+              <div class="table-container">
+                <div id="articlesTableContainer"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initArticles } from '@/scripts/articles'
+
+  document.addEventListener('astro:page-load', () => {
+    const container = document.getElementById('articlesTableContainer')
+    if (container && !container.dataset.inited) {
+      container.dataset.inited = 'true'
+      initArticles()
+    }
+  })
+</script>

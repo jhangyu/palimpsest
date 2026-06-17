@@ -6,6 +6,7 @@ from .vue_parser import (
     extract_vue_content,
     extract_date_from_vue_data,
     extract_image_from_vue_data,
+    extract_author_from_vue_data,
 )
 from .sanitizer import sanitize_content_html
 
@@ -129,7 +130,7 @@ def parse_listing(page, list_rules: dict, base_url: str) -> list[dict]:
     return results
 
 
-def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str, str | None]:
+def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str, str | None, str | None]:
     """從 Scrapling page 物件解析文章內容。
 
     Args:
@@ -138,7 +139,7 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
         article_url: 文章 URL，用於解析相對圖片 URL
 
     Returns:
-        (content_text, pub_date, image_url)
+        (content_text, pub_date, image_url, author)
     """
     if isinstance(page, str):
         from scrapling.parser import Selector
@@ -148,6 +149,7 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
     content_text = ""
     pub_date = ""
     image_url = None
+    author = None
 
     if is_vue_template:
         # Vue template：從 raw HTML 取出 Vue 資料
@@ -163,6 +165,7 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
         if vue_data:
             pub_date = extract_date_from_vue_data(vue_data)
             image_url = extract_image_from_vue_data(vue_data)
+            author = extract_author_from_vue_data(vue_data)
     else:
         body_selector = normalize_selector(content_rules.get('body', '')) or 'article'
         body_el = page.find(body_selector)
@@ -184,4 +187,10 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
             if image_url and not image_url.startswith('http'):
                 image_url = urljoin(article_url, image_url)
 
-    return content_text, pub_date, image_url
+        author_selector = normalize_selector(content_rules.get('author', ''))
+        if author_selector:
+            author_el = page.find(author_selector)
+            if author_el:
+                author = (author_el.text or "").strip()
+
+    return content_text, pub_date, image_url, author
