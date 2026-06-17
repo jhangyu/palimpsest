@@ -193,6 +193,7 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
         >
           <div class="avatar position-relative">
             <img
+              data-session="user-avatar"
               src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
               alt="User"
               class="rounded-circle"
@@ -219,6 +220,7 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
       <div class="user-profile-avatar">
         <div class="avatar-wrapper">
           <img
+            data-session="user-avatar"
             src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
             alt="User"
             class="rounded-circle"
@@ -227,8 +229,8 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
         </div>
       </div>
       <div class="user-profile-info">
-        <h5 class="user-name">Amara Evans</h5>
-        <p class="user-email">amara@example.com</p>
+        <h5 class="user-name" data-session="user-name">Loading...</h5>
+        <p class="user-email" data-session="user-email"></p>
       </div>
 
       <button
@@ -261,13 +263,6 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" href={getPathPrefix('/users/billing')}>
-            <i class="ri-wallet-3-line"></i>
-            <span>Billing</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
           <a class="nav-link" href={getPathPrefix('/users/notifications')}>
             <i class="ri-notification-4-line"></i>
             <span>Notifications</span>
@@ -280,42 +275,13 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 
   <!-- Bottom Section -->
   <div class="offcanvas-bottom">
-    <!-- Pro Upgrade Card -->
-    <div class="upgrade-pro-card d-none d-md-block">
-      <div class="card-content">
-        <div class="pro-badge">
-          <i class="ri-vip-crown-line"></i>
-          <span>Pro</span>
-        </div>
-        <h3>Upgrade to Pro</h3>
-        <p>Get access to all features</p>
-        <ul class="feature-list">
-          <li><i class="ri-check-line"></i> Advanced Analytics</li>
-          <li><i class="ri-check-line"></i> Team Collaboration</li>
-          <li><i class="ri-check-line"></i> API Access</li>
-        </ul>
-        <a href="#" class="btn btn-upgrade d-flex align-items-center justify-content-center">
-          Upgrade Now
-          <i class="ri-arrow-right-line"></i>
-        </a>
-      </div>
-    </div>
-    <!-- Pro Upgrade Button -->
-    <div class="upgrade-pro-button d-md-none">
-      <a
-        href="#"
-        class="btn btn-upgrade btn-outline-primary d-flex align-items-center justify-content-center mb-2"
-      >
-        <i class="ri-vip-crown-2-line me-2"></i>
-        <span>Upgrade to Pro</span>
-      </a>
-    </div>
-
     <!-- Logout Button -->
     <div class="logout-section">
       <a
-        href={getPathPrefix('#')}
+        href="#"
         class="btn-logout d-flex align-items-center justify-content-center"
+        data-session="logout-btn"
+        role="button"
       >
         <i class="ri-logout-box-r-line"></i>
         <span>Log Out</span>

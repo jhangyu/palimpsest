@@ -253,7 +253,7 @@ function buildArticlesTable(articles: ArticleListItem[]) {
       columnVisibility: {},
       rowSelection: {},
       expanded: {},
-      pagination,
+      pagination
     },
     onSortingChange: (updater: Updater<SortingState>) => {
       sorting = typeof updater === 'function' ? updater(sorting) : updater

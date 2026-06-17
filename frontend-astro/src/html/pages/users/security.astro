@@ -2,7 +2,7 @@
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import { getPathPrefix } from '../../../utils/path.js'
 
 const securitySettingsConfig: PageHeaderProps = {
   title: 'Security Settings',
@@ -26,69 +26,34 @@ const securitySettingsConfig: PageHeaderProps = {
       <div class="card p-3">
         <div class="card-header text-center pt-3">
           <div class="position-relative d-inline-block mb-4">
-            <img
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-              alt="User Avatar"
-              class="rounded-circle"
-              width="120"
-              height="120"
-              style="object-fit: cover;"
-            />
-            <button
-              class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
-              title="Change Profile Picture"
+            <div
+              class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+              style="width:120px;height:120px;"
             >
-              <i class="ri-camera-line"></i>
-            </button>
+              <i class="ri-user-line text-white" style="font-size:3rem;"></i>
+            </div>
           </div>
-          <h5 class="mb-1">Amara Evans</h5>
+          <h5 class="mb-1" data-session="user-name">Loading...</h5>
           <p class="text-muted mb-0">
-            <i class="ri-mail-line me-1"></i>amara@example.com
+            <i class="ri-mail-line me-1"></i><span data-session="user-email"></span>
           </p>
         </div>
         <div class="card-body">
-          <!-- Navigation Menu -->
           <nav class="nav-tree">
             <ul class="list-unstyled">
               <li class="nav-section">
                 <span class="nav-section-text text-uppercase px-2">Personal</span>
               </li>
-              <!-- Profile -->
               <li class="nav-item">
                 <a class="nav-link" href={getPathPrefix('/users/profile')}>
                   <i class="ri-user-line"></i>
                   <span>Profile</span>
                 </a>
               </li>
-              <!-- Notifications -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
-                  <i class="ri-notification-4-line"></i>
-                  <span>Notifications</span>
-                </a>
-              </li>
-              <!-- Security -->
               <li class="nav-item active">
                 <a class="nav-link" href={getPathPrefix('/users/security')}>
                   <i class="ri-shield-check-line"></i>
                   <span>Security</span>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="nav-section-text text-uppercase px-2">Other</span>
-              </li>
-              <!-- Billing -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/billing')}>
-                  <i class="ri-bank-card-line"></i>
-                  <span>Billing</span>
-                </a>
-              </li>
-              <!-- Team -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/team')}>
-                  <i class="ri-group-line"></i>
-                  <span>Team</span>
                 </a>
               </li>
             </ul>
@@ -104,21 +69,33 @@ const securitySettingsConfig: PageHeaderProps = {
         <div class="card-header bg-transparent">
           <div class="d-flex align-items-center">
             <i class="ri-lock-password-line me-2"></i>
-            <h5 class="card-title mb-0">Password Management</h5>
+            <h5 class="card-title mb-0">Change Password</h5>
           </div>
         </div>
         <div class="card-body">
+          <!-- Success banner (hidden by default) -->
+          <div
+            id="password-success-alert"
+            class="alert alert-success"
+            style="display:none;"
+            role="alert"
+          >
+            <i class="ri-shield-check-line me-2"></i>
+            <strong>Password changed successfully.</strong>
+            All other sessions have been revoked for your security.
+          </div>
+
           <form id="passwordUpdateForm">
             <div class="row g-3">
               <!-- Current Password -->
               <div class="col-12">
-                <label class="form-label required">Current Password</label>
+                <label class="form-label required" for="currentPassword">Current Password</label>
                 <div class="password-wrapper">
                   <input
                     type="password"
                     class="form-control password-input"
                     id="currentPassword"
-                    placeholder="Password"
+                    placeholder="Enter current password"
                     autocomplete="current-password"
                     required
                   />
@@ -129,15 +106,17 @@ const securitySettingsConfig: PageHeaderProps = {
               </div>
               <!-- New Password -->
               <div class="col-12">
-                <label class="form-label required">New Password</label>
+                <label class="form-label required" for="newPassword">New Password</label>
                 <div class="d-flex align-items-center gap-2">
                   <div class="password-wrapper w-100">
                     <input
                       type="password"
                       class="form-control password-input"
                       id="newPassword"
-                      placeholder="Password"
+                      placeholder="Enter new password (8-20 characters)"
                       autocomplete="new-password"
+                      minlength="8"
+                      maxlength="20"
                       required
                     />
                     <button
@@ -149,16 +128,20 @@ const securitySettingsConfig: PageHeaderProps = {
                     </button>
                   </div>
                 </div>
+                <div class="form-text">
+                  <i class="ri-information-line me-1"></i>8-20 characters required.
+                </div>
               </div>
               <!-- Confirm New Password -->
               <div class="col-12">
-                <label class="form-label required">Confirm New Password</label>
+                <label class="form-label required" for="confirmPassword">Confirm New Password</label
+                >
                 <div class="password-wrapper">
                   <input
                     type="password"
                     class="form-control password-input"
                     id="confirmPassword"
-                    placeholder="Password"
+                    placeholder="Re-enter new password"
                     autocomplete="new-password"
                     required
                   />
@@ -177,131 +160,67 @@ const securitySettingsConfig: PageHeaderProps = {
         </div>
       </div>
 
-      <!-- Two-Factor Authentication -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <div class="d-flex align-items-center">
-            <i class="ri-shield-star-line me-2"></i>
-            <h5 class="card-title mb-0">Two-Factor Authentication (2FA)</h5>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            <!-- Authenticator App Option -->
-            <div class="col-md-6">
-              <div class="card h-100">
-                <div class="card-body">
-                  <div class="d-flex align-items-center mb-3">
-                    <i class="ri-smartphone-line me-2 text-primary fs-4"></i>
-                    <h5 class="card-title mb-0">Authenticator App</h5>
-                  </div>
-                  <p class="card-text text-muted">
-                    Enhance security with time-based codes from apps like Google Authenticator or
-                    Authy.
-                  </p>
-                  <div class="text-start">
-                    <button type="button" class="btn btn-primary">
-                      <i class="ri-qr-code-line me-1"></i>Setup Authenticator
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- SMS Authentication Option -->
-            <div class="col-md-6">
-              <div class="card h-100">
-                <div class="card-body">
-                  <div class="d-flex align-items-center mb-3">
-                    <i class="ri-message-3-line me-2 text-primary fs-4"></i>
-                    <h5 class="card-title mb-0">SMS Authentication</h5>
-                  </div>
-                  <p class="card-text text-muted">
-                    Receive secure verification codes via SMS to your registered mobile number.
-                  </p>
-                  <div class="text-start">
-                    <button type="button" class="btn btn-primary">
-                      <i class="ri-message-2-line me-1"></i>Setup SMS Verification
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="alert alert-success mt-3 mb-0" role="alert">
-            <i class="ri-shield-check-line me-2"></i>
-            Your account is protected with two-factor authentication.
-          </div>
-        </div>
-      </div>
-
-      <!-- Login Activity -->
-      <div class="card mt-4">
+      <!-- AI Tokens -->
+      <div class="card mt-4" id="ai-tokens-section">
         <div class="card-header">
           <div class="d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center">
-              <i class="ri-history-line me-2"></i>
-              <h5 class="card-title mb-0">Recent Login Activity</h5>
+              <i class="ri-key-2-line me-2"></i>
+              <h5 class="card-title mb-0">AI Service Tokens</h5>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm">
-              <i class="ri-download-2-line me-1"></i>Download Log
+            <button type="button" class="btn btn-primary btn-sm" id="ai-tokens-add-btn">
+              <i class="ri-add-line me-1"></i>Add Token
             </button>
           </div>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>
-                    <i class="ri-calendar-line me-1"></i>Date & Time
-                  </th>
-                  <th>
-                    <i class="ri-global-line me-1"></i>IP Address
-                  </th>
-                  <th>
-                    <i class="ri-computer-line me-1"></i>Device & Browser
-                  </th>
-                  <th>
-                    <i class="ri-map-pin-line me-1"></i>Location
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>2024-02-20 10:30 AM</td>
-                  <td>192.168.1.1</td>
-                  <td>
-                    <i class="ri-chrome-line me-1"></i>Chrome on Windows
-                  </td>
-                  <td>
-                    <i class="ri-map-pin-2-line me-1"></i>New York, USA
-                  </td>
-                </tr>
-                <tr>
-                  <td>2024-02-19 08:15 PM</td>
-                  <td>192.168.1.2</td>
-                  <td>
-                    <i class="ri-safari-line me-1"></i>Safari on iPhone
-                  </td>
-                  <td>
-                    <i class="ri-map-pin-2-line me-1"></i>London, UK
-                  </td>
-                </tr>
-                <tr>
-                  <td>2024-02-19 03:45 PM</td>
-                  <td>192.168.1.3</td>
-                  <td>
-                    <i class="ri-firefox-line me-1"></i>Firefox on Mac
-                  </td>
-                  <td>
-                    <i class="ri-question-line me-1"></i>Unknown
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
+            <i class="ri-lock-line me-2 flex-shrink-0 mt-1"></i>
+            <div>
+              <strong>Security notice:</strong> Your tokens are encrypted using your account password.
+              Only masked values are shown in the list. Use the <i class="ri-eye-line"></i> Reveal button
+              to view the plaintext — your password will be required.
+            </div>
+          </div>
+
+          <!-- Dynamic token list rendered by ai-tokens.ts -->
+          <div id="ai-tokens-list">
+            <div class="text-center py-5 text-muted">
+              <i class="ri-key-2-line fs-2 d-block mb-2"></i>
+              <p class="mb-0">No AI tokens configured. Add one to use your own API key.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Note -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <div class="d-flex gap-3">
+            <i class="ri-shield-star-line text-primary fs-3"></i>
+            <div>
+              <h6 class="mb-1">Session Security</h6>
+              <p class="text-muted mb-0 small">
+                When you change your password, all other active sessions are automatically revoked.
+                You will remain logged in on this device.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  import { initSecurityPage } from '@/scripts/users'
+  import { initAITokensPage } from '@/scripts/ai-tokens'
+
+  const init = () => {
+    initSecurityPage()
+    initAITokensPage()
+  }
+
+  document.addEventListener('DOMContentLoaded', init)
+  document.addEventListener('astro:page-load', init)
+</script>

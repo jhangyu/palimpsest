@@ -14,7 +14,7 @@ MINIMAX_API_URL = "https://api.minimax.io/v1/chat/completions"
 MINIMAX_MODEL = "MiniMax-M3"
 
 
-async def analyze_structure(html_content: str, mode: str = "list", debug_writer=None) -> dict:
+async def analyze_structure(html_content: str, mode: str = "list", api_key: str | None = None, debug_writer=None) -> dict:
     from core.sanitizer import clean_html_for_ai, detect_vue_template
 
     log_with_time(f"========== Starting Analysis (mode={mode}) ==========")
@@ -75,10 +75,10 @@ HTML:
     if debug_writer is not None:
         debug_writer.save("03", "ai_prompt.txt", prompt)
     log_with_time(f"Prompt length: {len(prompt)} chars")
-    api_key = os.getenv("MINIMAX_API_KEY", "").strip()
-    log_with_time(f"API Key loaded: {'Yes (' + api_key[:8] + '...)' if api_key else 'NO — MINIMAX_API_KEY is empty'}")
     if not api_key:
-        log_with_time("[AI] !!!!! ERROR !!!!! : MINIMAX_API_KEY environment variable is not set")
+        api_key = os.getenv("MINIMAX_API_KEY", "").strip()
+    if not api_key:
+        log_with_time("[AI] !!!!! ERROR !!!!! : No API key available (no user token and MINIMAX_API_KEY is not set)")
         return {}
 
     try:

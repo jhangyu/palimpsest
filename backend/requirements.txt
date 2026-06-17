@@ -11,3 +11,8 @@ rfeed
 apscheduler
 python-dotenv
 scrapling
+argon2-cffi
+cryptography
+email-validator
+Pillow
+python-dateutil

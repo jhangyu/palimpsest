@@ -2,21 +2,19 @@
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
-import permissionsData from '../../../assets/data/permissions.json'
+import { getPathPrefix } from '../../../utils/path.js'
 
-// Page Header Configuration
 const userEditHeaderConfig: PageHeaderProps = {
   title: 'Edit User',
   breadcrumbs: [
     { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
-    { label: 'Users', href: getPathPrefix('/users'), class: '' },
+    { label: 'Users', href: getPathPrefix('/users/list'), class: '' },
     { label: 'Edit', class: 'active' }
   ],
   actions: [
     {
       label: 'Back',
-      href: getPathPrefix('/users'),
+      href: getPathPrefix('/users/list'),
       type: 'link',
       variant: 'btn-outline-primary',
       icon: 'ri-arrow-left-s-line',
@@ -24,367 +22,152 @@ const userEditHeaderConfig: PageHeaderProps = {
     }
   ]
 }
-
-// Load Permission Modules from JSON file
-const { modules: permissionModules } = permissionsData
-
-// External Dependencies: Required JavaScript
-const userFormScripts = `
-  <script src="${getAssetPrefix('/assets/js/pages/roles-permissions/roles/toggle-permissions.js')}"></script>
-  <script type="module" src="${getAssetPrefix('/assets/js/pages/users/form.js')}"></script>
-`
-
-// Custom Styles for Form Elements
-const userFormStyles = `
-  <style>
-    .custom-option {
-        padding: 1rem;
-        border: 1px solid var(--bs-border-color);
-        border-radius: var(--bs-border-radius);
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
-    }
-
-    .custom-option:hover {
-        border-color: var(--bs-primary);
-        background-color: var(--bs-primary-bg-subtle);
-    }
-
-    .custom-option .form-check-input:checked ~ .form-check-label {
-        color: var(--bs-primary);
-    }
-  </style>
-`
 ---
 
 <AdminLayout
   title="Edit User Account"
-  description="Update user account information and permissions"
+  description="Update user account information"
   currentPath="users/edit"
-  pageScript={userFormScripts}
-  pageCss={userFormStyles}
 >
   <PageHeader {...userEditHeaderConfig} />
 
-  <form id="userForm" class="row g-4" novalidate>
-    <!-- User Profile Information -->
-    <div class="col-lg-4">
+  <form id="edit-user-form" class="row g-4" novalidate>
+    <div class="col-lg-6">
       <div class="card">
         <div class="card-header">
           <div class="d-flex align-items-center">
             <i class="ri-user-settings-line me-2"></i>
-            <h5 class="card-title mb-0">Profile Information</h5>
+            <h5 class="card-title mb-0">User Information</h5>
           </div>
         </div>
         <div class="card-body">
-          <!-- Profile Picture Upload -->
-          <div class="text-center mb-4">
-            <div class="position-relative d-inline-block">
-              <div class="avatar-upload mb-3">
-                <div class="avatar-preview rounded border" style="width: 120px; height: 120px;">
-                  <img
-                    src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-                    alt="User Avatar"
-                    class="rounded w-100 h-100"
-                    style="object-fit: cover;"
-                  />
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-icon-sm position-absolute rounded-circle p-2 update-avatar-btn"
-                  style="right: -10px; top: -10px;"
-                  onclick="document.getElementById('avatarInput').click()"
-                  title="Change Profile Picture"
-                >
-                  <i class="ri-camera-line"></i>
-                </button>
-                <input
-                  type="file"
-                  id="avatarInput"
-                  class="d-none"
-                  accept="image/png,image/jpg,image/jpeg,image/webp"
-                />
-              </div>
-            </div>
-            <p class="text-muted small mb-0">
-              <i class="ri-information-line me-1"></i>
-              Supported formats: PNG, JPG, JPEG, WebP
-            </p>
-          </div>
-
-          <!-- Basic Information Fields -->
           <div class="mb-3">
-            <label class="form-label required">Full Name</label>
-            <input
-              type="text"
-              class="form-control"
-              id="fullName"
-              placeholder="Enter user's full name"
-              value="Amara Evans"
-              required
-            />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label required">Email Address</label>
+            <label class="form-label required" for="edit-user-email">Email Address</label>
             <input
               type="email"
               class="form-control"
-              id="email"
-              placeholder="Enter user's email address"
-              value="amara@example.com"
+              id="edit-user-email"
+              placeholder="user@example.com"
+              autocomplete="off"
               required
             />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label required">Username</label>
-            <input
-              type="text"
-              class="form-control"
-              id="username"
-              placeholder="Choose a unique username"
-              value="amara"
-              required
-            />
-          </div>
-
-          <!-- Additional Information Fields -->
-          <div class="mb-3">
-            <label class="form-label">Phone Number</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="phone"
-              placeholder="Enter contact number"
-              value="+1 (555) 987-6543"
-            />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Biography</label>
-            <textarea
-              class="form-control"
-              id="bio"
-              rows="3"
-              placeholder="Enter user's brief description"
-              >Experienced user with a background in web development.</textarea
-            >
             <div class="form-text">
               <i class="ri-information-line me-1"></i>
-              A short description for the user's profile page
+              Email changes will require verification by the user.
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Location</label>
+            <label class="form-label required" for="edit-user-username">Username</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="ri-at-line"></i></span>
+              <input
+                type="text"
+                class="form-control"
+                id="edit-user-username"
+                placeholder="lowercase letters only, 1-20 chars"
+                maxlength="20"
+                pattern="[a-z]{1,20}"
+                required
+              />
+            </div>
+            <div class="form-text">Lowercase English letters only (a-z), 1-20 characters.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="edit-user-full-name">Full Name</label>
             <input
               type="text"
               class="form-control"
-              id="location"
-              placeholder="Enter city, country"
-              value="New York, NY"
+              id="edit-user-full-name"
+              placeholder="Optional"
+              autocomplete="off"
             />
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Time Zone</label>
-            <select class="form-select" id="timezone">
-              <option value="">Select user's time zone</option>
-              <option value="PST">Pacific Time (UTC-08:00)</option>
-              <option value="MST">Mountain Time (UTC-07:00)</option>
-              <option value="CST">Central Time (UTC-06:00)</option>
-              <option value="EST" selected>Eastern Time (UTC-05:00)</option>
+            <label class="form-label" for="edit-user-status">Account Status</label>
+            <select class="form-select" id="edit-user-status">
+              <option value="active">Active</option>
+              <option value="blocked">Blocked</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Access Control Settings -->
-    <div class="col-lg-8">
+    <div class="col-lg-6">
       <div class="card">
         <div class="card-header">
           <div class="d-flex align-items-center">
             <i class="ri-shield-keyhole-line me-2"></i>
-            <h5 class="card-title mb-0">Access & Permissions</h5>
+            <h5 class="card-title mb-0">Roles</h5>
           </div>
         </div>
         <div class="card-body">
-          <!-- Role Selection -->
-          <div class="mb-4">
-            <label class="form-label required">Access Role</label>
-            <div class="row g-3">
-              <div class="col-md-3">
-                <div class="form-check custom-option">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="role"
-                    id="roleAdmin"
-                    value="admin"
-                    checked
-                  />
-                  <label class="form-check-label" for="roleAdmin">
-                    <span class="d-block fw-semibold mb-1">
-                      <i class="ri-admin-line me-1"></i>Administrator
-                    </span>
-                    <small class="text-muted">Full system access</small>
-                  </label>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="form-check custom-option">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="role"
-                    id="roleEditor"
-                    value="editor"
-                  />
-                  <label class="form-check-label" for="roleEditor">
-                    <span class="d-block fw-semibold mb-1">
-                      <i class="ri-edit-2-line me-1"></i>Editor
-                    </span>
-                    <small class="text-muted">Content management</small>
-                  </label>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="form-check custom-option">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="role"
-                    id="roleAuthor"
-                    value="author"
-                  />
-                  <label class="form-check-label" for="roleAuthor">
-                    <span class="d-block fw-semibold mb-1">
-                      <i class="ri-quill-pen-line me-1"></i>Author
-                    </span>
-                    <small class="text-muted">Content creation</small>
-                  </label>
-                </div>
-              </div>
+          <p class="text-muted small mb-3">Modify roles assigned to this user.</p>
+          <div class="mb-2">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="role"
+                id="role-admin"
+                value="admin"
+              />
+              <label class="form-check-label" for="role-admin">
+                <span class="fw-semibold"><i class="ri-admin-line me-1"></i>Administrator</span>
+                <span class="d-block text-muted small">Full system access, user management</span>
+              </label>
             </div>
           </div>
-
-          <!-- Custom Permission Settings -->
-          <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <label class="form-label mb-0">Specific Permissions</label>
-            </div>
-            <div class="permissions-container">
-              {
-                permissionModules.map((module) => (
-                  <div class="module-section mb-3" id={`module_${module.id}`}>
-                    <div class="card border rounded p-0">
-                      <div class="card-header border-bottom px-3 py-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                          <div class="form-check">
-                            <input
-                              class="form-check-input toggle-module"
-                              type="checkbox"
-                              id={`module_toggle_${module.id}`}
-                              data-module-id={module.id}
-                            />
-                            <label
-                              class="form-check-label fw-medium"
-                              for={`module_toggle_${module.id}`}
-                            >
-                              {module.name}
-                            </label>
-                          </div>
-                          <button
-                            type="button"
-                            class="btn btn-sm btn-outline-primary toggle-module"
-                            data-module-id={module.id}
-                            data-expanded="false"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Expand All Permissions"
-                          >
-                            <i class="ri-add-line me-md-1" />
-                            <span class="d-none d-md-inline">Expand All</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div class="card-body py-2">
-                        <div class="permission-groups d-flex flex-column flex-md-row flex-wrap">
-                          {module.groups.map((group) => (
-                            <div
-                              class="col-12 col-md-6 permission-group px-2 mb-3"
-                              id={`group_${group.id}`}
-                            >
-                              <div class="card rounded px-2 py-1">
-                                <div class="card-header d-flex flex-row py-1 justify-content-between align-items-center border-0">
-                                  <div class="form-check">
-                                    <input
-                                      class="form-check-input toggle-group"
-                                      type="checkbox"
-                                      id={`group_toggle_${group.id}`}
-                                      data-group-id={group.id}
-                                    />
-                                    <label
-                                      class="form-check-label fw-medium"
-                                      for={`group_toggle_${group.id}`}
-                                    >
-                                      {group.name}
-                                    </label>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    class="btn btn-outline-primary toggle-permissions mb-0"
-                                    data-group-id={group.id}
-                                    title="Toggle Group Permissions"
-                                  >
-                                    <i class="ri-add-line" />
-                                  </button>
-                                </div>
-                                <div
-                                  class="permission-items border-top pb-3 ps-4 collapse"
-                                  id={`permissions_${group.id}`}
-                                >
-                                  {group.permissions.map((permission) => (
-                                    <div class="permission-item form-check">
-                                      <input
-                                        class="form-check-input permission-checkbox"
-                                        type="checkbox"
-                                        id={`permission_${permission.id}`}
-                                        name={`permissions[]`}
-                                        value={permission.id}
-                                      />
-                                      <label
-                                        class="form-check-label"
-                                        for={`permission_${permission.id}`}
-                                      >
-                                        {permission.name}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              }
+          <div class="mb-2">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="role"
+                id="role-user"
+                value="user"
+              />
+              <label class="form-check-label" for="role-user">
+                <span class="fw-semibold"><i class="ri-user-line me-1"></i>User</span>
+                <span class="d-block text-muted small"
+                  >Standard access to feeds, articles, analytics</span
+                >
+              </label>
             </div>
           </div>
         </div>
         <div class="card-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+          <a href={getPathPrefix('/users/list')} class="btn btn-outline-secondary">
             <i class="ri-arrow-left-line me-1"></i>Cancel
-          </button>
+          </a>
           <button type="submit" class="btn btn-primary">
-            <i class="ri-save-line me-1"></i>Save
+            <i class="ri-save-line me-1"></i>Save Changes
           </button>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <div class="d-flex gap-2">
+            <i class="ri-shield-star-line text-warning mt-1"></i>
+            <p class="text-muted small mb-0">
+              Admin cannot set or view plaintext passwords. Blocking a user will revoke all their
+              active sessions immediately.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   </form>
 </AdminLayout>
+
+<script>
+  import { initEditUserPage } from '@/scripts/users'
+  document.addEventListener('DOMContentLoaded', () => {
+    initEditUserPage()
+  })
+</script>

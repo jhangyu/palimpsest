@@ -16,9 +16,9 @@ interface Props {
 }
 
 const {
-  title = 'Astero Admin', // Default title
+  title = 'Palimpsest', // Default title
   description = 'Admin dashboard for managing your application', // Default description
-  author = 'Astero Digital',
+  author = 'Palimpsest',
   ogImage = '/src/assets/img/og-image.png',
   enableComponentPreview = false,
   pageCss,
@@ -26,7 +26,7 @@ const {
 } = Astro.props
 
 // Construct full title
-const fullTitle = title ? `${title} | Astero Admin` : 'Astero Admin'
+const fullTitle = title ? `${title} | Palimpsest` : 'Palimpsest'
 
 function getCSS() {
   const isDev = import.meta.env.DEV

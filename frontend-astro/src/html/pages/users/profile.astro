@@ -2,7 +2,7 @@
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import { getPathPrefix } from '../../../utils/path.js'
 
 const pageHeaderProps: PageHeaderProps = {
   title: 'Profile Settings',
@@ -12,35 +12,40 @@ const pageHeaderProps: PageHeaderProps = {
     { label: 'Profile', class: 'active' }
   ]
 }
-
-const bio = 'Administrator with 5+ years of experience in system management and web development.'
 ---
 
 <AdminLayout title="User Profile" description="User profile settings" currentPath="users/profile">
   <PageHeader {...pageHeaderProps} />
 
-  <div class="row g-4">
-    <!-- Profile Card -->
+  <div id="profile-page" class="row g-4">
+    <!-- Profile Card Sidebar -->
     <div class="col-lg-3">
       <div class="card p-3">
         <div class="card-header pt-3 text-center">
           <div class="position-relative d-inline-block mb-4">
+            <div
+              id="avatar-placeholder"
+              class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+              style="width:120px;height:120px;"
+            >
+              <i class="ri-user-line text-white" style="font-size:3rem;"></i>
+            </div>
             <img
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
+              id="profile-avatar-img"
               alt="Profile"
-              class="rounded-circle"
+              class="rounded-circle d-none"
               width="120"
               height="120"
               style="object-fit: cover;"
             />
-            <button
-              class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
-            >
-              <i class="ri-camera-fill"></i>
-            </button>
           </div>
-          <h5 class="mb-1">Amara Evans</h5>
-          <p class="text-muted mb-0">amara@example.com</p>
+          <h5 class="mb-1" data-session="user-name">Loading...</h5>
+          <p class="text-muted mb-0 small" data-session="user-email"></p>
+          <p class="mt-1">
+            <span class="badge bg-secondary-subtle text-secondary" id="avatar-source-badge"
+              >No avatar</span
+            >
+          </p>
         </div>
         <div class="card-body">
           <nav class="nav-tree">
@@ -48,42 +53,16 @@ const bio = 'Administrator with 5+ years of experience in system management and 
               <li class="nav-section">
                 <span class="nav-section-text text-uppercase px-2">Personal</span>
               </li>
-              <!-- Profile -->
               <li class="nav-item active">
                 <a class="nav-link" href={getPathPrefix('/users/profile')}>
                   <i class="ri-user-line"></i>
                   <span>Profile</span>
                 </a>
               </li>
-              <!-- Notifications -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
-                  <i class="ri-notification-4-line"></i>
-                  <span>Notifications</span>
-                </a>
-              </li>
-              <!-- Security -->
               <li class="nav-item">
                 <a class="nav-link" href={getPathPrefix('/users/security')}>
                   <i class="ri-shield-check-line"></i>
                   <span>Security</span>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="nav-section-text text-uppercase px-2">Other</span>
-              </li>
-              <!-- Billing -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/billing')}>
-                  <i class="ri-bank-card-line"></i>
-                  <span>Billing</span>
-                </a>
-              </li>
-              <!-- Team -->
-              <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/team')}>
-                  <i class="ri-group-line"></i>
-                  <span>Team</span>
                 </a>
               </li>
             </ul>
@@ -92,142 +71,239 @@ const bio = 'Administrator with 5+ years of experience in system management and 
       </div>
     </div>
 
-    <!-- Profile Information -->
+    <!-- Profile Forms -->
     <div class="col-lg-9">
+      <!-- Pending email banner -->
+      <div
+        id="pending-email-banner"
+        class="alert alert-warning d-flex align-items-start gap-2"
+        style="display:none!important;"
+      >
+        <i class="ri-mail-send-line mt-1"></i>
+        <div>
+          <strong>Email change pending verification.</strong>
+          A verification link was sent to <strong id="pending-email-text"></strong>. Your current
+          email remains active until you verify the new one.
+        </div>
+      </div>
+
+      <!-- Full Name -->
       <div class="card">
         <div class="card-header">
           <div class="d-flex align-items-center">
             <i class="ri-user-line me-2"></i>
-            <h5 class="card-title mb-0">Basic Info</h5>
+            <h5 class="card-title mb-0">Display Name</h5>
           </div>
         </div>
         <div class="card-body">
-          <form>
-            <div class="row g-3">
-              <div class="col-md-12">
-                <label class="form-label">Full Name</label>
-                <input type="text" class="form-control" value="Amara Evans" autocomplete="name" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Email</label>
-                <input
-                  type="email"
-                  class="form-control"
-                  value="amara@example.com"
-                  autocomplete="username"
-                />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Phone</label>
-                <input
-                  type="tel"
-                  class="form-control"
-                  value="+1 (555) 123-4567"
-                  autocomplete="tel"
-                />
-              </div>
-              <div class="col-12">
-                <label class="form-label">Bio</label>
-                <textarea class="form-control" rows="3">{bio} </textarea>
-                <div class="form-text">Brief description for your profile.</div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" class="form-control" value="San Francisco, CA" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Time Zone</label>
-                <select class="form-select">
-                  <option value="PST">Pacific Time (PST)</option>
-                  <option value="MST">Mountain Time (MST)</option>
-                  <option value="CST">Central Time (CST)</option>
-                  <option value="EST">Eastern Time (EST)</option>
-                </select>
-              </div>
+          <form id="full-name-form">
+            <div class="mb-3">
+              <label class="form-label" for="profile-full-name">Full Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="profile-full-name"
+                placeholder="Your full name"
+                autocomplete="name"
+              />
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="ri-save-line me-1"></i>Save Name
+              </button>
             </div>
           </form>
         </div>
       </div>
+
+      <!-- Email -->
       <div class="card mt-4">
         <div class="card-header">
           <div class="d-flex align-items-center">
-            <i class="ri-lock-line me-2"></i>
-            <h5 class="card-title mb-0">Privacy Settings</h5>
+            <i class="ri-mail-line me-2"></i>
+            <h5 class="card-title mb-0">Email Address</h5>
           </div>
         </div>
         <div class="card-body">
-          <div class="list-group">
-            <div
-              class="list-group-item d-flex justify-content-between align-items-center p-3 border-0"
-            >
-              <div>
-                <div class="mb-2">Profile Visibility</div>
-                <div class="text-muted">Control who can see your profile details and activity.</div>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="profileVisibility" checked />
+          <p class="text-muted small mb-3">
+            <i class="ri-information-line me-1"></i>
+            Changing your email will send a verification link to the new address. Your current email remains
+            active until verified.
+          </p>
+          <form id="email-change-form">
+            <div class="mb-3">
+              <label class="form-label" for="profile-email">Email Address</label>
+              <input
+                type="email"
+                class="form-control"
+                id="profile-email"
+                placeholder="you@example.com"
+                autocomplete="username"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="profile-email-password">Current Password</label>
+              <input
+                type="password"
+                class="form-control"
+                id="profile-email-password"
+                placeholder="Enter your current password"
+                autocomplete="current-password"
+              />
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="ri-mail-send-line me-1"></i>Change Email
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Username -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-at-line me-2"></i>
+            <h5 class="card-title mb-0">Username</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            <i class="ri-information-line me-1"></i>
+            Lowercase English letters only, 1-20 characters. Must be unique.
+          </p>
+          <form id="username-change-form">
+            <div class="mb-3">
+              <label class="form-label" for="profile-username">Username</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="ri-at-line"></i></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="profile-username"
+                  placeholder="username"
+                  autocomplete="username"
+                  maxlength="20"
+                  pattern="[a-z]{1,20}"
+                />
               </div>
             </div>
-            <div
-              class="list-group-item d-flex justify-content-between align-items-center p-3 border-0"
-            >
-              <div>
-                <div class="mb-2">Activity Status</div>
-                <div class="text-muted">
-                  Choose if others can see your online activity and status.
-                </div>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="activityStatus" checked />
-              </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="ri-save-line me-1"></i>Change Username
+              </button>
             </div>
-            <div
-              class="list-group-item d-flex justify-content-between align-items-center p-3 border-0"
-            >
-              <div>
-                <div class="mb-2">Third-Party Data Sharing</div>
-                <div class="text-muted">
-                  Manage whether your data is shared with third-party services.
-                </div>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="thirdPartyDataSharing" />
-              </div>
-            </div>
-            <div
-              class="list-group-item d-flex justify-content-between align-items-center p-3 border-0"
-            >
-              <div>
-                <div class="mb-2">Location Tracking</div>
-                <div class="text-muted">
-                  Enable or disable location-based features and tracking.
-                </div>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="locationTracking" />
-              </div>
-            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Avatar -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <i class="ri-image-user-line me-2"></i>
+            <h5 class="card-title mb-0">Profile Photo</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            <i class="ri-information-line me-1"></i>
+            Accepted formats: JPEG, PNG, WebP. Maximum size: 512 KB.
+          </p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" id="avatar-upload-btn" class="btn btn-outline-primary">
+              <i class="ri-upload-cloud-line me-1"></i>Upload Photo
+            </button>
+            <button type="button" id="avatar-delete-btn" class="btn btn-outline-danger">
+              <i class="ri-delete-bin-line me-1"></i>Remove Photo
+            </button>
+            <input
+              type="file"
+              id="avatar-file-input"
+              class="d-none"
+              accept="image/jpeg,image/png,image/webp"
+            />
+          </div>
+          <!-- Gravatar opt-in -->
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="gravatar-toggle" />
+            <label class="form-check-label" for="gravatar-toggle">
+              Use Gravatar as profile photo
+              <span class="text-muted small ms-1"
+                >(opt-in, requires a Gravatar account for your email)</span
+              >
+            </label>
           </div>
         </div>
       </div>
+
+      <!-- Preferences -->
       <div class="card mt-4">
         <div class="card-header">
           <div class="d-flex align-items-center">
-            <i class="ri-delete-bin-6-line me-2"></i>
-            <h5 class="card-title mb-0">Delete Account</h5>
+            <i class="ri-settings-3-line me-2"></i>
+            <h5 class="card-title mb-0">Preferences</h5>
           </div>
         </div>
         <div class="card-body">
-          <p class="text-muted">
-            <strong>Warning!</strong> Once your account is deleted, you will lose access to all your data
-            and services linked to this account. If you're sure about this action, please proceed by clicking
-            the "Delete Account" button below.
-          </p>
-          <div class="d-flex justify-content-start">
-            <button class="btn btn-outline-danger">Delete Account</button>
-          </div>
+          <form id="preferences-form">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="pref-theme">Theme</label>
+                <select class="form-select" id="pref-theme">
+                  <option value="">System Default</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="pref-locale">Language</label>
+                <select class="form-select" id="pref-locale">
+                  <option value="">Default</option>
+                  <option value="en">English</option>
+                  <option value="zh-TW">Traditional Chinese</option>
+                  <option value="zh-CN">Simplified Chinese</option>
+                  <option value="ja">Japanese</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="pref-timezone">Time Zone</label>
+                <select class="form-select" id="pref-timezone">
+                  <option value="">UTC</option>
+                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                  <option value="America/New_York">Eastern Time (ET)</option>
+                  <option value="Europe/London">London (GMT/BST)</option>
+                  <option value="Europe/Paris">Central European (CET)</option>
+                  <option value="Asia/Tokyo">Japan (JST)</option>
+                  <option value="Asia/Shanghai">China (CST)</option>
+                  <option value="Asia/Taipei">Taiwan (CST)</option>
+                </select>
+              </div>
+            </div>
+            <div class="text-end mt-3">
+              <button type="submit" class="btn btn-primary">
+                <i class="ri-save-line me-1"></i>Save Preferences
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  import { initProfilePage } from '@/scripts/users'
+
+  const init = () => {
+    initProfilePage()
+  }
+
+  document.addEventListener('astro:page-load', init)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init)
+  } else {
+    init()
+  }
+</script>

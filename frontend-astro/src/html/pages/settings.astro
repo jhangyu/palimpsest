@@ -15,10 +15,14 @@ const settingsPageHeader = {
 
 const address = `123 Business Avenue Corporate Plaza, Suite 100 New York, NY 10001, United States`
 
-// Client-side JavaScript for form validation and tab navigation
+// Client-side JavaScript for form validation, tab navigation, and AI tokens
 const settingsPageScript = `
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
+  function setupSettingsPage() {
+    const settingsRoot = document.querySelector('[data-settings-page-root]');
+    if (!settingsRoot || settingsRoot.dataset.settingsPageBound === 'true') return;
+    settingsRoot.dataset.settingsPageBound = 'true';
+
     // Initialize Bootstrap form validation
     const settingsForms = document.querySelectorAll('.needs-validation');
     Array.from(settingsForms).forEach(form => {
@@ -38,21 +42,30 @@ const settingsPageScript = `
         event.preventDefault();
         const targetId = event.currentTarget.getAttribute('href');
         const targetPane = document.querySelector(targetId);
+        if (!targetPane) return;
         const tabContainer = targetPane.closest('.tab-content');
         const currentActiveTab = tabContainer.querySelector('.tab-pane.show.active');
 
         // Toggle tab visibility
-        currentActiveTab.classList.remove('show', 'active');
+        if (currentActiveTab) currentActiveTab.classList.remove('show', 'active');
         targetPane.classList.add('show', 'active');
 
         // Update navigation menu active state
-        document.querySelectorAll('.nav-item').forEach(navItem => {
+        event.currentTarget.closest('.nav-tree')?.querySelectorAll('.nav-item').forEach(navItem => {
           navItem.classList.remove('active');
         });
         event.currentTarget.closest('.nav-item').classList.add('active');
+
       });
     });
-  });
+  }
+
+  document.addEventListener('astro:page-load', setupSettingsPage);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupSettingsPage);
+  } else {
+    setupSettingsPage();
+  }
 </script>
 `
 ---
@@ -65,7 +78,7 @@ const settingsPageScript = `
 >
   <PageHeader {...settingsPageHeader} />
 
-  <div class="row g-4">
+  <div class="row g-4" data-settings-page-root>
     <!-- Settings Navigation Menu -->
     <div class="col-lg-3">
       <div class="card p-3">

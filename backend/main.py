@@ -1,5 +1,5 @@
 # backend/main.py
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Response, Request, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
@@ -13,7 +13,8 @@ import asyncio
 import re
 import time
 import statistics
-from datetime import datetime, timedelta
+import hashlib
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from dotenv import load_dotenv
@@ -27,6 +28,48 @@ from core.ai import analyze_structure
 from core.crawler import crawl_site_logic, get_page_content, compute_visible_word_count, _utcnow_iso as _utcnow_iso_impl
 from core.scraper import fetch_page
 from core.debug import create_debug_writer
+
+# Auth imports
+from core.auth import (
+    hash_password, verify_password, needs_rehash,
+    generate_session_token, hash_token,
+    generate_csrf_token, validate_csrf, check_origin,
+    set_session_cookie, clear_session_cookie, set_csrf_cookie, clear_csrf_cookie,
+    generate_reset_token,
+    validate_username, normalize_username, validate_password, normalize_email,
+    check_rate_limit, record_attempt, clear_rate_limit,
+    cleanup_expired_sessions, cleanup_expired_tokens,
+    make_get_current_user, make_require_user, make_require_admin,
+)
+from core.crypto import (
+    encrypt_token as crypto_encrypt_token,
+    decrypt_token as crypto_decrypt_token,
+    generate_token_salt, mask_token, get_token_last4,
+    re_encrypt_all_user_tokens,
+)
+from core.email import get_email_sender
+from core.security_models import (
+    LoginRequest, RegisterRequest, FirstRunSetupRequest,
+    ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
+    ResendVerificationRequest,
+    UpdateProfileRequest, UpdateEmailRequest, UpdateUsernameRequest,
+    ChangePasswordRequest, UpdatePreferencesRequest,
+    UserResponse, UserMeResponse,
+    AdminCreateUserRequest, AdminUpdateUserRequest, AdminUserListResponse,
+    AdminUpdateRolesRequest,
+    CreateTokenRequest, UpdateTokenRequest, RevealTokenRequest, TestTokenRequest,
+    TokenResponse,
+)
+from core.ai_tokens import (
+    list_user_tokens,
+    create_user_token,
+    update_user_token,
+    delete_user_token,
+    reveal_user_token,
+    test_user_token,
+    set_default_token,
+    resolve_minimax_token,
+)
 
 # Helper for timestamped logging
 def log_with_time(msg):
@@ -101,6 +144,110 @@ crawl_attempts = sqlalchemy.Table(
     sqlalchemy.Column("content_fetch_failed", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("parse_failed", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("error_message", sqlalchemy.Text, nullable=True),
+)
+
+# --- Auth / User / Role Tables ---
+
+users = sqlalchemy.Table(
+    "users", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("email", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("email_normalized", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("pending_email", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("pending_email_normalized", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("username", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("username_normalized", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("full_name", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("password_hash", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("status", sqlalchemy.String, nullable=False, server_default="active"),
+    sqlalchemy.Column("email_verified_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+    sqlalchemy.Column("avatar_mime_type", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("avatar_bytes", sqlalchemy.LargeBinary, nullable=True),
+    sqlalchemy.Column("avatar_size_bytes", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("avatar_hash", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("avatar_source", sqlalchemy.String, nullable=False, server_default="none"),
+    sqlalchemy.Column("avatar_updated_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+    sqlalchemy.Column("preferences", sqlalchemy.JSON, nullable=False, server_default="{}"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("last_login_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+)
+
+roles = sqlalchemy.Table(
+    "roles", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("name", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("description", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+)
+
+user_roles = sqlalchemy.Table(
+    "user_roles", metadata,
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    sqlalchemy.Column("role_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+)
+
+auth_sessions = sqlalchemy.Table(
+    "auth_sessions", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE")),
+    sqlalchemy.Column("token_hash", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("user_agent", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("ip_address", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("expires_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("revoked_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+)
+
+password_reset_tokens = sqlalchemy.Table(
+    "password_reset_tokens", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE")),
+    sqlalchemy.Column("token_hash", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("expires_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("used_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+)
+
+email_verification_tokens = sqlalchemy.Table(
+    "email_verification_tokens", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE")),
+    sqlalchemy.Column("token_hash", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("email", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("expires_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("used_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+)
+
+auth_rate_limits = sqlalchemy.Table(
+    "auth_rate_limits", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("scope", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("subject_hash", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("attempts", sqlalchemy.Integer, nullable=False, server_default="0"),
+    sqlalchemy.Column("window_started_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("locked_until", sqlalchemy.DateTime(timezone=True), nullable=True),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.UniqueConstraint("scope", "subject_hash", name="uq_rate_limits_scope_subject"),
+)
+
+user_ai_tokens = sqlalchemy.Table(
+    "user_ai_tokens", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE")),
+    sqlalchemy.Column("provider", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("label", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("encrypted_token", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("token_salt", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("token_last4", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("token_mask", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("needs_reentry", sqlalchemy.Boolean, nullable=False, server_default="false"),
+    sqlalchemy.Column("is_default", sqlalchemy.Boolean, nullable=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+    sqlalchemy.Column("last_used_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+    sqlalchemy.UniqueConstraint("user_id", "provider", "label", name="uq_user_ai_tokens_user_provider_label"),
 )
 
 # --- Scheduler ---
@@ -192,20 +339,164 @@ def _run_schema_migration(engine):
             except Exception as e:
                 log_with_time(f"[Migration] Column articles.{col} migration note: {e}")
 
+        # --- Auth tables (CREATE TABLE IF NOT EXISTS) ---
+        auth_table_stmts = [
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR NOT NULL UNIQUE,
+                email_normalized VARCHAR NOT NULL UNIQUE,
+                pending_email VARCHAR,
+                pending_email_normalized VARCHAR,
+                username VARCHAR NOT NULL UNIQUE,
+                username_normalized VARCHAR NOT NULL UNIQUE,
+                full_name VARCHAR,
+                password_hash TEXT NOT NULL,
+                status VARCHAR NOT NULL DEFAULT 'active',
+                email_verified_at TIMESTAMPTZ,
+                avatar_mime_type VARCHAR,
+                avatar_bytes BYTEA,
+                avatar_size_bytes INTEGER,
+                avatar_hash VARCHAR,
+                avatar_source VARCHAR NOT NULL DEFAULT 'none',
+                avatar_updated_at TIMESTAMPTZ,
+                preferences JSON NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL,
+                last_login_at TIMESTAMPTZ
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS roles (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR NOT NULL UNIQUE,
+                description TEXT,
+                created_at TIMESTAMPTZ NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS user_roles (
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, role_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                token_hash VARCHAR NOT NULL UNIQUE,
+                user_agent TEXT,
+                ip_address VARCHAR,
+                created_at TIMESTAMPTZ NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                revoked_at TIMESTAMPTZ
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                token_hash VARCHAR NOT NULL UNIQUE,
+                created_at TIMESTAMPTZ NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                used_at TIMESTAMPTZ
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                token_hash VARCHAR NOT NULL UNIQUE,
+                email VARCHAR NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                used_at TIMESTAMPTZ
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS auth_rate_limits (
+                id SERIAL PRIMARY KEY,
+                scope VARCHAR NOT NULL,
+                subject_hash VARCHAR NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                window_started_at TIMESTAMPTZ NOT NULL,
+                locked_until TIMESTAMPTZ,
+                updated_at TIMESTAMPTZ NOT NULL,
+                UNIQUE(scope, subject_hash)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS user_ai_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                provider VARCHAR NOT NULL,
+                label VARCHAR NOT NULL,
+                encrypted_token TEXT NOT NULL,
+                token_salt VARCHAR NOT NULL,
+                token_last4 VARCHAR,
+                token_mask VARCHAR,
+                needs_reentry BOOLEAN NOT NULL DEFAULT false,
+                is_default BOOLEAN NOT NULL DEFAULT false,
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL,
+                last_used_at TIMESTAMPTZ,
+                UNIQUE(user_id, provider, label)
+            )
+            """,
+        ]
+
+        for stmt in auth_table_stmts:
+            try:
+                conn.execute(sa_text(stmt))
+            except Exception as e:
+                log_with_time(f"[Migration] Auth table creation note: {e}")
+
         # Create indexes if not exist
         index_stmts = [
+            # Existing indexes
             "CREATE INDEX IF NOT EXISTS idx_articles_site_id ON articles(site_id)",
             "CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at)",
             "CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at)",
             "CREATE INDEX IF NOT EXISTS idx_rss_query_events_requested_at ON rss_query_events(requested_at)",
             "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_started_at ON crawl_attempts(started_at)",
             "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_site_started ON crawl_attempts(site_id, started_at)",
+            # Auth indexes
+            "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at, revoked_at)",
+            "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, expires_at, used_at)",
+            "CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user ON email_verification_tokens(user_id, expires_at, used_at)",
+            "CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_scope_locked ON auth_rate_limits(scope, locked_until)",
+            "CREATE INDEX IF NOT EXISTS idx_user_ai_tokens_user_provider ON user_ai_tokens(user_id, provider)",
         ]
+
         for stmt in index_stmts:
             try:
                 conn.execute(sa_text(stmt))
             except Exception as e:
                 log_with_time(f"[Migration] Index creation note: {e}")
+
+        # Partial unique indexes (PostgreSQL-specific)
+        partial_idx_stmts = [
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pending_email_normalized ON users(pending_email_normalized) WHERE pending_email_normalized IS NOT NULL",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_ai_tokens_default ON user_ai_tokens(user_id, provider) WHERE is_default = true",
+        ]
+        for stmt in partial_idx_stmts:
+            try:
+                conn.execute(sa_text(stmt))
+            except Exception as e:
+                log_with_time(f"[Migration] Partial unique index note: {e}")
+
+        # Seed roles if not exist
+        try:
+            now_str = datetime.now(timezone.utc).isoformat()
+            conn.execute(sa_text(
+                "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
+            ), {"name": "admin", "desc": "Administrator role with full access", "ts": now_str})
+            conn.execute(sa_text(
+                "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
+            ), {"name": "user", "desc": "Standard user role", "ts": now_str})
+        except Exception as e:
+            log_with_time(f"[Migration] Role seeding note: {e}")
 
         conn.commit()
     log_with_time("[Migration] Schema migration completed.")
@@ -262,7 +553,7 @@ async def lifespan(app: FastAPI):
     # Create tables if not exist
     sync_url = DATABASE_URL.replace("+asyncpg", "").replace("postgresql://", "postgresql://")
     engine = sqlalchemy.create_engine(sync_url)
-        
+
     metadata.create_all(engine)
 
     # Run idempotent migration for existing DBs
@@ -271,8 +562,23 @@ async def lifespan(app: FastAPI):
     # Backfill existing articles
     await _backfill_articles()
 
+    # First-run check
+    user_count = await database.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    if user_count and user_count["cnt"] == 0:
+        log_with_time("[Startup] First-run setup required: no users found. POST /auth/first-run-setup to create admin.")
+
     # Start scheduler with stagger to prevent thundering herd
     scheduler.add_job(scheduled_crawl_job, 'interval', hours=1, jitter=300)
+    # Add session/token cleanup job (daily)
+    async def _cleanup_job():
+        try:
+            s_count = await cleanup_expired_sessions(database, auth_sessions)
+            t_count = await cleanup_expired_tokens(database, password_reset_tokens, email_verification_tokens)
+            if s_count or t_count:
+                log_with_time(f"[Cleanup] Removed {s_count} expired sessions, {t_count} expired tokens")
+        except Exception as e:
+            log_with_time(f"[Cleanup] Error: {e}")
+    scheduler.add_job(_cleanup_job, 'interval', hours=24, jitter=3600)
     scheduler.start()
     print("[Startup] Database connected, scheduler started.")
     yield
@@ -282,9 +588,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# --- CORS: credentialed requests require explicit origins ---
+_allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "")
+_default_allowed_origins = [
+    os.getenv("FRONTEND_ORIGIN", "http://localhost:5174").rstrip("/"),
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:8088",
+    "http://127.0.0.1:8088",
+]
+_allowed_origins = (
+    [o.strip().rstrip("/") for o in _allowed_origins_raw.split(",") if o.strip()]
+    if _allowed_origins_raw.strip()
+    else _default_allowed_origins
+)
+_allowed_origins = list(dict.fromkeys(_allowed_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -293,6 +615,19 @@ app.add_middleware(
 FRONTEND_DIR = Path(
     os.getenv("PALIMPSEST_FRONTEND_DIR", Path(__file__).resolve().parent.parent / "frontend-astro")
 ).resolve()
+
+# --- Auth Dependencies ---
+_get_current_user = make_get_current_user(database, users, user_roles, roles, auth_sessions)
+_require_user = make_require_user(_get_current_user)
+_require_admin = make_require_admin(_require_user)
+
+# Frontend origin for constructing links
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
+
+# Session TTL
+def _session_ttl_hours() -> int:
+    return int(os.getenv("SESSION_TTL_HOURS", "24"))
+
 
 # --- Helper Functions ---
 def normalize_site_name(name: str) -> str:
@@ -316,7 +651,7 @@ async def get_site_by_name_or_id(site_identifier: str, database):
             return site
     except ValueError:
         pass
-    
+
     # 嘗試當作名稱查詢
     normalized = normalize_site_name(site_identifier)
     query = sites.select()
@@ -326,7 +661,78 @@ async def get_site_by_name_or_id(site_identifier: str, database):
             return site
     return None
 
-# --- Pydantic Models ---
+# --- Auth Helper: create session and set cookies ---
+async def _create_session_and_cookies(response: Response, request: Request, user_id: int) -> str:
+    """Create a session, set session + CSRF cookies. Returns the session token."""
+    now = datetime.now(timezone.utc)
+    session_token = generate_session_token()
+    token_hash_val = hash_token(session_token)
+    csrf_token = generate_csrf_token()
+
+    await database.execute(
+        auth_sessions.insert().values(
+            user_id=user_id,
+            token_hash=token_hash_val,
+            user_agent=request.headers.get("user-agent", "")[:500],
+            ip_address=request.client.host if request.client else None,
+            created_at=now,
+            expires_at=now + timedelta(hours=_session_ttl_hours()),
+        )
+    )
+
+    set_session_cookie(response, session_token)
+    set_csrf_cookie(response, csrf_token)
+    return session_token
+
+
+def _user_to_response(user_row: dict, user_roles_list: list[str]) -> dict:
+    """Convert a user DB row to a response dict."""
+    return {
+        "id": user_row["id"],
+        "email": user_row["email"],
+        "username": user_row["username"],
+        "full_name": user_row["full_name"],
+        "status": user_row["status"],
+        "email_verified_at": user_row["email_verified_at"].isoformat() if user_row["email_verified_at"] else None,
+        "avatar_source": user_row["avatar_source"] or "none",
+        "avatar_hash": user_row["avatar_hash"],
+        "created_at": user_row["created_at"].isoformat() if user_row["created_at"] else None,
+        "updated_at": user_row["updated_at"].isoformat() if user_row["updated_at"] else None,
+        "last_login_at": user_row["last_login_at"].isoformat() if user_row["last_login_at"] else None,
+        "roles": user_roles_list,
+    }
+
+
+def _user_to_me_response(user_row: dict, user_roles_list: list[str]) -> dict:
+    """Convert a user DB row to a 'me' response dict (includes pending_email, preferences)."""
+    resp = _user_to_response(user_row, user_roles_list)
+    resp["pending_email"] = user_row.get("pending_email")
+    resp["preferences"] = user_row.get("preferences") or {}
+    return resp
+
+
+async def _get_user_roles(user_id: int) -> list[str]:
+    """Fetch role names for a user."""
+    role_rows = await database.fetch_all(
+        user_roles.select().where(user_roles.c.user_id == user_id)
+    )
+    role_ids = [r["role_id"] for r in role_rows]
+    if not role_ids:
+        return []
+    from sqlalchemy import select
+    all_roles = await database.fetch_all(
+        select(roles).where(roles.c.id.in_(role_ids))
+    )
+    return [r["name"] for r in all_roles]
+
+
+# --- CSRF dependency for state-changing endpoints ---
+async def _csrf_dependency(request: Request):
+    """CSRF validation dependency for state-changing routes."""
+    validate_csrf(request)
+
+
+# --- Pydantic Models (existing) ---
 class SiteCreate(BaseModel):
     url: str
     name: str
@@ -394,13 +800,1142 @@ def _get_week_boundaries():
     return this_week_start, today, last_week_start, last_week_end
 
 
-# --- API Endpoints ---
+# ============================================================
+# AUTH ENDPOINTS
+# ============================================================
+
+@app.post("/auth/first-run-setup")
+async def first_run_setup(req: FirstRunSetupRequest, request: Request, response: Response):
+    """Create the first admin user. Only works when users table is empty."""
+    check_origin(request)
+
+    user_count = await database.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    if user_count and user_count["cnt"] > 0:
+        raise HTTPException(status_code=409, detail="Setup already completed. Users exist.")
+
+    # Validate
+    valid, err = validate_username(req.username)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    valid, err = validate_password(req.password)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    email_norm = normalize_email(req.email)
+    username_norm = normalize_username(req.username)
+    now = datetime.now(timezone.utc)
+
+    pw_hash = hash_password(req.password)
+
+    user_id = await database.execute(
+        users.insert().values(
+            email=req.email.strip(),
+            email_normalized=email_norm,
+            username=username_norm,
+            username_normalized=username_norm,
+            full_name=req.full_name,
+            password_hash=pw_hash,
+            status="active",
+            email_verified_at=now,
+            avatar_source="none",
+            preferences={},
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    # Assign admin role
+    admin_role = await database.fetch_one(roles.select().where(roles.c.name == "admin"))
+    if admin_role:
+        await database.execute(user_roles.insert().values(user_id=user_id, role_id=admin_role["id"]))
+    # Also assign user role
+    user_role = await database.fetch_one(roles.select().where(roles.c.name == "user"))
+    if user_role:
+        await database.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
+
+    # Create session
+    await _create_session_and_cookies(response, request, user_id)
+
+    log_with_time(f"[Auth] First-run admin created: {username_norm}")
+    return {"status": "ok", "message": "Admin account created", "user_id": user_id}
+
+
+@app.post("/auth/login")
+async def auth_login(req: LoginRequest, request: Request, response: Response):
+    """Authenticate user and create session."""
+    check_origin(request)
+
+    email_norm = normalize_email(req.email)
+
+    # Rate limit check
+    allowed, retry_after = await check_rate_limit(database, auth_rate_limits, "login", email_norm)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {retry_after} seconds.")
+
+    # Find user
+    user = await database.fetch_one(
+        users.select().where(users.c.email_normalized == email_norm)
+    )
+
+    if not user or not verify_password(req.password, user["password_hash"]):
+        await record_attempt(database, auth_rate_limits, "login", email_norm)
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if user["status"] != "active":
+        raise HTTPException(status_code=403, detail="Account is not active")
+
+    # Clear rate limit on success
+    await clear_rate_limit(database, auth_rate_limits, "login", email_norm)
+
+    # Rehash if needed
+    if needs_rehash(user["password_hash"]):
+        new_hash = hash_password(req.password)
+        await database.execute(
+            users.update().where(users.c.id == user["id"]).values(password_hash=new_hash)
+        )
+
+    # Update last_login_at
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == user["id"]).values(last_login_at=now)
+    )
+
+    # Create session
+    await _create_session_and_cookies(response, request, user["id"])
+
+    user_roles_list = await _get_user_roles(user["id"])
+    return _user_to_me_response(dict(user), user_roles_list)
+
+
+@app.post("/auth/logout", dependencies=[Depends(_csrf_dependency)])
+async def auth_logout(request: Request, response: Response, current_user: dict = Depends(_require_user)):
+    """Logout: revoke current session."""
+    session_id = current_user.get("_session_id")
+    if session_id:
+        now = datetime.now(timezone.utc)
+        await database.execute(
+            auth_sessions.update().where(auth_sessions.c.id == session_id).values(revoked_at=now)
+        )
+
+    clear_session_cookie(response)
+    clear_csrf_cookie(response)
+    return {"status": "ok", "message": "Logged out"}
+
+
+@app.get("/auth/me")
+async def auth_me(request: Request):
+    """Get current user info. Returns 401 if not authenticated."""
+    user = await _get_current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _user_to_me_response(user, user.get("roles", []))
+
+
+@app.post("/auth/register")
+async def auth_register(req: RegisterRequest, request: Request, response: Response):
+    """Register a new user (only if public registration is enabled)."""
+    check_origin(request)
+
+    allow_registration = os.getenv("AUTH_ALLOW_PUBLIC_REGISTRATION", "false").lower() in ("true", "1", "yes")
+    if not allow_registration:
+        raise HTTPException(status_code=403, detail="Public registration is disabled")
+
+    # Validate
+    valid, err = validate_username(req.username)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    valid, err = validate_password(req.password)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    email_norm = normalize_email(req.email)
+    username_norm = normalize_username(req.username)
+
+    # Check email uniqueness
+    existing = await database.fetch_one(
+        users.select().where(users.c.email_normalized == email_norm)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Check username uniqueness
+    existing = await database.fetch_one(
+        users.select().where(users.c.username_normalized == username_norm)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already taken")
+
+    now = datetime.now(timezone.utc)
+    pw_hash = hash_password(req.password)
+
+    user_id = await database.execute(
+        users.insert().values(
+            email=req.email.strip(),
+            email_normalized=email_norm,
+            username=username_norm,
+            username_normalized=username_norm,
+            full_name=req.full_name,
+            password_hash=pw_hash,
+            status="active",
+            avatar_source="none",
+            preferences={},
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    # Assign user role
+    user_role = await database.fetch_one(roles.select().where(roles.c.name == "user"))
+    if user_role:
+        await database.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
+
+    # Create session
+    await _create_session_and_cookies(response, request, user_id)
+
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    user_roles_list = await _get_user_roles(user_id)
+    return _user_to_me_response(dict(user_row), user_roles_list)
+
+
+@app.post("/auth/forgot-password")
+async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
+    """Request a password reset. Always returns success (generic response)."""
+    check_origin(request)
+
+    email_norm = normalize_email(req.email)
+
+    # Rate limit
+    allowed, retry_after = await check_rate_limit(database, auth_rate_limits, "forgot_password", email_norm)
+    if not allowed:
+        # Still return generic success to avoid enumeration
+        return {"status": "ok", "message": "If an account exists, a reset link has been sent."}
+
+    await record_attempt(database, auth_rate_limits, "forgot_password", email_norm)
+
+    user = await database.fetch_one(
+        users.select().where(users.c.email_normalized == email_norm)
+    )
+
+    if user and user["status"] == "active":
+        # Revoke any existing unused reset tokens for this user
+        now = datetime.now(timezone.utc)
+        await database.execute(
+            password_reset_tokens.update()
+            .where(
+                (password_reset_tokens.c.user_id == user["id"]) &
+                (password_reset_tokens.c.used_at.is_(None))
+            )
+            .values(used_at=now)
+        )
+
+        # Generate new token
+        token = generate_reset_token()
+        token_hash_val = hash_token(token)
+        expires_at = now + timedelta(hours=4)
+
+        await database.execute(
+            password_reset_tokens.insert().values(
+                user_id=user["id"],
+                token_hash=token_hash_val,
+                created_at=now,
+                expires_at=expires_at,
+            )
+        )
+
+        # Send email (dev mode: log)
+        reset_link = f"{FRONTEND_ORIGIN}/authentication/modern/new-password?token={token}"
+        email_sender = get_email_sender()
+        await email_sender.send_reset_email(user["email"], reset_link)
+
+    # Always return generic success
+    return {"status": "ok", "message": "If an account exists, a reset link has been sent."}
+
+
+@app.post("/auth/reset-password")
+async def auth_reset_password(req: ResetPasswordRequest, request: Request):
+    """Reset password using a valid token."""
+    check_origin(request)
+
+    # Rate limit
+    allowed, retry_after = await check_rate_limit(database, auth_rate_limits, "reset_password", req.token[:16])
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {retry_after} seconds.")
+
+    # Validate new password
+    valid, err = validate_password(req.new_password)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    token_hash_val = hash_token(req.token)
+    now = datetime.now(timezone.utc)
+
+    # Find valid token
+    token_row = await database.fetch_one(
+        password_reset_tokens.select().where(
+            (password_reset_tokens.c.token_hash == token_hash_val) &
+            (password_reset_tokens.c.expires_at > now) &
+            (password_reset_tokens.c.used_at.is_(None))
+        )
+    )
+
+    if not token_row:
+        await record_attempt(database, auth_rate_limits, "reset_password", req.token[:16])
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Mark token as used
+    await database.execute(
+        password_reset_tokens.update()
+        .where(password_reset_tokens.c.id == token_row["id"])
+        .values(used_at=now)
+    )
+
+    # Update password
+    new_hash = hash_password(req.new_password)
+    await database.execute(
+        users.update()
+        .where(users.c.id == token_row["user_id"])
+        .values(password_hash=new_hash, updated_at=now)
+    )
+
+    # Mark AI tokens as needs_reentry (password reset cannot re-encrypt since old password is unknown)
+    await database.execute(
+        user_ai_tokens.update()
+        .where(user_ai_tokens.c.user_id == token_row["user_id"])
+        .values(needs_reentry=True, updated_at=now)
+    )
+
+    # Revoke all sessions for this user
+    await database.execute(
+        auth_sessions.update()
+        .where(
+            (auth_sessions.c.user_id == token_row["user_id"]) &
+            (auth_sessions.c.revoked_at.is_(None))
+        )
+        .values(revoked_at=now)
+    )
+
+    return {"status": "ok", "message": "Password has been reset. Please login."}
+
+
+@app.post("/auth/verify-email")
+async def auth_verify_email(req: VerifyEmailRequest, request: Request):
+    """Verify a pending email change using a verification token."""
+    check_origin(request)
+
+    token_hash_val = hash_token(req.token)
+    now = datetime.now(timezone.utc)
+
+    # Find valid token
+    token_row = await database.fetch_one(
+        email_verification_tokens.select().where(
+            (email_verification_tokens.c.token_hash == token_hash_val) &
+            (email_verification_tokens.c.expires_at > now) &
+            (email_verification_tokens.c.used_at.is_(None))
+        )
+    )
+
+    if not token_row:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    # Mark token as used
+    await database.execute(
+        email_verification_tokens.update()
+        .where(email_verification_tokens.c.id == token_row["id"])
+        .values(used_at=now)
+    )
+
+    # Promote pending email to primary email
+    user = await database.fetch_one(
+        users.select().where(users.c.id == token_row["user_id"])
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_email = token_row["email"]
+    new_email_norm = normalize_email(new_email)
+
+    # Check if this email is already taken by another user
+    existing = await database.fetch_one(
+        users.select().where(
+            (users.c.email_normalized == new_email_norm) &
+            (users.c.id != user["id"])
+        )
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already in use by another account")
+
+    await database.execute(
+        users.update()
+        .where(users.c.id == user["id"])
+        .values(
+            email=new_email.strip(),
+            email_normalized=new_email_norm,
+            pending_email=None,
+            pending_email_normalized=None,
+            email_verified_at=now,
+            updated_at=now,
+        )
+    )
+
+    return {"status": "ok", "message": "Email verified and updated"}
+
+
+@app.post("/auth/resend-verification", dependencies=[Depends(_csrf_dependency)])
+async def auth_resend_verification(req: ResendVerificationRequest, request: Request, current_user: dict = Depends(_require_user)):
+    """Resend email verification for pending email change."""
+    email_norm = normalize_email(req.email)
+
+    # Rate limit
+    allowed, retry_after = await check_rate_limit(database, auth_rate_limits, "resend_verification", email_norm)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {retry_after} seconds.")
+
+    await record_attempt(database, auth_rate_limits, "resend_verification", email_norm)
+
+    # Only allow if user has a pending email that matches
+    if not current_user.get("pending_email_normalized") or current_user["pending_email_normalized"] != email_norm:
+        raise HTTPException(status_code=400, detail="No pending email change for this address")
+
+    now = datetime.now(timezone.utc)
+
+    # Revoke existing unused verification tokens for this user
+    await database.execute(
+        email_verification_tokens.update()
+        .where(
+            (email_verification_tokens.c.user_id == current_user["id"]) &
+            (email_verification_tokens.c.used_at.is_(None))
+        )
+        .values(used_at=now)
+    )
+
+    # Generate new token
+    token = generate_reset_token()
+    token_hash_val = hash_token(token)
+    expires_at = now + timedelta(hours=4)
+
+    await database.execute(
+        email_verification_tokens.insert().values(
+            user_id=current_user["id"],
+            token_hash=token_hash_val,
+            email=current_user["pending_email"],
+            created_at=now,
+            expires_at=expires_at,
+        )
+    )
+
+    verify_link = f"{FRONTEND_ORIGIN}/authentication/modern/verify-email?token={token}"
+    email_sender = get_email_sender()
+    await email_sender.send_verification_email(current_user["pending_email"], verify_link)
+
+    return {"status": "ok", "message": "Verification email sent"}
+
+
+# ============================================================
+# CURRENT USER ENDPOINTS
+# ============================================================
+
+@app.get("/users/me")
+async def get_current_user_profile(request: Request, current_user: dict = Depends(_require_user)):
+    """Get full current user profile."""
+    return _user_to_me_response(current_user, current_user.get("roles", []))
+
+
+@app.put("/users/me", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_profile(req: UpdateProfileRequest, request: Request, current_user: dict = Depends(_require_user)):
+    """Update current user's full_name."""
+    now = datetime.now(timezone.utc)
+    values = {"updated_at": now}
+    if req.full_name is not None:
+        values["full_name"] = req.full_name.strip() if req.full_name else None
+
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(**values)
+    )
+
+    user_row = await database.fetch_one(users.select().where(users.c.id == current_user["id"]))
+    return _user_to_me_response(dict(user_row), current_user.get("roles", []))
+
+
+@app.put("/users/me/email", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_email(req: UpdateEmailRequest, request: Request, current_user: dict = Depends(_require_user)):
+    """Set pending email and send verification."""
+    # Verify current password
+    if not verify_password(req.password, current_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    new_email_norm = normalize_email(req.new_email)
+
+    # Check if same as current
+    if new_email_norm == current_user["email_normalized"]:
+        raise HTTPException(status_code=400, detail="New email is the same as current email")
+
+    # Check uniqueness
+    existing = await database.fetch_one(
+        users.select().where(
+            (users.c.email_normalized == new_email_norm) &
+            (users.c.id != current_user["id"])
+        )
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already in use")
+
+    now = datetime.now(timezone.utc)
+
+    # Set pending email
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            pending_email=req.new_email.strip(),
+            pending_email_normalized=new_email_norm,
+            updated_at=now,
+        )
+    )
+
+    # Revoke existing verification tokens
+    await database.execute(
+        email_verification_tokens.update()
+        .where(
+            (email_verification_tokens.c.user_id == current_user["id"]) &
+            (email_verification_tokens.c.used_at.is_(None))
+        )
+        .values(used_at=now)
+    )
+
+    # Generate verification token
+    token = generate_reset_token()
+    token_hash_val = hash_token(token)
+    expires_at = now + timedelta(hours=4)
+
+    await database.execute(
+        email_verification_tokens.insert().values(
+            user_id=current_user["id"],
+            token_hash=token_hash_val,
+            email=req.new_email.strip(),
+            created_at=now,
+            expires_at=expires_at,
+        )
+    )
+
+    verify_link = f"{FRONTEND_ORIGIN}/authentication/modern/verify-email?token={token}"
+    email_sender = get_email_sender()
+    await email_sender.send_verification_email(req.new_email.strip(), verify_link)
+
+    return {"status": "ok", "message": "Verification email sent to new address"}
+
+
+@app.put("/users/me/username", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_username(req: UpdateUsernameRequest, request: Request, current_user: dict = Depends(_require_user)):
+    """Update current user's username."""
+    username_norm = normalize_username(req.new_username)
+
+    valid, err = validate_username(username_norm)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    # Check if same as current
+    if username_norm == current_user["username_normalized"]:
+        raise HTTPException(status_code=400, detail="New username is the same as current username")
+
+    # Check uniqueness
+    existing = await database.fetch_one(
+        users.select().where(
+            (users.c.username_normalized == username_norm) &
+            (users.c.id != current_user["id"])
+        )
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already taken")
+
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            username=username_norm,
+            username_normalized=username_norm,
+            updated_at=now,
+        )
+    )
+
+    return {"status": "ok", "message": "Username updated"}
+
+
+@app.put("/users/me/password", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_password(req: ChangePasswordRequest, request: Request, response: Response, current_user: dict = Depends(_require_user)):
+    """Change password: verify current, re-encrypt AI tokens, update hash, rotate session."""
+    # Verify current password
+    if not verify_password(req.current_password, current_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+
+    # Validate new password
+    valid, err = validate_password(req.new_password)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    if req.current_password == req.new_password:
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
+
+    now = datetime.now(timezone.utc)
+
+    # Re-encrypt AI tokens BEFORE updating password hash
+    try:
+        await re_encrypt_all_user_tokens(
+            database, user_ai_tokens, current_user["id"],
+            req.current_password, req.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to re-encrypt AI tokens. Password change aborted."
+        )
+
+    # Update password hash
+    new_hash = hash_password(req.new_password)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            password_hash=new_hash,
+            updated_at=now,
+        )
+    )
+
+    # Revoke ALL sessions for this user
+    await database.execute(
+        auth_sessions.update()
+        .where(
+            (auth_sessions.c.user_id == current_user["id"]) &
+            (auth_sessions.c.revoked_at.is_(None))
+        )
+        .values(revoked_at=now)
+    )
+
+    # Create a new session (rotate)
+    await _create_session_and_cookies(response, request, current_user["id"])
+
+    return {"status": "ok", "message": "Password changed. Other sessions have been revoked."}
+
+
+@app.put("/users/me/preferences", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_preferences(req: UpdatePreferencesRequest, request: Request, current_user: dict = Depends(_require_user)):
+    """Update current user's preferences JSON."""
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            preferences=req.preferences,
+            updated_at=now,
+        )
+    )
+    return {"status": "ok", "preferences": req.preferences}
+
+
+@app.put("/users/me/avatar", dependencies=[Depends(_csrf_dependency)])
+async def update_current_user_avatar(request: Request, current_user: dict = Depends(_require_user), file: UploadFile = File(...)):
+    """Upload avatar image (max 512KB, JPEG/PNG/WebP, decode+re-encode)."""
+    # Read file
+    contents = await file.read()
+
+    # Check size (512 KB)
+    if len(contents) > 512 * 1024:
+        raise HTTPException(status_code=400, detail="Avatar must be under 512 KB")
+
+    # Validate and re-encode using Pillow
+    try:
+        from PIL import Image
+        import io
+        import hashlib as hl
+
+        img = Image.open(io.BytesIO(contents))
+        img_format = img.format
+
+        if img_format not in ("JPEG", "PNG", "WEBP"):
+            raise HTTPException(status_code=400, detail="Avatar must be JPEG, PNG, or WebP")
+
+        # Re-encode to strip metadata and validate
+        output = io.BytesIO()
+        if img_format == "JPEG":
+            img = img.convert("RGB")
+            img.save(output, format="JPEG", quality=85)
+            mime = "image/jpeg"
+        elif img_format == "PNG":
+            img.save(output, format="PNG")
+            mime = "image/png"
+        else:  # WEBP
+            img.save(output, format="WEBP", quality=85)
+            mime = "image/webp"
+
+        sanitized_bytes = output.getvalue()
+        avatar_hash = hl.sha256(sanitized_bytes).hexdigest()[:16]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
+
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            avatar_bytes=sanitized_bytes,
+            avatar_mime_type=mime,
+            avatar_size_bytes=len(sanitized_bytes),
+            avatar_hash=avatar_hash,
+            avatar_source="upload",
+            avatar_updated_at=now,
+            updated_at=now,
+        )
+    )
+
+    return {"status": "ok", "avatar_hash": avatar_hash, "avatar_size": len(sanitized_bytes)}
+
+
+@app.delete("/users/me/avatar", dependencies=[Depends(_csrf_dependency)])
+async def delete_current_user_avatar(request: Request, current_user: dict = Depends(_require_user)):
+    """Delete current user's avatar."""
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            avatar_bytes=None,
+            avatar_mime_type=None,
+            avatar_size_bytes=None,
+            avatar_hash=None,
+            avatar_source="none",
+            avatar_updated_at=now,
+            updated_at=now,
+        )
+    )
+    return {"status": "ok", "message": "Avatar deleted"}
+
+
+@app.get("/users/me/avatar")
+async def get_current_user_avatar(request: Request, current_user: dict = Depends(_require_user)):
+    """Serve current user's avatar bytes, or redirect to Gravatar."""
+    source = current_user.get("avatar_source", "none")
+
+    if source == "upload" and current_user.get("avatar_bytes"):
+        return Response(
+            content=current_user["avatar_bytes"],
+            media_type=current_user.get("avatar_mime_type", "image/jpeg"),
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
+    if source == "gravatar":
+        email = (current_user.get("email") or "").strip().lower()
+        email_hash = hashlib.md5(email.encode("utf-8")).hexdigest()
+        gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s=200"
+        from starlette.responses import RedirectResponse
+        return RedirectResponse(url=gravatar_url, status_code=302)
+
+    raise HTTPException(status_code=404, detail="No avatar")
+
+
+@app.put("/users/me/avatar-source", dependencies=[Depends(_csrf_dependency)])
+async def update_avatar_source(request: Request, current_user: dict = Depends(_require_user)):
+    """Update avatar source (none or gravatar). Use PUT /users/me/avatar for upload."""
+    body = await request.json()
+    source = body.get("source", "none")
+    if source not in ("none", "gravatar"):
+        raise HTTPException(status_code=400, detail="source must be 'none' or 'gravatar'")
+
+    now = datetime.now(timezone.utc)
+    await database.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            avatar_source=source,
+            updated_at=now,
+        )
+    )
+    return {"status": "ok", "avatar_source": source}
+
+
+# ============================================================
+# ADMIN ENDPOINTS
+# ============================================================
+
+@app.get("/admin/users")
+async def admin_list_users(
+    request: Request,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: dict = Depends(_require_admin),
+):
+    """List all users with pagination."""
+    page = max(1, page)
+    page_size = max(1, min(100, page_size))
+    offset = (page - 1) * page_size
+
+    total_row = await database.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    total = total_row["cnt"] if total_row else 0
+
+    rows = await database.fetch_all(
+        users.select().order_by(users.c.id).limit(page_size).offset(offset)
+    )
+
+    user_list = []
+    for row in rows:
+        role_list = await _get_user_roles(row["id"])
+        user_list.append(_user_to_response(dict(row), role_list))
+
+    return {"users": user_list, "total": total, "page": page, "page_size": page_size}
+
+
+@app.post("/admin/users", dependencies=[Depends(_csrf_dependency)])
+async def admin_create_user(req: AdminCreateUserRequest, request: Request, current_user: dict = Depends(_require_admin)):
+    """Admin create user: no plaintext password. Sends invite link."""
+    # Validate
+    valid, err = validate_username(req.username)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+
+    email_norm = normalize_email(req.email)
+    username_norm = normalize_username(req.username)
+
+    # Check email uniqueness
+    existing = await database.fetch_one(
+        users.select().where(users.c.email_normalized == email_norm)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Check username uniqueness
+    existing = await database.fetch_one(
+        users.select().where(users.c.username_normalized == username_norm)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already taken")
+
+    now = datetime.now(timezone.utc)
+
+    # Create user with a random unusable password (user sets it via invite link)
+    import secrets as _secrets
+    temp_hash = hash_password(_secrets.token_urlsafe(32))
+
+    user_id = await database.execute(
+        users.insert().values(
+            email=req.email.strip(),
+            email_normalized=email_norm,
+            username=username_norm,
+            username_normalized=username_norm,
+            full_name=req.full_name,
+            password_hash=temp_hash,
+            status="active",
+            avatar_source="none",
+            preferences={},
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    # Assign roles
+    for role_name in req.roles:
+        role_row = await database.fetch_one(roles.select().where(roles.c.name == role_name))
+        if role_row:
+            await database.execute(user_roles.insert().values(user_id=user_id, role_id=role_row["id"]))
+
+    # Create invite/reset token
+    token = generate_reset_token()
+    token_hash_val = hash_token(token)
+    expires_at = now + timedelta(hours=4)
+
+    await database.execute(
+        password_reset_tokens.insert().values(
+            user_id=user_id,
+            token_hash=token_hash_val,
+            created_at=now,
+            expires_at=expires_at,
+        )
+    )
+
+    invite_link = f"{FRONTEND_ORIGIN}/authentication/modern/new-password?token={token}"
+    email_sender = get_email_sender()
+    await email_sender.send_invite_email(req.email.strip(), invite_link)
+
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    role_list = await _get_user_roles(user_id)
+    return _user_to_response(dict(user_row), role_list)
+
+
+@app.get("/admin/users/{user_id}")
+async def admin_get_user(user_id: int, request: Request, current_user: dict = Depends(_require_admin)):
+    """Get user details by ID."""
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not user_row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role_list = await _get_user_roles(user_id)
+    return _user_to_response(dict(user_row), role_list)
+
+
+@app.put("/admin/users/{user_id}", dependencies=[Depends(_csrf_dependency)])
+async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: Request, current_user: dict = Depends(_require_admin)):
+    """Admin update user (full_name, status)."""
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not user_row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.now(timezone.utc)
+    values = {"updated_at": now}
+
+    if req.full_name is not None:
+        values["full_name"] = req.full_name.strip() if req.full_name else None
+
+    if req.status is not None:
+        if req.status not in ("active", "inactive", "blocked"):
+            raise HTTPException(status_code=400, detail="Status must be active, inactive, or blocked")
+        values["status"] = req.status
+
+        # If blocking, revoke all sessions
+        if req.status == "blocked":
+            await database.execute(
+                auth_sessions.update()
+                .where(
+                    (auth_sessions.c.user_id == user_id) &
+                    (auth_sessions.c.revoked_at.is_(None))
+                )
+                .values(revoked_at=now)
+            )
+
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(**values)
+    )
+
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    role_list = await _get_user_roles(user_id)
+    return _user_to_response(dict(user_row), role_list)
+
+
+@app.delete("/admin/users/{user_id}", dependencies=[Depends(_csrf_dependency)])
+async def admin_delete_user(user_id: int, request: Request, current_user: dict = Depends(_require_admin)):
+    """Soft block a user (set status=blocked, revoke sessions)."""
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not user_row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent self-block
+    if user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot block yourself")
+
+    now = datetime.now(timezone.utc)
+
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(status="blocked", updated_at=now)
+    )
+
+    # Revoke sessions
+    await database.execute(
+        auth_sessions.update()
+        .where(
+            (auth_sessions.c.user_id == user_id) &
+            (auth_sessions.c.revoked_at.is_(None))
+        )
+        .values(revoked_at=now)
+    )
+
+    return {"status": "ok", "message": "User blocked"}
+
+
+@app.put("/admin/users/{user_id}/roles", dependencies=[Depends(_csrf_dependency)])
+async def admin_update_user_roles(user_id: int, req: AdminUpdateRolesRequest, request: Request, current_user: dict = Depends(_require_admin)):
+    """Assign roles to a user (replaces existing roles)."""
+    user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not user_row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate role names
+    all_roles = await database.fetch_all(roles.select())
+    valid_role_names = {r["name"] for r in all_roles}
+    for role_name in req.roles:
+        if role_name not in valid_role_names:
+            raise HTTPException(status_code=400, detail=f"Invalid role: {role_name}")
+
+    # Remove existing roles
+    await database.execute(user_roles.delete().where(user_roles.c.user_id == user_id))
+
+    # Add new roles
+    for role_name in req.roles:
+        role_row = await database.fetch_one(roles.select().where(roles.c.name == role_name))
+        if role_row:
+            await database.execute(user_roles.insert().values(user_id=user_id, role_id=role_row["id"]))
+
+    return {"status": "ok", "roles": req.roles}
+
+
+@app.get("/admin/roles")
+async def admin_list_roles(request: Request, current_user: dict = Depends(_require_admin)):
+    """List all roles with user counts."""
+    all_roles = await database.fetch_all(roles.select().order_by(roles.c.id))
+
+    result = []
+    for role_row in all_roles:
+        count_row = await database.fetch_one(
+            "SELECT COUNT(*) as cnt FROM user_roles WHERE role_id = :rid",
+            values={"rid": role_row["id"]},
+        )
+        result.append({
+            "id": role_row["id"],
+            "name": role_row["name"],
+            "description": role_row["description"],
+            "created_at": role_row["created_at"].isoformat() if role_row["created_at"] else None,
+            "user_count": count_row["cnt"] if count_row else 0,
+        })
+
+    return {"roles": result}
+
+
+# ============================================================
+# AI TOKEN VAULT ENDPOINTS
+# ============================================================
+
+@app.get("/settings/ai-tokens")
+async def settings_list_ai_tokens(current_user: dict = Depends(_require_user)):
+    """List current user's AI tokens (masked values only)."""
+    tokens = await list_user_tokens(database, user_ai_tokens, current_user["id"])
+    return {"tokens": tokens}
+
+
+@app.post("/settings/ai-tokens", dependencies=[Depends(_csrf_dependency)])
+async def settings_create_ai_token(req: CreateTokenRequest, current_user: dict = Depends(_require_user)):
+    """Create a new AI token for the current user. Requires current_password to encrypt."""
+    # Verify current password
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == current_user["id"])
+    )
+    if not user_row or not verify_password(req.current_password, user_row["password_hash"]):
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    try:
+        token_resp = await create_user_token(
+            database, user_ai_tokens,
+            user_id=current_user["id"],
+            provider=req.provider,
+            label=req.label,
+            plaintext_token=req.token,
+            password=req.current_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return token_resp
+
+
+@app.put("/settings/ai-tokens/{token_id}", dependencies=[Depends(_csrf_dependency)])
+async def settings_update_ai_token(token_id: int, req: UpdateTokenRequest, current_user: dict = Depends(_require_user)):
+    """Update (overwrite) an existing AI token. Requires current_password to re-encrypt."""
+    # Verify current password
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == current_user["id"])
+    )
+    if not user_row or not verify_password(req.current_password, user_row["password_hash"]):
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    try:
+        token_resp = await update_user_token(
+            database, user_ai_tokens,
+            token_id=token_id,
+            user_id=current_user["id"],
+            plaintext_token=req.token,
+            password=req.current_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return token_resp
+
+
+@app.delete("/settings/ai-tokens/{token_id}", dependencies=[Depends(_csrf_dependency)])
+async def settings_delete_ai_token(token_id: int, current_user: dict = Depends(_require_user)):
+    """Delete an AI token for the current user."""
+    try:
+        await delete_user_token(database, user_ai_tokens, token_id, current_user["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return {"status": "deleted", "token_id": token_id}
+
+
+@app.post("/settings/ai-tokens/{token_id}/test", dependencies=[Depends(_csrf_dependency)])
+async def settings_test_ai_token(token_id: int, req: TestTokenRequest, current_user: dict = Depends(_require_user)):
+    """Test an AI token's connectivity by making a test API call. Requires current_password to decrypt."""
+    # Verify current password
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == current_user["id"])
+    )
+    if not user_row or not verify_password(req.current_password, user_row["password_hash"]):
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    try:
+        result = await test_user_token(
+            database, user_ai_tokens,
+            token_id=token_id,
+            user_id=current_user["id"],
+            password=req.current_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return result
+
+
+@app.post("/settings/ai-tokens/{token_id}/reveal", dependencies=[Depends(_csrf_dependency)])
+async def settings_reveal_ai_token(token_id: int, req: RevealTokenRequest, current_user: dict = Depends(_require_user)):
+    """Reveal the plaintext AI token. Requires current_password to decrypt.
+
+    The plaintext is ONLY returned in this response — never logged or stored in debug artifacts.
+    """
+    # Verify current password
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == current_user["id"])
+    )
+    if not user_row or not verify_password(req.current_password, user_row["password_hash"]):
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    try:
+        plaintext = await reveal_user_token(
+            database, user_ai_tokens,
+            token_id=token_id,
+            user_id=current_user["id"],
+            password=req.current_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"token": plaintext}
+
+
+@app.put("/settings/ai-tokens/{token_id}/default", dependencies=[Depends(_csrf_dependency)])
+async def settings_set_default_ai_token(token_id: int, current_user: dict = Depends(_require_user)):
+    """Set an AI token as the default for its provider."""
+    # Fetch token to get provider
+    token_row = await database.fetch_one(
+        user_ai_tokens.select().where(
+            (user_ai_tokens.c.id == token_id)
+            & (user_ai_tokens.c.user_id == current_user["id"])
+        )
+    )
+    if not token_row:
+        raise HTTPException(status_code=404, detail="Token not found or access denied")
+
+    try:
+        token_resp = await set_default_token(
+            database, user_ai_tokens,
+            token_id=token_id,
+            user_id=current_user["id"],
+            provider=token_row["provider"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return token_resp
+
+
+# ============================================================
+# EXISTING API ENDPOINTS (with auth protection)
+# ============================================================
 
 @app.post("/analyze/list")
-async def analyze_list_structure(url: str, debug: bool = False):
+async def analyze_list_structure(url: str, debug: bool = False, current_user: dict = Depends(_require_user)):
     """Parse website list page structure (calls AI)"""
     start_time = time.time()
     log_with_time(f"[Analyze List] Starting analysis for: {url}")
+
+    # Resolve MiniMax token: user default > global fallback
+    api_key = await resolve_minimax_token(database, user_ai_tokens, current_user["id"])
 
     fetch_start = time.time()
     page = await fetch_page(url)
@@ -416,7 +1951,7 @@ async def analyze_list_structure(url: str, debug: bool = False):
         dw.save("01", "raw_html.html", html)
 
     ai_start = time.time()
-    rules = await analyze_structure(html, mode="list", debug_writer=dw)
+    rules = await analyze_structure(html, mode="list", api_key=api_key, debug_writer=dw)
     ai_duration = time.time() - ai_start
     log_with_time(f"[Analyze List] analyze_structure completed: {ai_duration:.2f}s")
 
@@ -432,10 +1967,13 @@ async def analyze_list_structure(url: str, debug: bool = False):
     return response
 
 @app.post("/analyze/content")
-async def analyze_content_structure(url: str, debug: bool = False):
+async def analyze_content_structure(url: str, debug: bool = False, current_user: dict = Depends(_require_user)):
     """解析網站內容頁結構 (呼叫 AI)"""
     start_time = time.time()
     log_with_time(f"[Analyze Content] Starting analysis for: {url}")
+
+    # Resolve MiniMax token: user default > global fallback
+    api_key = await resolve_minimax_token(database, user_ai_tokens, current_user["id"])
 
     fetch_start = time.time()
     page = await fetch_page(url)
@@ -451,7 +1989,7 @@ async def analyze_content_structure(url: str, debug: bool = False):
         dw.save("01", "raw_html.html", html)
 
     ai_start = time.time()
-    rules = await analyze_structure(html, mode="content", debug_writer=dw)
+    rules = await analyze_structure(html, mode="content", api_key=api_key, debug_writer=dw)
     ai_duration = time.time() - ai_start
     log_with_time(f"[Analyze Content] analyze_structure completed: {ai_duration:.2f}s")
 
@@ -464,12 +2002,12 @@ async def analyze_content_structure(url: str, debug: bool = False):
     return response
 
 @app.post("/crawl/preview")
-async def preview_crawl(req: PreviewRequest):
+async def preview_crawl(req: PreviewRequest, current_user: dict = Depends(_require_user)):
     """乾跑預覽爬蟲，支援 list / content / both 模式"""
     from core.crawler import test_crawl_logic
-    
+
     dw = create_debug_writer(req.debug, "preview", req.url.replace("https://", "").replace("http://", "").split("/")[0][:30])
-    
+
     results = await test_crawl_logic(
         req.url,
         req.list_rules,
@@ -479,17 +2017,18 @@ async def preview_crawl(req: PreviewRequest):
         debug_writer=dw,
         scrape_method=req.scrape_method or "scrapling",
     )
-    
+
     response = {"status": "success", "data": results}
     if req.debug:
         response["debug_dir"] = dw.debug_dir
     return response
 
-@app.post("/sites/")
+@app.post("/sites/", dependencies=[Depends(_csrf_dependency)])
 async def create_site(
     site: SiteCreate,
     rules: RulesInput,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(_require_user),
 ):
     """新增網站並開始背景爬取"""
     query = sites.insert().values(
@@ -516,7 +2055,7 @@ async def create_site(
     return {"id": site_id, "status": "created and crawling started"}
 
 @app.get("/sites/{site_id}")
-async def get_site(site_id: int):
+async def get_site(site_id: int, current_user: dict = Depends(_require_user)):
     """取得特定網站資詳細資料"""
     query = sites.select().where(sites.c.id == site_id)
     row = await database.fetch_one(query)
@@ -524,30 +2063,30 @@ async def get_site(site_id: int):
         raise HTTPException(status_code=404, detail="Site not found")
     return dict(row)
 
-@app.put("/sites/{site_id}")
-async def update_site(site_id: int, update_data: SiteUpdate):
+@app.put("/sites/{site_id}", dependencies=[Depends(_csrf_dependency)])
+async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict = Depends(_require_user)):
     """更新網站設定"""
     query = sites.select().where(sites.c.id == site_id)
     site = await database.fetch_one(query)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     values = {k: v for k, v in update_data.model_dump().items() if v is not None}
     if not values:
         return {"status": "no change"}
-        
+
     query = sites.update().where(sites.c.id == site_id).values(**values)
     await database.execute(query)
     return {"status": "updated", "site_id": site_id}
 
-@app.post("/sites/{site_id}/duplicate")
-async def duplicate_site(site_id: int):
+@app.post("/sites/{site_id}/duplicate", dependencies=[Depends(_csrf_dependency)])
+async def duplicate_site(site_id: int, current_user: dict = Depends(_require_user)):
     """複製網站設定 (不含文章，不自動爬取)"""
     query = sites.select().where(sites.c.id == site_id)
     site = await database.fetch_one(query)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     new_query = sites.insert().values(
         url=site['url'],
         name=f"[Copy] {site['name']}",
@@ -561,14 +2100,14 @@ async def duplicate_site(site_id: int):
     return {"id": new_id, "status": "duplicated"}
 
 @app.get("/sites/")
-async def list_sites():
+async def list_sites(current_user: dict = Depends(_require_user)):
     """列出所有網站"""
     query = sites.select()
     rows = await database.fetch_all(query)
     return [dict(row) for row in rows]
 
-@app.delete("/sites/{site_id}")
-async def delete_site(site_id: int):
+@app.delete("/sites/{site_id}", dependencies=[Depends(_csrf_dependency)])
+async def delete_site(site_id: int, current_user: dict = Depends(_require_user)):
     """刪除指定網站及其所有文章與相關事件"""
     # 刪除相關 crawl attempts 和 RSS query events
     await database.execute(crawl_attempts.delete().where(crawl_attempts.c.site_id == site_id))
@@ -590,14 +2129,14 @@ async def delete_site(site_id: int):
 @app.get("/rss/{site_identifier}")
 async def get_rss(site_identifier: str, limit: int = 10):
     """取得指定網站的 RSS Feed
-    
+
     Args:
         site_identifier: 網站名稱（會被標準化）或 ID
         limit: 回傳文章數量上限，預設10，範圍5-30
     """
     # 限制 limit 範圍
     limit = max(5, min(30, limit))
-    
+
     site = await get_site_by_name_or_id(site_identifier, database)
     if not site:
         # Record 404 RSS query event
@@ -616,7 +2155,7 @@ async def get_rss(site_identifier: str, limit: int = 10):
         raise HTTPException(status_code=404, detail="Site not found")
 
     site_name_normalized = normalize_site_name(site['name'])
-    
+
     query = articles.select().where(articles.c.site_id == site['id']).order_by(articles.c.id.desc()).limit(limit)
     rows = await database.fetch_all(query)
 
@@ -629,7 +2168,7 @@ async def get_rss(site_identifier: str, limit: int = 10):
                 pub_date = dateutil_parser.parse(pub_date)
             except Exception:
                 pub_date = datetime.now()
-        
+
         items.append(Item(
             title=row['title'],
             link=row['url'],
@@ -661,23 +2200,23 @@ async def get_rss(site_identifier: str, limit: int = 10):
 
     return Response(content=feed.rss(), media_type="application/xml")
 
-@app.post("/crawl/{site_id}")
-async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: bool = False):
+@app.post("/crawl/{site_id}", dependencies=[Depends(_csrf_dependency)])
+async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: bool = False, current_user: dict = Depends(_require_user)):
     """手動觸發指定網站爬取"""
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] trigger_crawl called for site {site_id}")
     query = sites.select().where(sites.c.id == site_id)
     site = await database.fetch_one(query)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     list_rules = site['list_rules'] if isinstance(site['list_rules'], dict) else json.loads(site['list_rules'])
     content_rules = site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules'])
-    
+
     dw = create_debug_writer(debug, "crawl", site['name'][:30])
-    
+
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] list_rules: {list_rules}")
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] content_rules: {content_rules}")
-    
+
     background_tasks.add_task(
         _record_crawl_attempt,
         site_id=site['id'],
@@ -690,7 +2229,7 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
         debug_writer=dw,
     )
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] Background task added")
-    
+
     response = {"status": "crawl started"}
     if debug:
         response["debug_dir"] = dw.debug_dir
@@ -700,7 +2239,7 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
 # --- Analytics API ---
 
 @app.get("/analytics/overview")
-async def get_analytics_overview(days: int = 30):
+async def get_analytics_overview(days: int = 30, current_user: dict = Depends(_require_user)):
     """Aggregated analytics overview for the dashboard.
 
     Returns summary metrics, chart datasets, and latest articles.
@@ -939,6 +2478,7 @@ async def list_articles(
     search: str = "",
     page: int = 1,
     page_size: int = 100,
+    current_user: dict = Depends(_require_user),
 ):
     """List articles with time filtering, search, and pagination.
 

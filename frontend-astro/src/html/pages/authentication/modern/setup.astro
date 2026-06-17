@@ -1,0 +1,143 @@
+---
+import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+---
+
+<AuthenticationLayout
+  title="Initial Setup"
+  description="Create your admin account"
+  currentPath="authentication/modern/setup"
+>
+  <div
+    class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
+  >
+    <div class="text-center w-100" style="max-width: 480px;">
+      <!-- Main Card -->
+      <div class="card m-2">
+        <div class="card-body p-4">
+          <!-- Company Logo -->
+          <img
+            src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
+            alt="Palimpsest"
+            class="mb-4"
+            style="width: 40px; height: 40px;"
+          />
+          <h4 class="card-title mb-1 fs-4">Create Admin Account</h4>
+          <p class="text-muted mb-3" style="font-size: 0.9rem;">
+            First-time setup — no users exist yet
+          </p>
+
+          <!-- Setup already completed alert -->
+          <div
+            id="setup-done-alert"
+            class="alert alert-warning d-flex align-items-center gap-2 mb-3"
+            role="alert"
+            hidden
+          >
+            <i class="ri-information-line flex-shrink-0"></i>
+            <span
+              >Setup already completed. <a
+                href={getPathPrefix('/authentication/modern/login')}
+                class="alert-link">Sign in here</a
+              >.</span
+            >
+          </div>
+
+          <form id="setup-form" class="text-start my-3">
+            <div class="mb-3">
+              <label for="full_name" class="form-label">Full Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="full_name"
+                name="full_name"
+                placeholder="Your full name"
+                autocomplete="name"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email Address</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                placeholder="admin@example.com"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input
+                type="text"
+                class="form-control"
+                id="username"
+                name="username"
+                placeholder="lowercase only, e.g. admin"
+                autocomplete="username"
+                pattern="[a-z0-9_]+"
+                title="Lowercase letters, numbers, and underscores only"
+                required
+              />
+              <div class="form-text">Lowercase letters, numbers, and underscores only.</div>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <div class="password-wrapper">
+                <input
+                  type="password"
+                  class="form-control password-input"
+                  id="password"
+                  name="password"
+                  placeholder="8–20 characters"
+                  autocomplete="new-password"
+                  minlength="8"
+                  maxlength="20"
+                  required
+                />
+                <button class="password-toggle" type="button" aria-label="Show password">
+                  <i class="ri-eye-off-line"></i>
+                </button>
+              </div>
+              <div class="form-text">8 to 20 characters.</div>
+            </div>
+            <div class="mb-3">
+              <label for="confirm_password" class="form-label">Confirm Password</label>
+              <div class="password-wrapper">
+                <input
+                  type="password"
+                  class="form-control password-input"
+                  id="confirm_password"
+                  name="confirm_password"
+                  placeholder="Re-enter your password"
+                  autocomplete="new-password"
+                  required
+                />
+                <button class="password-toggle" type="button" aria-label="Show confirm password">
+                  <i class="ri-eye-off-line"></i>
+                </button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3">
+              <i class="ri-shield-user-line me-2"></i>Create Admin Account
+            </button>
+          </form>
+
+          <div class="mb-2">
+            <a
+              href={getPathPrefix('/authentication/modern/login')}
+              class="text-decoration-none text-center">Already have an account? Sign in</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AuthenticationLayout>
+
+<script>
+  import { initSetupPage } from '@/scripts/auth'
+
+  initSetupPage()
+</script>

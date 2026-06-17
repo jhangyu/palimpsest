@@ -1,12 +1,12 @@
 ---
-import AuthenticationLayout from '../../layouts/admin/authentication-layout.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import AuthenticationLayout from '../layouts/admin/authentication-layout.astro'
+import { getAssetPrefix, getPathPrefix } from '../../utils/path.js'
 ---
 
 <AuthenticationLayout
-  title="500 - Server Error"
-  description="Internal Server Error"
-  currentPath="others/500"
+  title="404 - Page Not Found"
+  description="Page Not Found Error"
+  currentPath="others/404"
 >
   <div
     class="min-vh-100 d-flex flex-column justify-content-center py-4 py-sm-5 bg-light bg-opacity-50"
@@ -22,8 +22,8 @@ import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
               <!-- Error Image -->
               <div class="error-image mb-2">
                 <img
-                  src={getAssetPrefix('/assets/img/pages/500.png')}
-                  alt="500 Error Illustration"
+                  src={getAssetPrefix('/assets/img/pages/404.png')}
+                  alt="404 Error Illustration"
                   class="img-fluid rounded-4"
                   width="400"
                   height="300"
@@ -32,23 +32,23 @@ import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
 
               <!-- Error Content -->
               <div class="error-content mb-4">
-                <h1 class="d-none fw-bold text-primary mb-3">500</h1>
-                <h2 class="h3 fw-semibold mb-3">Internal Server Error</h2>
+                <h1 class="d-none fw-bold text-primary mb-3">404</h1>
+                <h2 class="h3 fw-semibold mb-3">Oops! Error 404 - Page Not Found</h2>
                 <p class="lead text-body-secondary mb-4">
-                  Oops! Something went wrong on our end. Our team has been notified and is working
-                  to fix the issue.
+                  The page you are looking for might have been removed, had its name changed, or is
+                  temporarily unavailable.
                 </p>
-                <div class="d-flex gap-3 justify-content-center flex-wrap">
-                  <button
-                    type="button"
-                    class="btn btn-primary px-4"
-                    onclick="window.location.reload()"
-                  >
-                    <i class="ri-refresh-line me-2"></i> Try Again
-                  </button>
-                  <a href={getPathPrefix('/dashboard')} class="btn btn-outline-primary px-4">
+                <div class="d-flex gap-3 justify-content-center">
+                  <a href={getPathPrefix('/dashboard')} class="btn btn-primary px-4">
                     <i class="ri-home-line me-2"></i> Back to Home
                   </a>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary px-4"
+                    onclick="history.back()"
+                  >
+                    <i class="ri-arrow-left-line me-2"></i> Go Back
+                  </button>
                 </div>
               </div>
             </div>

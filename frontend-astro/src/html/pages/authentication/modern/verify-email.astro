@@ -5,64 +5,117 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 
 <AuthenticationLayout
   title="Verify Email"
-  description="Verify email example"
+  description="Email verification"
   currentPath="authentication/modern/verify-email"
 >
   <div
     class="d-flex justify-content-center align-items-center min-vh-100 pt-5 mt-2 pt-sm-0 mt-sm-0"
   >
-    <a
-      href={getPathPrefix('/')}
-      class="btn btn-outline-primary position-absolute top-0 start-0 m-3"
-    >
-      Back
-    </a>
-    <a
-      href={getPathPrefix('/authentication/modern/register')}
-      class="btn btn-outline-primary position-absolute top-0 end-0 m-3"
-    >
-      Create Account
-    </a>
-    <div class="text-center w-100" style="max-width: 500px;">
+    <div class="text-center w-100" style="max-width: 480px;">
       <!-- Main Card -->
       <div class="card m-2">
-        <div class="card-body p-2">
+        <div class="card-body p-4">
           <!-- Company Logo -->
           <img
             src={getAssetPrefix('/assets/svg/astero-icon-color.svg')}
-            alt="AsteroAdmin Logo"
+            alt="Palimpsest"
             class="mb-4"
             style="width: 40px; height: 40px;"
           />
-          <h4 class="card-title mb-2 fs-4">Verify Your Email Address</h4>
-          <p class="text-muted mb-2">
-            Enter the verification code sent to your email to complete the process.
-          </p>
-          <!-- Verification Code Form -->
-          <form class="text-start mb-3">
-            <div class="mb-3">
-              <label for="verification-code" class="form-label">Enter the verification code</label>
-              <input
-                type="text"
-                class="form-control"
-                id="verification-code"
-                placeholder="Verification Code"
-                required
-                maxlength="6"
-                pattern="[0-9]{6}"
-              />
+          <h4 class="card-title mb-2 fs-4">Email Verification</h4>
+
+          <!-- Processing state (shown while verifying) -->
+          <div id="verify-loading" class="py-3">
+            <div class="spinner-border text-primary mb-3" role="status">
+              <span class="visually-hidden">Verifying...</span>
             </div>
-            <button type="submit" class="btn btn-primary w-100"> Verify Email </button>
-          </form>
-          <div class="mb-2">
-            Didn't receive the code?
-            <a
-              href={getPathPrefix('/authentication/modern/verify-email')}
-              class="text-decoration-none text-center">Resend</a
-            >
+            <p class="text-muted">Verifying your email address...</p>
+          </div>
+
+          <!-- Success state -->
+          <div id="verify-success" class="py-3" hidden>
+            <div class="text-success mb-3">
+              <i class="ri-checkbox-circle-fill" style="font-size: 3rem;"></i>
+            </div>
+            <h5 class="mb-2">Email Verified!</h5>
+            <p class="text-muted mb-3">Your email address has been successfully verified.</p>
+            <a href={getPathPrefix('/authentication/modern/login')} class="btn btn-primary">
+              <i class="ri-login-box-line me-2"></i>Continue to Sign In
+            </a>
+          </div>
+
+          <!-- Error state -->
+          <div id="verify-error" class="py-3" hidden>
+            <div class="text-danger mb-3">
+              <i class="ri-error-warning-fill" style="font-size: 3rem;"></i>
+            </div>
+            <h5 class="mb-2">Verification Failed</h5>
+            <p id="verify-error-message" class="text-muted mb-3">
+              The verification link is invalid or has expired.
+            </p>
+            <a href={getPathPrefix('/authentication/modern/login')} class="btn btn-outline-primary">
+              <i class="ri-arrow-left-line me-2"></i>Back to Sign In
+            </a>
           </div>
         </div>
       </div>
     </div>
   </div>
 </AuthenticationLayout>
+
+<script>
+  import { api } from '@/scripts/api'
+
+  async function initVerifyEmailPage(): Promise<void> {
+    const loadingEl = document.getElementById('verify-loading')
+    const successEl = document.getElementById('verify-success')
+    const errorEl = document.getElementById('verify-error')
+    const errorMsgEl = document.getElementById('verify-error-message')
+
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+
+    if (!token) {
+      // No token — show error immediately
+      if (loadingEl) loadingEl.setAttribute('hidden', '')
+      if (errorEl) errorEl.removeAttribute('hidden')
+      if (errorMsgEl)
+        errorMsgEl.textContent = 'No verification token found. Please check your email link.'
+      return
+    }
+
+    try {
+      const res = await fetch(
+        (import.meta.env.DEV ? 'http://localhost:8088' : '') + '/auth/verify-email',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token })
+        }
+      )
+
+      if (loadingEl) loadingEl.setAttribute('hidden', '')
+
+      if (res.ok) {
+        if (successEl) successEl.removeAttribute('hidden')
+      } else {
+        let detail = 'The verification link is invalid or has expired.'
+        try {
+          const body = await res.json()
+          if (body.detail) detail = body.detail
+        } catch {
+          // ignore parse error
+        }
+        if (errorEl) errorEl.removeAttribute('hidden')
+        if (errorMsgEl) errorMsgEl.textContent = detail
+      }
+    } catch {
+      if (loadingEl) loadingEl.setAttribute('hidden', '')
+      if (errorEl) errorEl.removeAttribute('hidden')
+      if (errorMsgEl) errorMsgEl.textContent = 'Network error. Please try again.'
+    }
+  }
+
+  initVerifyEmailPage()
+</script>
