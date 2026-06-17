@@ -931,6 +931,134 @@ async def get_analytics_overview(days: int = 30):
     }
 
 
+@app.get("/articles/list")
+async def list_articles(
+    filter: str = "all",
+    search: str = "",
+    page: int = 1,
+    page_size: int = 100,
+):
+    """List articles with time filtering, search, and pagination.
+
+    filter: today | week | month | all
+    search: optional text search against title and feed name
+    page / page_size: pagination (1-based page index)
+    """
+    from datetime import timezone as _tz
+
+    # Sanitize inputs
+    page = max(1, page)
+    page_size = max(1, min(500, page_size))
+    if filter not in ("today", "week", "month", "all"):
+        filter = "all"
+
+    # --- Fetch site name map (same pattern as analytics_overview) ---
+    all_sites_rows = await database.fetch_all("SELECT id, name FROM sites")
+    site_name_map = {row['id']: row['name'] for row in all_sites_rows}
+
+    # --- Compute time boundaries in Taipei timezone ---
+    now_taipei = datetime.now(TAIPEI_TZ)
+    today_start = datetime(now_taipei.year, now_taipei.month, now_taipei.day, 0, 0, 0, tzinfo=TAIPEI_TZ)
+    today_end = today_start + timedelta(days=1)
+    week_start = today_start - timedelta(days=6)
+    month_start = today_start - timedelta(days=29)
+
+    today_start_utc = today_start.astimezone(_tz.utc)
+    today_end_utc = today_end.astimezone(_tz.utc)
+    week_start_utc = week_start.astimezone(_tz.utc)
+    month_start_utc = month_start.astimezone(_tz.utc)
+
+    # --- Build search condition ---
+    search_sql = ""
+    search_params: dict = {}
+    if search.strip():
+        search_sql = (
+            " AND (a.title ILIKE :search_pat"
+            " OR a.site_id IN (SELECT id FROM sites WHERE name ILIKE :search_pat))"
+        )
+        search_params["search_pat"] = f"%{search.strip()}%"
+
+    # --- filter_counts: compute counts for all 4 time ranges ---
+    async def _count(extra_time_sql: str, extra_time_params: dict) -> int:
+        sql = "SELECT COUNT(*) AS cnt FROM articles a WHERE 1=1" + search_sql + extra_time_sql
+        row = await database.fetch_one(sql, values={**search_params, **extra_time_params})
+        return row['cnt'] if row else 0
+
+    today_count = await _count(
+        " AND CAST(a.created_at AS TIMESTAMPTZ) >= :t_from"
+        " AND CAST(a.created_at AS TIMESTAMPTZ) < :t_to",
+        {"t_from": today_start_utc, "t_to": today_end_utc},
+    )
+    week_count = await _count(
+        " AND CAST(a.created_at AS TIMESTAMPTZ) >= :t_from",
+        {"t_from": week_start_utc},
+    )
+    month_count = await _count(
+        " AND CAST(a.created_at AS TIMESTAMPTZ) >= :t_from",
+        {"t_from": month_start_utc},
+    )
+    all_count = await _count("", {})
+
+    filter_counts = {
+        "today": today_count,
+        "week": week_count,
+        "month": month_count,
+        "all": all_count,
+    }
+
+    # --- Build time condition for the main paginated query ---
+    time_sql = ""
+    time_params: dict = {}
+    if filter == "today":
+        time_sql = (
+            " AND CAST(a.created_at AS TIMESTAMPTZ) >= :main_from"
+            " AND CAST(a.created_at AS TIMESTAMPTZ) < :main_to"
+        )
+        time_params = {"main_from": today_start_utc, "main_to": today_end_utc}
+    elif filter == "week":
+        time_sql = " AND CAST(a.created_at AS TIMESTAMPTZ) >= :main_from"
+        time_params = {"main_from": week_start_utc}
+    elif filter == "month":
+        time_sql = " AND CAST(a.created_at AS TIMESTAMPTZ) >= :main_from"
+        time_params = {"main_from": month_start_utc}
+    # "all" → no time condition
+
+    total = filter_counts[filter]
+
+    # --- Paginated main query ---
+    offset = (page - 1) * page_size
+    main_sql = (
+        "SELECT a.site_id, a.title, a.url, a.image_url, a.created_at, a.word_count "
+        "FROM articles a WHERE 1=1"
+        + search_sql
+        + time_sql
+        + " ORDER BY a.created_at DESC NULLS LAST"
+        " LIMIT :lim OFFSET :off"
+    )
+    all_params = {**search_params, **time_params, "lim": page_size, "off": offset}
+    rows = await database.fetch_all(main_sql, values=all_params)
+
+    article_list = [
+        {
+            "article_title": row['title'],
+            "image_url": row['image_url'],
+            "feed_name": site_name_map.get(row['site_id'], f"Feed #{row['site_id']}"),
+            "word_count": row['word_count'] or 0,
+            "update_time": row['created_at'] or "",
+            "ori_url": row['url'],
+        }
+        for row in rows
+    ]
+
+    return {
+        "articles": article_list,
+        "filter_counts": filter_counts,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for container orchestration"""
