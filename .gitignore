@@ -43,8 +43,11 @@ Thumbs.db
 # Local tool/runtime artifacts
 .claw/
 .clawd-todos.json
+.claude/settings.json
 .sandbox-home/
 .sandbox-tmp/
 .sisyphus/
 .git_temp/
 backend/debug/
+frontend-astro.bak/
+frontend-astro/test-results/
