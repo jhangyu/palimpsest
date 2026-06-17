@@ -19,12 +19,11 @@ def log_with_time(msg):
 
 # ── 允許保留的標籤與屬性白名單 ──────────────────────────────────────────────────
 
-ALLOWED_CONTENT_TAGS = {'p', 'span', 'a', 'img', 'ul', 'li', 'div'}
-ALLOWED_IMG_ATTRS = {'src', 'alt', 'loading'}
+ALLOWED_CONTENT_TAGS = {'p', 'span', 'a', 'img', 'ul', 'li'}
+ALLOWED_IMG_ATTRS = {'src', 'alt'}
 ALLOWED_A_ATTRS = {'href'}
 ALLOWED_UL_ATTRS = {'class'}   # ul 只允許 class（gallery 用）
 ALLOWED_LI_ATTRS = set()       # li 不允許屬性
-ALLOWED_DIV_ATTRS = {'class'}  # div 只允許 class（credit 用）
 
 
 # ── 核心淨化函式 ─────────────────────────────────────────────────────────────────
@@ -39,11 +38,14 @@ def sanitize_content_html(html_content: str) -> str:
 
     # 收集需要移除的標籤（不在允許清單中的）
     to_remove = []
-    for tag in soup.find_all(True):  # True = 所有標籤
-        if tag.name not in ALLOWED_CONTENT_TAGS:
+    for tag in soup.find_all(True):
+        if tag.name == 'div':
+            classes = tag.get('class', [])
+            if 'credit' not in classes:
+                to_remove.append(tag)
+        elif tag.name not in ALLOWED_CONTENT_TAGS:
             to_remove.append(tag)
 
-    # 移除不在允許清單中的標籤，但保留其文字內容
     for tag in to_remove:
         tag.unwrap()
 
@@ -72,14 +74,7 @@ def sanitize_content_html(html_content: str) -> str:
             # li 不允許任何屬性
             tag.attrs = {}
         elif tag_name == 'div':
-            # 只允許 div 的 class 屬性，且僅當值為 credit 時
-            allowed = ALLOWED_DIV_ATTRS
-            if 'class' in tag.attrs:
-                classes = tag.attrs.get('class', [])
-                if 'credit' not in classes:
-                    del tag.attrs['class']
-                    if not tag.attrs:
-                        continue
+            allowed = {'class'}
         elif tag_name == 'span':
             # span 只允許 class 屬性，且僅當值為 caption 時
             allowed = {'class'}
