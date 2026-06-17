@@ -52,11 +52,25 @@ Return ONLY raw JSON, no markdown, no explanation:
 HTML:
 {cleaned_html}"""
     else:
-        prompt = f"""
-        Analyze the HTML structure. Find the main article content.
-        Return raw JSON (no markdown): {{"title": "CSS selector", "body": "CSS selector for main content", "date": "CSS selector"}}
-        HTML: {cleaned_html}
-        """
+        prompt = f"""You are a CSS selector expert. Analyze this HTML and extract the article content structure.
+
+RULES:
+1. title: selector for the article headline/heading element (e.g. "h1.article-title" or "h1.post-heading").
+2. body: selector for the MAIN article content area containing the article text and paragraphs (e.g. "div.article-body" or "article.content").
+3. date: selector for the publication date element (e.g. "span.publish-date" or "time[datetime]").
+4. image: selector for the hero/cover image of the article (e.g. "img.hero-image" or "figure > img").
+5. author: selector for the article author name or byline element (e.g. "span.author-name" or "div.author-info").
+6. ALWAYS use ALL CSS classes on an element to build compound selectors — never use just one class.
+7. For Tailwind/utility classes containing special chars like ':', escape with backslash: md\\:w-full.
+8. The goal is PRECISION: each selector should match exactly the intended element and nothing else.
+
+If an element cannot be found reliably, use your best judgment or indicate with an empty string.
+
+Return ONLY raw JSON, no markdown, no explanation:
+{{"title": "...", "body": "...", "date": "...", "image": "...", "author": "..."}}
+
+HTML:
+{cleaned_html}"""
 
     if debug_writer is not None:
         debug_writer.save("03", "ai_prompt.txt", prompt)

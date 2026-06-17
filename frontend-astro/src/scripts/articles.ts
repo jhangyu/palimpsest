@@ -238,7 +238,7 @@ function buildArticlesTable(articles: ArticleListItem[]) {
   let sorting: SortingState = []
   let globalFilter = ''
   let columnFilters: ColumnFiltersState = []
-  let pagination: PaginationState = { pageIndex: 0, pageSize: 10 }
+  let pagination: PaginationState = { pageIndex: 0, pageSize: 50 }
 
   const options = {
     data: articles,

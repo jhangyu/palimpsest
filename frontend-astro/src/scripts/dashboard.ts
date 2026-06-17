@@ -73,7 +73,7 @@ function renderFeedTable(container: HTMLElement, sites: Site[]): void {
       return `
       <tr>
         <td>
-          <div class="fw-semibold">${escapeHtml(site.name)}</div>
+          <a href="${escapeAttr(rssUrl)}" target="_blank" rel="noopener noreferrer" class="fw-semibold text-reset text-decoration-none">${escapeHtml(site.name)}</a>
         </td>
         <td>
           <a href="${escapeAttr(site.url)}" target="_blank" rel="noopener noreferrer" class="text-truncate d-inline-block" style="max-width: 300px;">

@@ -183,7 +183,11 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
         img_selector = normalize_selector(content_rules.get('image', '')) or 'img'
         img_el = page.find(img_selector)
         if img_el:
-            image_url = img_el.attrib.get('src', '')
+            image_url = (
+                img_el.attrib.get('src', '')
+                or img_el.attrib.get('data-src', '')
+                or img_el.attrib.get('data-lazy-src', '')
+            )
             if image_url and not image_url.startswith('http'):
                 image_url = urljoin(article_url, image_url)
 

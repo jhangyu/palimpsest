@@ -634,6 +634,7 @@ async def get_rss(site_identifier: str, limit: int = 10):
             title=row['title'],
             link=row['url'],
             description=row['content'],
+            author=row['author'] or None,
             pubDate=pub_date
         ))
 
