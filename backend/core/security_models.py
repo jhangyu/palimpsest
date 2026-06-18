@@ -142,3 +142,20 @@ class TokenResponse(BaseModel):
     created_at: str
     updated_at: str
     last_used_at: Optional[str] = None
+
+
+# --- AI Provider migration ---
+
+class LegacyProviderMigrationRequest(BaseModel):
+    token_id: int
+    current_password: str
+
+
+class LegacyProviderMigrationItemResponse(BaseModel):
+    token_id: int
+    status: str
+    provider_id: Optional[int] = None
+
+
+class LegacyProviderMigrationResponse(BaseModel):
+    items: list[LegacyProviderMigrationItemResponse]
