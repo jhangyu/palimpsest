@@ -89,21 +89,21 @@ const settingsPageScript = `
                 <span class="nav-section-text text-uppercase px-2">Configuration</span>
               </li>
               <li class="nav-item active">
-                <a class="nav-link" href="#general-section" data-bs-toggle="tab">
+                <a class="nav-link" href="#system-section" data-bs-toggle="tab">
                   <i class="ri-settings-4-line"></i>
-                  <span>General Settings</span>
+                  <span>System Basics</span>
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#company-section" data-bs-toggle="tab">
-                  <i class="ri-building-4-line"></i>
-                  <span>Company Profile</span>
+                <a class="nav-link" href="#crawler-section" data-bs-toggle="tab">
+                  <i class="ri-spider-line"></i>
+                  <span>Crawler Defaults</span>
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#localization-section" data-bs-toggle="tab">
-                  <i class="ri-earth-line"></i>
-                  <span>Regional Settings</span>
+                <a class="nav-link" href="#maintenance-section" data-bs-toggle="tab">
+                  <i class="ri-database-2-line"></i>
+                  <span>Maintenance</span>
                 </a>
               </li>
             </ul>
@@ -115,17 +115,17 @@ const settingsPageScript = `
     <!-- Settings Forms Container -->
     <div class="col-lg-9">
       <div class="tab-content">
-        <!-- General Settings Panel -->
-        <div class="tab-pane fade show active" id="general-section">
+        <!-- System Basics Panel -->
+        <div class="tab-pane fade show active" id="system-section">
           <div class="card">
             <div class="card-header">
               <div class="d-flex align-items-center">
                 <i class="ri-settings-4-line me-2"></i>
-                <h5 class="card-title mb-0">General Configuration</h5>
+                <h5 class="card-title mb-0">System Basics</h5>
               </div>
             </div>
             <div class="card-body">
-              <form id="general-form" class="needs-validation" novalidate>
+              <form id="system-form" class="needs-validation" novalidate>
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label required">Application Name</label>
@@ -133,200 +133,161 @@ const settingsPageScript = `
                       type="text"
                       class="form-control"
                       placeholder="Enter application name"
-                      value="Admin Dashboard"
+                      value="Palimpsest AI Feed"
                       required
                     />
                     <div class="invalid-feedback">Application name is required</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Application URL</label>
+                    <label class="form-label required">Application Base URL</label>
                     <input
                       type="url"
                       class="form-control"
-                      placeholder="https://yourdomain.com"
-                      value="https://admin.example.com"
+                      placeholder="https://aifeed.yourdomain.com"
+                      value="https://aifeed.jhangy.us"
                       required
                     />
+                    <div class="form-text">Used for generating absolute RSS feed URLs.</div>
                     <div class="invalid-feedback">
                       Please enter a valid URL (e.g., https://yourdomain.com)
                     </div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Administrator Email</label>
+                    <label class="form-label required">System Admin Email</label>
                     <input
                       type="email"
                       class="form-control"
                       placeholder="admin@yourdomain.com"
                       value="admin@example.com"
-                      autocomplete="username"
+                      autocomplete="email"
                       required
                     />
+                    <div class="form-text">Used for system alerts and notifications.</div>
                     <div class="invalid-feedback">Please enter a valid email address</div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label required">Default Language</label>
-                    <select class="form-select" required>
-                      <option value="">Choose language</option>
-                      <option value="en" selected>English (US)</option>
-                      <option value="es">Español (Spanish)</option>
-                      <option value="fr">Français (French)</option>
-                      <option value="de">Deutsch (German)</option>
-                      <option value="pt">Português (Portuguese)</option>
-                    </select>
-                    <div class="invalid-feedback">Please select a default language</div>
-                  </div>
                 </div>
               </form>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-end py-3">
-              <button type="submit" class="btn btn-primary" form="general-form">
+              <button type="submit" class="btn btn-primary" form="system-form">
                 <i class="ri-save-3-line me-1"></i> Save Changes
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Company Information Panel -->
-        <div class="tab-pane fade" id="company-section">
+        <!-- Crawler Defaults Panel -->
+        <div class="tab-pane fade" id="crawler-section">
           <div class="card">
             <div class="card-header">
               <div class="d-flex align-items-center">
-                <i class="ri-building-4-line me-2"></i>
-                <h5 class="card-title mb-0">Company Profile</h5>
+                <i class="ri-spider-line me-2"></i>
+                <h5 class="card-title mb-0">Crawler & Auto-Repair Defaults</h5>
               </div>
             </div>
             <div class="card-body">
-              <form id="company-form" class="needs-validation" novalidate>
+              <form id="crawler-form" class="needs-validation" novalidate>
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label required">Legal Company Name</label>
+                    <label class="form-label required">Default Refresh Frequency (minutes)</label>
                     <input
-                      type="text"
+                      type="number"
                       class="form-control"
-                      placeholder="Enter company name"
-                      value="Example Corporation"
+                      value="60"
+                      min="5"
                       required
                     />
-                    <div class="invalid-feedback">Legal company name is required</div>
+                    <div class="form-text">Global default interval for scheduled crawls.</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 5)</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Business Registration Number</label>
+                    <label class="form-label required">Auto-Repair Global Threshold</label>
                     <input
-                      type="text"
+                      type="number"
                       class="form-control"
-                      placeholder="Enter registration number"
-                      value="CRN987654321"
+                      value="3"
+                      min="1"
                       required
                     />
-                    <div class="invalid-feedback">Registration number is required</div>
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label required">Business Address</label>
-                    <textarea
-                      class="form-control"
-                      rows="3"
-                      placeholder="Enter complete business address"
-                      required>{address}</textarea
-                    >
-                    <div class="invalid-feedback">Business address is required</div>
+                    <div class="form-text">Consecutive structural failures before AI auto-repair (can be overridden per-site).</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Tax Identification Number</label>
+                    <label class="form-label required">Max Concurrent Crawls</label>
                     <input
-                      type="text"
+                      type="number"
                       class="form-control"
-                      placeholder="Enter tax ID"
-                      value="EIN456789012"
+                      value="3"
+                      min="1"
                       required
                     />
-                    <div class="invalid-feedback">Tax ID is required</div>
+                    <div class="form-text">System-wide semaphore limit for parallel browser sessions.</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Contact Phone</label>
+                    <label class="form-label required">Default Crawl Timeout (seconds)</label>
                     <input
-                      type="tel"
+                      type="number"
                       class="form-control"
-                      placeholder="+1 (XXX) XXX-XXXX"
-                      value="+1 (212) 555-0123"
+                      value="30"
+                      min="10"
                       required
                     />
-                    <div class="invalid-feedback">Valid contact phone number is required</div>
+                    <div class="form-text">Networkidle and page load timeout for crawler.</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 10)</div>
                   </div>
                 </div>
               </form>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-end py-3">
-              <button type="submit" class="btn btn-primary" form="company-form">
+              <button type="submit" class="btn btn-primary" form="crawler-form">
                 <i class="ri-save-3-line me-1"></i> Save Changes
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Regional Settings Panel -->
-        <div class="tab-pane fade" id="localization-section">
+        <!-- Maintenance Panel -->
+        <div class="tab-pane fade" id="maintenance-section">
           <div class="card">
             <div class="card-header">
               <div class="d-flex align-items-center">
-                <i class="ri-earth-line me-2"></i>
-                <h5 class="card-title mb-0">Regional Settings</h5>
+                <i class="ri-database-2-line me-2"></i>
+                <h5 class="card-title mb-0">Maintenance & Retention</h5>
               </div>
             </div>
             <div class="card-body">
-              <form id="localization-form" class="needs-validation" novalidate>
+              <form id="maintenance-form" class="needs-validation" novalidate>
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label required">Time Zone</label>
-                    <select class="form-select" required>
-                      <option value="">Select time zone</option>
-                      <option value="America/Los_Angeles" selected>Pacific Time (PT)</option>
-                      <option value="America/New_York">Eastern Time (ET)</option>
-                      <option value="UTC">Coordinated Universal Time (UTC)</option>
-                      <option value="Europe/London">British Time (GMT/BST)</option>
-                      <option value="Europe/Paris">Central European Time (CET)</option>
-                      <option value="Asia/Tokyo">Japan Time (JST)</option>
-                    </select>
-                    <div class="invalid-feedback">Please select your time zone</div>
+                    <label class="form-label required">Article Retention (Days)</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      value="30"
+                      min="1"
+                      required
+                    />
+                    <div class="form-text">How long to keep fetched articles before auto-cleanup.</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label required">Date Format</label>
-                    <select class="form-select" required>
-                      <option value="">Choose format</option>
-                      <option value="MM/DD/YYYY" selected>MM/DD/YYYY (US)</option>
-                      <option value="DD/MM/YYYY">DD/MM/YYYY (UK/EU)</option>
-                      <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
-                      <option value="DD.MM.YYYY">DD.MM.YYYY (DE)</option>
-                    </select>
-                    <div class="invalid-feedback">Please select your preferred date format</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label required">Default Currency</label>
-                    <select class="form-select" required>
-                      <option value="">Select currency</option>
-                      <option value="USD" selected>USD - US Dollar ($)</option>
-                      <option value="EUR">EUR - Euro (€)</option>
-                      <option value="GBP">GBP - British Pound (£)</option>
-                      <option value="JPY">JPY - Japanese Yen (¥)</option>
-                      <option value="CNY">CNY - Chinese Yuan (¥)</option>
-                      <option value="AUD">AUD - Australian Dollar ($)</option>
-                    </select>
-                    <div class="invalid-feedback">Please select your default currency</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label required">Number Format</label>
-                    <select class="form-select" required>
-                      <option value="">Choose format</option>
-                      <option value="en-US" selected>1,234.56 (US/UK)</option>
-                      <option value="de-DE">1.234,56 (EU)</option>
-                      <option value="fr-FR">1 234,56 (FR)</option>
-                    </select>
-                    <div class="invalid-feedback">Please select your preferred number format</div>
+                    <label class="form-label required">System Logs Retention (Days)</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      value="14"
+                      min="1"
+                      required
+                    />
+                    <div class="form-text">How long to retain system events and crawler logs.</div>
+                    <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                 </div>
               </form>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-end py-3">
-              <button type="submit" class="btn btn-primary" form="localization-form">
+              <button type="submit" class="btn btn-primary" form="maintenance-form">
                 <i class="ri-save-3-line me-1"></i> Save Changes
               </button>
             </div>
