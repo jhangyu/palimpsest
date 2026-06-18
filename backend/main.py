@@ -17,6 +17,8 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
+import zipfile
+import io
 from dotenv import load_dotenv
 from dateutil import parser as dateutil_parser
 
@@ -250,6 +252,21 @@ user_ai_tokens = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("user_id", "provider", "label", name="uq_user_ai_tokens_user_provider_label"),
 )
 
+schema_versions = sqlalchemy.Table(
+    "schema_versions", metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("version", sqlalchemy.String, nullable=False, unique=True),
+    sqlalchemy.Column("description", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("applied_at", sqlalchemy.DateTime(timezone=True), nullable=False),
+)
+
+# --- App Version & Migration Registry ---
+APP_VERSION = "0.1.0"
+
+MIGRATIONS = [
+    # {"version": "0.2.0", "description": "Add xyz column", "up": async_migration_fn},
+]
+
 # --- Scheduler ---
 scheduler = AsyncIOScheduler()
 
@@ -444,6 +461,14 @@ def _run_schema_migration(engine):
                 UNIQUE(user_id, provider, label)
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS schema_versions (
+                id SERIAL PRIMARY KEY,
+                version VARCHAR NOT NULL UNIQUE,
+                description VARCHAR NOT NULL,
+                applied_at TIMESTAMPTZ NOT NULL
+            )
+            """,
         ]
 
         for stmt in auth_table_stmts:
@@ -561,6 +586,23 @@ async def lifespan(app: FastAPI):
 
     # Backfill existing articles
     await _backfill_articles()
+
+    # Seed initial schema version if not exists
+    try:
+        existing_version = await database.fetch_one(
+            schema_versions.select().where(schema_versions.c.version == "0.1.0")
+        )
+        if not existing_version:
+            await database.execute(
+                schema_versions.insert().values(
+                    version="0.1.0",
+                    description="Initial schema",
+                    applied_at=datetime.now(timezone.utc),
+                )
+            )
+            log_with_time("[Startup] Seeded initial schema version 0.1.0")
+    except Exception as e:
+        log_with_time(f"[Startup] Schema version seeding note: {e}")
 
     # First-run check
     user_count = await database.fetch_one("SELECT COUNT(*) as cnt FROM users")
@@ -1922,6 +1964,627 @@ async def settings_set_default_ai_token(token_id: int, current_user: dict = Depe
         raise HTTPException(status_code=400, detail=str(e))
 
     return token_resp
+
+
+# ============================================================
+# DATABASE MANAGEMENT ENDPOINTS
+# ============================================================
+
+# Import file size limits
+_MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+_MAX_IMPORT_UNCOMPRESSED_SIZE = 500 * 1024 * 1024  # 500MB
+
+# Tables safe to export (never export auth/security tables)
+_EXPORTABLE_TABLES = {"sites", "articles", "crawl_attempts", "rss_query_events", "users", "roles", "user_roles"}
+_AUDIT_TABLES = {"crawl_attempts", "rss_query_events"}
+# System tables excluded from status row counts
+_SYSTEM_TABLES = {"schema_versions", "alembic_version"}
+# FK import order: parents before children
+_IMPORT_ORDER = ["roles", "users", "user_roles", "sites", "articles", "crawl_attempts", "rss_query_events"]
+
+# Table object lookup for exportable tables
+_TABLE_MAP = {
+    "sites": sites,
+    "articles": articles,
+    "crawl_attempts": crawl_attempts,
+    "rss_query_events": rss_query_events,
+    "users": users,
+    "roles": roles,
+    "user_roles": user_roles,
+}
+
+# Columns to exclude per-table during export (sensitive or derived fields)
+_EXPORT_EXCLUDED_COLUMNS = {
+    "users": {
+        "avatar_bytes",
+        "email_normalized",
+        "username_normalized",
+        "pending_email",
+        "pending_email_normalized",
+    },
+}
+
+
+def _serialize_row_for_export(row_dict: dict) -> dict:
+    """Serialize a database row for JSON export, handling datetime and bytes."""
+    result = {}
+    for key, value in row_dict.items():
+        if isinstance(value, bytes):
+            continue  # Skip binary columns (e.g. avatar_bytes)
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
+        elif hasattr(value, "isoformat"):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
+
+
+@app.get("/settings/database/status")
+async def database_status(current_user: dict = Depends(_require_admin)):
+    """Return database status: schema version, table row counts, pending migrations."""
+    # Current schema version
+    latest_version = await database.fetch_one(
+        "SELECT version, applied_at FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
+    )
+    current_version = latest_version["version"] if latest_version else "unknown"
+    last_migration_at = (
+        latest_version["applied_at"].isoformat()
+        if latest_version and latest_version["applied_at"]
+        else None
+    )
+
+    # Table row counts (exclude system tables)
+    table_names = [
+        t.name for t in metadata.sorted_tables if t.name not in _SYSTEM_TABLES
+    ]
+    tables_info = []
+    for name in table_names:
+        try:
+            row = await database.fetch_one(f'SELECT COUNT(*) AS cnt FROM "{name}"')
+            tables_info.append({"name": name, "row_count": row["cnt"] if row else 0})
+        except Exception:
+            tables_info.append({"name": name, "row_count": -1})
+
+    # Pending migrations
+    applied_rows = await database.fetch_all(schema_versions.select())
+    applied_versions = {r["version"] for r in applied_rows}
+    pending = [
+        {"version": m["version"], "description": m["description"]}
+        for m in MIGRATIONS
+        if m["version"] not in applied_versions
+    ]
+
+    return {
+        "schema_version": current_version,
+        "app_version": APP_VERSION,
+        "tables": tables_info,
+        "pending_migrations": pending,
+        "last_migration_at": last_migration_at,
+    }
+
+
+@app.post("/settings/database/migrate", dependencies=[Depends(_csrf_dependency)])
+async def database_migrate(current_user: dict = Depends(_require_admin)):
+    """Execute all pending schema migrations in a transaction."""
+    applied_rows = await database.fetch_all(schema_versions.select())
+    applied_versions = {r["version"] for r in applied_rows}
+
+    pending = [m for m in MIGRATIONS if m["version"] not in applied_versions]
+    if not pending:
+        return {"applied": [], "message": "No pending migrations"}
+
+    applied = []
+    async with database.transaction():
+        for migration in pending:
+            try:
+                await migration["up"](database)
+                await database.execute(
+                    schema_versions.insert().values(
+                        version=migration["version"],
+                        description=migration["description"],
+                        applied_at=datetime.now(timezone.utc),
+                    )
+                )
+                applied.append({
+                    "version": migration["version"],
+                    "description": migration["description"],
+                })
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Migration {migration['version']} failed: {str(e)}",
+                )
+
+    return {"applied": applied, "message": f"Applied {len(applied)} migration(s)"}
+
+
+@app.get("/settings/database/export")
+async def database_export(
+    tables: str = "sites,articles",
+    include_audit: bool = False,
+    format: str = "zip",
+    current_user: dict = Depends(_require_admin),
+):
+    """Export database tables as a ZIP (default) or JSON file download.
+
+    Use format=json for plain JSON, format=zip (default) for a ZIP archive.
+    """
+    requested_tables = [t.strip() for t in tables.split(",") if t.strip()]
+
+    # Validate table names
+    invalid = [t for t in requested_tables if t not in _EXPORTABLE_TABLES]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Non-exportable table(s): {', '.join(invalid)}",
+        )
+
+    # Filter out audit tables unless include_audit
+    if not include_audit:
+        requested_tables = [t for t in requested_tables if t not in _AUDIT_TABLES]
+
+    if not requested_tables:
+        raise HTTPException(status_code=400, detail="No valid tables to export")
+
+    # Current schema version
+    latest_version = await database.fetch_one(
+        "SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
+    )
+    current_version = latest_version["version"] if latest_version else APP_VERSION
+
+    # Export data
+    data = {}
+    table_counts = {}
+    for t_name in requested_tables:
+        tbl = _TABLE_MAP[t_name]
+        rows = await database.fetch_all(tbl.select())
+        excluded_cols = _EXPORT_EXCLUDED_COLUMNS.get(t_name, set())
+        serialized = []
+        for r in rows:
+            row_dict = dict(r)
+            for col in excluded_cols:
+                row_dict.pop(col, None)
+            serialized.append(_serialize_row_for_export(row_dict))
+        data[t_name] = serialized
+        table_counts[t_name] = len(serialized)
+
+    export_payload = {
+        "metadata": {
+            "export_time": datetime.now(timezone.utc).isoformat(),
+            "schema_version": current_version,
+            "app_version": APP_VERSION,
+            "tables": table_counts,
+        },
+        "data": data,
+    }
+
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+    if format == "json":
+        filename = f"palimpsest-export-{date_str}.json"
+        json_content = json.dumps(export_payload, ensure_ascii=False, indent=2)
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    else:
+        # Default: ZIP
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            json_str = json.dumps(export_payload, ensure_ascii=False, indent=2)
+            zf.writestr('palimpsest-export.json', json_str)
+        zip_buffer.seek(0)
+        return Response(
+            content=zip_buffer.read(),
+            media_type='application/zip',
+            headers={
+                'Content-Disposition': f'attachment; filename="palimpsest-export-{date_str}.zip"'
+            }
+        )
+
+
+@app.post("/settings/database/import/preview", dependencies=[Depends(_csrf_dependency)])
+async def database_import_preview(
+    current_user: dict = Depends(_require_admin),
+    file: UploadFile = File(...),
+):
+    """Preview an import: validate format, check conflicts, return counts.
+
+    Accepts both .json and .zip files.
+    """
+    try:
+        file_content = await file.read()
+        if len(file_content) > _MAX_IMPORT_FILE_SIZE:
+            raise HTTPException(status_code=413, detail=f"File too large (max {_MAX_IMPORT_FILE_SIZE // (1024*1024)}MB)")
+        if file.filename and file.filename.lower().endswith('.zip'):
+            zip_buffer = io.BytesIO(file_content)
+            with zipfile.ZipFile(zip_buffer, 'r') as zf:
+                total_uncompressed = sum(info.file_size for info in zf.infolist())
+                if total_uncompressed > _MAX_IMPORT_UNCOMPRESSED_SIZE:
+                    raise HTTPException(status_code=400, detail="ZIP uncompressed size exceeds limit")
+                json_files = [n for n in zf.namelist() if n.endswith('.json')]
+                if not json_files:
+                    raise HTTPException(status_code=400, detail="ZIP file contains no JSON files")
+                json_content = zf.read(json_files[0])
+                import_data = json.loads(json_content)
+        else:
+            import_data = json.loads(file_content)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid file: {str(e)}")
+
+    if "metadata" not in import_data or "data" not in import_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid export format: missing 'metadata' or 'data'",
+        )
+
+    warnings: list[str] = []
+
+    # Schema compatibility check
+    import_version = import_data["metadata"].get("schema_version", "unknown")
+    latest_version = await database.fetch_one(
+        "SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
+    )
+    current_version = latest_version["version"] if latest_version else APP_VERSION
+    compatible = True
+    if import_version != current_version:
+        warnings.append(
+            f"Schema version mismatch: import={import_version}, current={current_version}"
+        )
+
+    tables_result = []
+    for t_name, rows in import_data["data"].items():
+        if t_name not in _EXPORTABLE_TABLES:
+            warnings.append(f"Skipping non-exportable table: {t_name}")
+            continue
+
+        total = len(rows)
+        new_count = 0
+        conflict_count = 0
+
+        if t_name == "articles":
+            for row in rows:
+                url = row.get("url")
+                if url:
+                    existing = await database.fetch_one(
+                        articles.select().where(articles.c.url == url)
+                    )
+                    if existing:
+                        conflict_count += 1
+                    else:
+                        new_count += 1
+                else:
+                    new_count += 1
+        elif t_name == "sites":
+            for row in rows:
+                url = row.get("url")
+                if url:
+                    existing = await database.fetch_one(
+                        sites.select().where(sites.c.url == url)
+                    )
+                    if existing:
+                        conflict_count += 1
+                    else:
+                        new_count += 1
+                else:
+                    new_count += 1
+        elif t_name == "users":
+            for row in rows:
+                email = row.get("email")
+                if email:
+                    existing = await database.fetch_one(
+                        users.select().where(users.c.email == email)
+                    )
+                    if existing:
+                        conflict_count += 1
+                    else:
+                        new_count += 1
+                else:
+                    new_count += 1
+        elif t_name == "roles":
+            for row in rows:
+                name = row.get("name")
+                if name:
+                    existing = await database.fetch_one(
+                        roles.select().where(roles.c.name == name)
+                    )
+                    if existing:
+                        conflict_count += 1
+                    else:
+                        new_count += 1
+                else:
+                    new_count += 1
+        else:
+            # crawl_attempts, rss_query_events, user_roles — no standalone unique key, all treated as new
+            new_count = total
+
+        tables_result.append({
+            "name": t_name,
+            "total": total,
+            "new": new_count,
+            "conflicts": conflict_count,
+        })
+
+    return {
+        "compatible": compatible,
+        "warnings": warnings,
+        "tables": tables_result,
+    }
+
+
+@app.post("/settings/database/import", dependencies=[Depends(_csrf_dependency)])
+async def database_import(
+    mode: str = "skip",
+    current_user: dict = Depends(_require_admin),
+    file: UploadFile = File(...),
+):
+    """Import data from a JSON or ZIP export file. mode='skip' or 'overwrite'."""
+    if mode not in ("skip", "overwrite"):
+        raise HTTPException(status_code=400, detail="mode must be 'skip' or 'overwrite'")
+
+    try:
+        file_content = await file.read()
+        if len(file_content) > _MAX_IMPORT_FILE_SIZE:
+            raise HTTPException(status_code=413, detail=f"File too large (max {_MAX_IMPORT_FILE_SIZE // (1024*1024)}MB)")
+        if file.filename and file.filename.lower().endswith('.zip'):
+            zip_buffer = io.BytesIO(file_content)
+            with zipfile.ZipFile(zip_buffer, 'r') as zf:
+                total_uncompressed = sum(info.file_size for info in zf.infolist())
+                if total_uncompressed > _MAX_IMPORT_UNCOMPRESSED_SIZE:
+                    raise HTTPException(status_code=400, detail="ZIP uncompressed size exceeds limit")
+                json_files = [n for n in zf.namelist() if n.endswith('.json')]
+                if not json_files:
+                    raise HTTPException(status_code=400, detail="ZIP file contains no JSON files")
+                json_content = zf.read(json_files[0])
+                import_data = json.loads(json_content)
+        else:
+            import_data = json.loads(file_content)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid file: {str(e)}")
+
+    if "metadata" not in import_data or "data" not in import_data:
+        raise HTTPException(status_code=400, detail="Invalid export format")
+
+    results = []
+
+    # ID remapping: old export id -> new DB id
+    site_id_map: dict[int, int] = {}
+    role_id_map: dict[int, int] = {}
+    user_id_map: dict[int, int] = {}
+
+    async with database.transaction():
+        for t_name in _IMPORT_ORDER:
+            if t_name not in import_data.get("data", {}):
+                continue
+            if t_name not in _EXPORTABLE_TABLES:
+                continue
+
+            rows = import_data["data"][t_name]
+            tbl = _TABLE_MAP[t_name]
+            valid_columns = {c.name for c in tbl.columns}
+
+            imported = 0
+            skipped = 0
+            overwritten = 0
+
+            for row in rows:
+                old_id = row.get("id")
+
+                # --- roles ---
+                if t_name == "roles":
+                    row_data = {
+                        k: v for k, v in row.items()
+                        if k != "id" and k in valid_columns
+                    }
+                    name = row.get("name")
+                    existing = (
+                        await database.fetch_one(
+                            roles.select().where(roles.c.name == name)
+                        )
+                        if name
+                        else None
+                    )
+                    if existing:
+                        if old_id is not None:
+                            role_id_map[old_id] = existing["id"]
+                        if mode == "skip":
+                            skipped += 1
+                        else:
+                            update_vals = {}
+                            if row_data.get("description") is not None:
+                                update_vals["description"] = row_data["description"]
+                            if update_vals:
+                                await database.execute(
+                                    roles.update()
+                                    .where(roles.c.id == existing["id"])
+                                    .values(**update_vals)
+                                )
+                            overwritten += 1
+                    else:
+                        new_id = await database.execute(
+                            roles.insert().values(**row_data)
+                        )
+                        if old_id is not None:
+                            role_id_map[old_id] = new_id
+                        imported += 1
+
+                # --- users ---
+                elif t_name == "users":
+                    row_data = {
+                        k: v for k, v in row.items()
+                        if k != "id" and k in valid_columns
+                    }
+                    email = row.get("email")
+                    existing = (
+                        await database.fetch_one(
+                            users.select().where(users.c.email == email)
+                        )
+                        if email
+                        else None
+                    )
+                    if existing:
+                        if old_id is not None:
+                            user_id_map[old_id] = existing["id"]
+                        if mode == "skip":
+                            skipped += 1
+                        else:
+                            # Overwrite: update allowed fields only (not avatar_bytes)
+                            update_vals = {}
+                            for field in ("full_name", "status", "preferences", "password_hash"):
+                                if field in row_data:
+                                    update_vals[field] = row_data[field]
+                            if update_vals:
+                                now = datetime.now(timezone.utc)
+                                update_vals["updated_at"] = now
+                                await database.execute(
+                                    users.update()
+                                    .where(users.c.id == existing["id"])
+                                    .values(**update_vals)
+                                )
+                            overwritten += 1
+                    else:
+                        # Ensure required derived fields exist
+                        if "email_normalized" not in row_data and email:
+                            row_data["email_normalized"] = normalize_email(email)
+                        if "username_normalized" not in row_data and row_data.get("username"):
+                            row_data["username_normalized"] = normalize_username(row_data["username"])
+                        if "avatar_source" not in row_data:
+                            row_data["avatar_source"] = "none"
+                        if "preferences" not in row_data:
+                            row_data["preferences"] = {}
+                        if "status" not in row_data:
+                            row_data["status"] = "active"
+                        now = datetime.now(timezone.utc)
+                        if "created_at" not in row_data:
+                            row_data["created_at"] = now
+                        if "updated_at" not in row_data:
+                            row_data["updated_at"] = now
+                        new_id = await database.execute(
+                            users.insert().values(**row_data)
+                        )
+                        if old_id is not None:
+                            user_id_map[old_id] = new_id
+                        imported += 1
+
+                # --- user_roles ---
+                elif t_name == "user_roles":
+                    old_user_id = row.get("user_id")
+                    old_role_id = row.get("role_id")
+                    # Remap IDs
+                    new_user_id = user_id_map.get(old_user_id) if old_user_id is not None else None
+                    new_role_id = role_id_map.get(old_role_id) if old_role_id is not None else None
+                    if new_user_id is None or new_role_id is None:
+                        skipped += 1
+                        continue
+                    # Check for duplicate
+                    existing = await database.fetch_one(
+                        user_roles.select().where(
+                            (user_roles.c.user_id == new_user_id) &
+                            (user_roles.c.role_id == new_role_id)
+                        )
+                    )
+                    if existing:
+                        skipped += 1
+                    else:
+                        await database.execute(
+                            user_roles.insert().values(user_id=new_user_id, role_id=new_role_id)
+                        )
+                        imported += 1
+
+                # --- sites ---
+                elif t_name == "sites":
+                    row_data = {
+                        k: v for k, v in row.items()
+                        if k != "id" and k in valid_columns
+                    }
+                    url = row.get("url")
+                    existing = (
+                        await database.fetch_one(
+                            sites.select().where(sites.c.url == url)
+                        )
+                        if url
+                        else None
+                    )
+                    if existing:
+                        if old_id is not None:
+                            site_id_map[old_id] = existing["id"]
+                        if mode == "skip":
+                            skipped += 1
+                        else:
+                            await database.execute(
+                                sites.update()
+                                .where(sites.c.id == existing["id"])
+                                .values(**row_data)
+                            )
+                            overwritten += 1
+                    else:
+                        new_id = await database.execute(
+                            sites.insert().values(**row_data)
+                        )
+                        if old_id is not None:
+                            site_id_map[old_id] = new_id
+                        imported += 1
+
+                # --- articles ---
+                elif t_name == "articles":
+                    row_data = {
+                        k: v for k, v in row.items()
+                        if k != "id" and k in valid_columns
+                    }
+                    # Remap site_id FK
+                    old_site_id = row_data.get("site_id")
+                    if old_site_id is not None and old_site_id in site_id_map:
+                        row_data["site_id"] = site_id_map[old_site_id]
+                    url = row.get("url")
+                    existing = (
+                        await database.fetch_one(
+                            articles.select().where(articles.c.url == url)
+                        )
+                        if url
+                        else None
+                    )
+                    if existing:
+                        if mode == "skip":
+                            skipped += 1
+                        else:
+                            await database.execute(
+                                articles.update()
+                                .where(articles.c.id == existing["id"])
+                                .values(**row_data)
+                            )
+                            overwritten += 1
+                    else:
+                        await database.execute(
+                            articles.insert().values(**row_data)
+                        )
+                        imported += 1
+
+                else:
+                    # crawl_attempts, rss_query_events — always insert, remap site_id
+                    row_data = {
+                        k: v for k, v in row.items()
+                        if k != "id" and k in valid_columns
+                    }
+                    old_site_id = row_data.get("site_id")
+                    if old_site_id is not None and old_site_id in site_id_map:
+                        row_data["site_id"] = site_id_map[old_site_id]
+                    await database.execute(tbl.insert().values(**row_data))
+                    imported += 1
+
+            results.append({
+                "name": t_name,
+                "imported": imported,
+                "skipped": skipped,
+                "overwritten": overwritten,
+            })
+
+    return {"tables": results}
 
 
 # ============================================================

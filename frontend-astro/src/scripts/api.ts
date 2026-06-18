@@ -238,6 +238,19 @@ function stateChangingHeaders(extra: Record<string, string> = {}): HeadersInit {
   return headers
 }
 
+/**
+ * Build headers with only the CSRF token — no Content-Type.
+ * Use for FormData requests where the browser sets the multipart boundary automatically.
+ */
+function csrfHeader(): Record<string, string> {
+  const csrfToken = getCsrfToken()
+  const headers: Record<string, string> = {}
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken
+  }
+  return headers
+}
+
 // --- Error Handling ---
 
 async function throwOnError(res: Response): Promise<void> {
@@ -559,7 +572,7 @@ export const api = {
       method: 'PUT',
       credentials: 'include',
       headers: stateChangingHeaders(),
-      body: JSON.stringify({ source }),
+      body: JSON.stringify({ source })
     })
     await throwOnError(res)
   },
@@ -633,5 +646,87 @@ export const api = {
     await throwOnError(res)
     const data = await res.json()
     return Array.isArray(data) ? data : (data.roles ?? [])
+  },
+
+  // --- Database Management Methods ---
+
+  getDatabaseStatus: async (): Promise<{
+    schema_version: string
+    app_version: string
+    tables: { name: string; row_count: number }[]
+    pending_migrations: { version: string; description: string }[]
+    last_migration_at: string | null
+  }> => {
+    const res = await fetch(`${API_BASE}/settings/database/status`, {
+      credentials: 'include'
+    })
+    await throwOnError(res)
+    return res.json()
+  },
+
+  runMigrations: async (): Promise<{
+    applied: { version: string; description: string }[]
+  }> => {
+    const res = await fetch(`${API_BASE}/settings/database/migrate`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: stateChangingHeaders()
+    })
+    await throwOnError(res)
+    return res.json()
+  },
+
+  exportDatabase: async (tables: string[], format: 'json' | 'zip' = 'zip'): Promise<void> => {
+    const params = new URLSearchParams()
+    params.set('tables', tables.join(','))
+    params.set('format', format)
+    const res = await fetch(`${API_BASE}/settings/database/export?${params}`, {
+      credentials: 'include'
+    })
+    await throwOnError(res)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const date = new Date().toISOString().slice(0, 10)
+    const ext = format === 'zip' ? 'zip' : 'json'
+    a.href = url
+    a.download = `palimpsest-export-${date}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
+
+  previewImport: async (file: File): Promise<{
+    compatible: boolean
+    warnings: string[]
+    tables: { name: string; total: number; new: number; conflicts: number }[]
+  }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${API_BASE}/settings/database/import/preview`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(),
+      body: form
+    })
+    await throwOnError(res)
+    return res.json()
+  },
+
+  importDatabase: async (file: File, mode: 'skip' | 'overwrite'): Promise<{
+    tables: { name: string; imported: number; skipped: number; overwritten: number }[]
+  }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const params = new URLSearchParams({ mode })
+    const res = await fetch(`${API_BASE}/settings/database/import?${params}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(),
+      body: form
+    })
+    await throwOnError(res)
+    return res.json()
   }
 }

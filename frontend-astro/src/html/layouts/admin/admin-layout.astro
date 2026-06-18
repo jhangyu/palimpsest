@@ -68,7 +68,12 @@ const componentStatus = {
 
 <!-- Session bootstrap: runs on every admin layout page to verify auth and populate the topbar -->
 <script>
-  import { initSession, getCurrentUser, renderCurrentUser, applyRoleGating } from '@/scripts/session'
+  import {
+    initSession,
+    getCurrentUser,
+    renderCurrentUser,
+    applyRoleGating
+  } from '@/scripts/session'
 
   document.addEventListener('astro:page-load', () => {
     const user = getCurrentUser()

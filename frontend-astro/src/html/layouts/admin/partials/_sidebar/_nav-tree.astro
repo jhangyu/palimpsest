@@ -99,11 +99,27 @@ const isActiveParent = (path: string) => currentPath.startsWith(path)
     </li>
 
     <!-- Settings Section -->
-    <li class={`nav-item ${isActive('settings') ? 'active' : ''}`}>
-      <a class="nav-link" href={getPathPrefix('/settings')}>
+    <li class={`nav-item has-submenu parent ${isActiveParent('settings') ? 'active open' : ''}`}>
+      <a class="nav-link" href="#">
         <i class="ri-settings-3-line"></i>
         <span>Settings</span>
+        <i class="ri-arrow-right-s-line"></i>
       </a>
+      <ul class="submenu">
+        <li class={`nav-item ${isActive('settings') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/settings')}>
+            <span>General</span>
+          </a>
+        </li>
+        <li
+          class={`nav-item ${isActive('settings/database') ? 'active' : ''}`}
+          data-requires-role="admin"
+        >
+          <a class="nav-link" href={getPathPrefix('/settings/database')}>
+            <span>Database</span>
+          </a>
+        </li>
+      </ul>
     </li>
   </ul>
 </nav>

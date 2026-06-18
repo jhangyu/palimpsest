@@ -1,0 +1,302 @@
+---
+import AdminLayout from '../../layouts/admin/admin-layout.astro'
+import PageHeader from '../../components/common/page-header.astro'
+import { getPathPrefix } from '../../../utils/path.js'
+
+const pageHeader = {
+  title: 'Database Management',
+  breadcrumbs: [
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Settings', href: getPathPrefix('/settings') },
+    { label: 'Database', class: 'active' }
+  ]
+}
+---
+
+<AdminLayout
+  title="Database Management"
+  description="Database backup, export, import and migration tools"
+  currentPath="settings/database"
+>
+  <PageHeader {...pageHeader} />
+
+  <div class="row g-4">
+    <div class="col-12">
+      <!-- Card A: Database Status -->
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">
+            <i class="ri-database-2-line me-2"></i>Database Status
+          </h5>
+          <span class="badge bg-primary" id="db-version-badge">Loading...</span>
+        </div>
+        <div class="card-body">
+          <div id="db-status-loading" class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            <span class="ms-2">Loading database status...</span>
+          </div>
+          <div id="db-status-content" style="display:none;">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th class="text-end">Rows</th>
+                </tr>
+              </thead>
+              <tbody id="db-tables-body"></tbody>
+            </table>
+          </div>
+          <div id="db-status-error" style="display:none;"></div>
+          <!-- Migration alert (hidden by default) -->
+          <div
+            id="db-migration-alert"
+            class="alert alert-warning d-flex align-items-center mt-3"
+            style="display:none !important;"
+          >
+            <i class="ri-error-warning-line me-2 fs-5"></i>
+            <div class="flex-grow-1">
+              <strong id="db-migration-count">0</strong> pending migration(s) available.
+              <div class="db-migration-list"></div>
+            </div>
+            <button class="btn btn-warning btn-sm ms-3" id="btn-run-migrations">
+              <i class="ri-play-line me-1"></i>Run Migrations
+            </button>
+          </div>
+        </div>
+        <div class="card-footer text-muted small">
+          <span>Last migration: </span><span id="db-last-migration">N/A</span>
+        </div>
+      </div>
+
+      <!-- Card B: Export Data -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0"><i class="ri-download-line me-2"></i>Export Data</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Select the data you want to export as a backup file.</p>
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="fw-semibold mb-2">Core Data</h6>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="export-sites"
+                  value="sites"
+                  checked
+                />
+                <label class="form-check-label" for="export-sites">
+                  <i class="ri-rss-line me-1"></i>Sites / Feeds
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="export-articles"
+                  value="articles"
+                  checked
+                />
+                <label class="form-check-label" for="export-articles">
+                  <i class="ri-article-line me-1"></i>Articles
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="fw-semibold mb-2">Audit Data</h6>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="export-crawl-attempts"
+                  value="crawl_attempts"
+                />
+                <label class="form-check-label" for="export-crawl-attempts">
+                  <i class="ri-history-line me-1"></i>Crawl History
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="export-rss-events"
+                  value="rss_query_events"
+                />
+                <label class="form-check-label" for="export-rss-events">
+                  <i class="ri-file-list-line me-1"></i>RSS Query Events
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6 mt-3" data-requires-role="admin">
+              <h6 class="fw-semibold mb-2">Admin Data</h6>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="export-users" value="users" />
+                <label class="form-check-label" for="export-users">
+                  <i class="ri-user-line me-1"></i>Users (with credentials)
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="export-roles" value="roles" />
+                <label class="form-check-label" for="export-roles">
+                  <i class="ri-shield-user-line me-1"></i>Roles
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="export-user-roles"
+                  value="user_roles"
+                />
+                <label class="form-check-label" for="export-user-roles">
+                  <i class="ri-links-line me-1"></i>User Role Assignments
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3" />
+          <h6 class="fw-semibold mb-2">Export Format</h6>
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="export-format"
+              id="export-format-zip"
+              value="zip"
+              checked
+            />
+            <label class="form-check-label" for="export-format-zip">
+              <i class="ri-file-zip-line me-1"></i>ZIP (Compressed)
+            </label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="export-format"
+              id="export-format-json"
+              value="json"
+            />
+            <label class="form-check-label" for="export-format-json">
+              <i class="ri-file-code-line me-1"></i>JSON
+            </label>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary" id="btn-export">
+            <i class="ri-download-line me-1"></i>Export
+          </button>
+          <span id="export-status" class="ms-3 text-muted small" style="display:none;"></span>
+        </div>
+      </div>
+
+      <!-- Card C: Import Data -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0"><i class="ri-upload-line me-2"></i>Import Data</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">
+            Restore data from a previously exported JSON or ZIP backup file.
+          </p>
+
+          <!-- File upload area -->
+          <div
+            id="import-dropzone"
+            class="border border-2 border-dashed rounded p-4 text-center mb-3"
+            style="cursor:pointer;"
+          >
+            <i class="ri-upload-cloud-line fs-1 text-muted"></i>
+            <p class="mb-1 mt-2">Drag &amp; drop a JSON or ZIP file here, or click to browse</p>
+            <small class="text-muted">Accepts .json and .zip files exported from Palimpsest</small>
+            <input type="file" id="import-file-input" accept=".json,.zip" class="d-none" />
+          </div>
+
+          <!-- Selected file info -->
+          <div
+            id="import-file-info"
+            class="alert alert-info d-flex align-items-center"
+            style="display:none !important;"
+          >
+            <i class="ri-file-line me-2"></i>
+            <span id="import-file-name"></span>
+            <button class="btn btn-sm btn-link ms-auto text-danger" id="btn-clear-file">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+
+          <!-- Import mode -->
+          <div id="import-options" style="display:none;">
+            <h6 class="fw-semibold mb-2">Conflict Resolution</h6>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="import-mode"
+                id="import-mode-skip"
+                value="skip"
+                checked
+              />
+              <label class="form-check-label" for="import-mode-skip">
+                Skip duplicates (keep existing data)
+              </label>
+            </div>
+            <div class="form-check mb-3">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="import-mode"
+                id="import-mode-overwrite"
+                value="overwrite"
+              />
+              <label class="form-check-label" for="import-mode-overwrite">
+                Overwrite duplicates (replace with imported data)
+              </label>
+            </div>
+          </div>
+
+          <!-- Preview results -->
+          <div id="import-preview" style="display:none;">
+            <h6 class="fw-semibold mb-2">Import Preview</h6>
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th class="text-end">Total</th>
+                  <th class="text-end">New</th>
+                  <th class="text-end">Conflicts</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-body"></tbody>
+            </table>
+            <div id="import-warnings"></div>
+          </div>
+
+          <!-- Import result -->
+          <div id="import-result" style="display:none;"></div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <button class="btn btn-outline-primary" id="btn-preview-import" disabled>
+            <i class="ri-eye-line me-1"></i>Preview
+          </button>
+          <button class="btn btn-primary" id="btn-import" disabled>
+            <i class="ri-upload-line me-1"></i>Import
+          </button>
+          <span
+            id="import-status"
+            class="ms-3 text-muted small align-self-center"
+            style="display:none;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initDatabasePage } from '@/scripts/database'
+  document.addEventListener('astro:page-load', () => {
+    initDatabasePage()
+  })
+</script>
