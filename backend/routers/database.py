@@ -147,24 +147,6 @@ def _run_schema_migration(engine):
             )
             """,
             """
-            CREATE TABLE IF NOT EXISTS user_ai_tokens (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                provider VARCHAR NOT NULL,
-                label VARCHAR NOT NULL,
-                encrypted_token TEXT NOT NULL,
-                token_salt VARCHAR NOT NULL,
-                token_last4 VARCHAR,
-                token_mask VARCHAR,
-                needs_reentry BOOLEAN NOT NULL DEFAULT false,
-                is_default BOOLEAN NOT NULL DEFAULT false,
-                created_at TIMESTAMPTZ NOT NULL,
-                updated_at TIMESTAMPTZ NOT NULL,
-                last_used_at TIMESTAMPTZ,
-                UNIQUE(user_id, provider, label)
-            )
-            """,
-            """
             CREATE TABLE IF NOT EXISTS schema_versions (
                 id SERIAL PRIMARY KEY,
                 version VARCHAR NOT NULL UNIQUE,
@@ -194,7 +176,6 @@ def _run_schema_migration(engine):
             "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, expires_at, used_at)",
             "CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user ON email_verification_tokens(user_id, expires_at, used_at)",
             "CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_scope_locked ON auth_rate_limits(scope, locked_until)",
-            "CREATE INDEX IF NOT EXISTS idx_user_ai_tokens_user_provider ON user_ai_tokens(user_id, provider)",
         ]
 
         for stmt in index_stmts:
@@ -206,7 +187,6 @@ def _run_schema_migration(engine):
         # Partial unique indexes (PostgreSQL-specific)
         partial_idx_stmts = [
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pending_email_normalized ON users(pending_email_normalized) WHERE pending_email_normalized IS NOT NULL",
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_ai_tokens_default ON user_ai_tokens(user_id, provider) WHERE is_default = true",
         ]
         for stmt in partial_idx_stmts:
             try:
@@ -241,7 +221,7 @@ async def database_status(current_user: dict = Depends(require_admin), db=Depend
 @router.post("/migrate", dependencies=[Depends(_csrf_dependency)])
 async def database_migrate(current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """Execute all pending schema migrations in a transaction."""
-    applied_rows = await db.fetch_all(schema_versions.select())
+    applied_rows = (await db.execute(schema_versions.select())).mappings().all()
     applied_versions = {r["version"] for r in applied_rows}
 
     pending = [m for m in MIGRATIONS if m["version"] not in applied_versions]
@@ -249,7 +229,7 @@ async def database_migrate(current_user: dict = Depends(require_admin), db=Depen
         return {"applied": [], "message": "No pending migrations"}
 
     applied = []
-    async with db.transaction():
+    async with db.begin():
         for migration in pending:
             try:
                 await migration["up"](db)

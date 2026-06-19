@@ -294,7 +294,7 @@ async def check_rate_limit(
     """Check if a rate limit applies.
 
     Args:
-        database: the databases.Database instance
+        database: AsyncSession instance
         auth_rate_limits: the SQLAlchemy Table
         scope: e.g. 'login', 'forgot_password'
         subject: the subject identifier (email, IP, etc.)
@@ -309,12 +309,12 @@ async def check_rate_limit(
     subject_hash = hashlib.sha256(f"{scope}:{subject}".encode()).hexdigest()
     now = datetime.now(timezone.utc)
 
-    row = await database.fetch_one(
+    row = (await database.execute(
         auth_rate_limits.select().where(
             (auth_rate_limits.c.scope == scope) &
             (auth_rate_limits.c.subject_hash == subject_hash)
         )
-    )
+    )).mappings().first()
 
     if not row:
         return True, None
@@ -338,6 +338,7 @@ async def check_rate_limit(
             .where(auth_rate_limits.c.id == row["id"])
             .values(locked_until=locked_until, updated_at=now)
         )
+        await database.commit()
         return False, config["lockout_seconds"]
 
     return True, None
@@ -354,12 +355,12 @@ async def record_attempt(
     subject_hash = hashlib.sha256(f"{scope}:{subject}".encode()).hexdigest()
     now = datetime.now(timezone.utc)
 
-    row = await database.fetch_one(
+    row = (await database.execute(
         auth_rate_limits.select().where(
             (auth_rate_limits.c.scope == scope) &
             (auth_rate_limits.c.subject_hash == subject_hash)
         )
-    )
+    )).mappings().first()
 
     if not row:
         await database.execute(
@@ -372,6 +373,7 @@ async def record_attempt(
                 updated_at=now,
             )
         )
+        await database.commit()
     else:
         window_start = row["window_started_at"]
         if window_start and (now - window_start).total_seconds() > config["window_seconds"]:
@@ -386,6 +388,7 @@ async def record_attempt(
                     updated_at=now,
                 )
             )
+            await database.commit()
         else:
             await database.execute(
                 auth_rate_limits.update()
@@ -395,6 +398,7 @@ async def record_attempt(
                     updated_at=now,
                 )
             )
+            await database.commit()
 
 
 async def clear_rate_limit(
@@ -408,6 +412,7 @@ async def clear_rate_limit(
             (auth_rate_limits.c.subject_hash == subject_hash)
         )
     )
+    await database.commit()
 
 
 # --- Session Cleanup ---
@@ -420,24 +425,26 @@ async def cleanup_expired_sessions(database, auth_sessions) -> int:
             (auth_sessions.c.expires_at < now) | (auth_sessions.c.revoked_at.isnot(None))
         )
     )
-    return result
+    await database.commit()
+    return result.rowcount
 
 
 async def cleanup_expired_tokens(database, password_reset_tokens, email_verification_tokens) -> int:
     """Delete expired or used reset/verification tokens. Returns count deleted."""
     now = datetime.now(timezone.utc)
-    count = 0
-    count += await database.execute(
+    r1 = await database.execute(
         password_reset_tokens.delete().where(
             (password_reset_tokens.c.expires_at < now) | (password_reset_tokens.c.used_at.isnot(None))
         )
     )
-    count += await database.execute(
+    await database.commit()
+    r2 = await database.execute(
         email_verification_tokens.delete().where(
             (email_verification_tokens.c.expires_at < now) | (email_verification_tokens.c.used_at.isnot(None))
         )
     )
-    return count
+    await database.commit()
+    return r1.rowcount + r2.rowcount
 
 
 # --- Session Cache (DPERF-002) ---
@@ -483,7 +490,7 @@ def make_get_current_user(database, users_table, user_roles_table, roles_table, 
 
         # Single JOIN replaces 3-4 sequential queries (DPERF-002).
         # May return multiple rows when a user has multiple roles.
-        rows = await database.fetch_all(
+        rows = (await database.execute(
             text(
                 "SELECT u.*, r.name AS role_name, s.id AS session_id "
                 "FROM auth_sessions s "
@@ -495,8 +502,8 @@ def make_get_current_user(database, users_table, user_roles_table, roles_table, 
                 "  AND s.revoked_at IS NULL "
                 "  AND u.status = 'active'"
             ),
-            values={"hash": token_hash_val, "now": now},
-        )
+            {"hash": token_hash_val, "now": now},
+        )).mappings().all()
 
         if not rows:
             return None

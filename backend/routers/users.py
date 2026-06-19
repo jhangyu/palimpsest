@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import io
 
-from core.db import get_db, users, auth_sessions, email_verification_tokens, auth_rate_limits, user_ai_tokens
+from core.db import get_db, users, auth_sessions, email_verification_tokens, auth_rate_limits
 from core.auth import (
     hash_password, verify_password,
     hash_token,
@@ -13,7 +13,6 @@ from core.auth import (
     validate_username, normalize_username, validate_password, normalize_email,
     check_rate_limit, record_attempt,
 )
-from core.crypto import re_encrypt_all_user_tokens
 from core.email import get_email_sender
 from core.security_models import (
     UpdateProfileRequest, UpdateEmailRequest, UpdateUsernameRequest,
@@ -58,8 +57,9 @@ async def update_current_user_profile(req: UpdateProfileRequest, request: Reques
     await db.execute(
         users.update().where(users.c.id == current_user["id"]).values(**values)
     )
+    await db.commit()
 
-    user_row = await db.fetch_one(users.select().where(users.c.id == current_user["id"]))
+    user_row = (await db.execute(users.select().where(users.c.id == current_user["id"]))).mappings().first()
     if user_row is None:
         raise HTTPException(status_code=500, detail="User not found after update")
     return _user_to_me_response(dict(user_row), current_user.get("roles", []))
@@ -79,50 +79,52 @@ async def update_current_user_email(req: UpdateEmailRequest, request: Request, c
         raise HTTPException(status_code=400, detail="New email is the same as current email")
 
     # Check uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(
             (users.c.email_normalized == new_email_norm) &
             (users.c.id != current_user["id"])
         )
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already in use")
 
     now = datetime.now(timezone.utc)
 
-    # Set pending email
-    await db.execute(
-        users.update().where(users.c.id == current_user["id"]).values(
-            pending_email=req.new_email.strip(),
-            pending_email_normalized=new_email_norm,
-            updated_at=now,
-        )
-    )
-
-    # Revoke existing verification tokens
-    await db.execute(
-        email_verification_tokens.update()
-        .where(
-            (email_verification_tokens.c.user_id == current_user["id"]) &
-            (email_verification_tokens.c.used_at.is_(None))
-        )
-        .values(used_at=now)
-    )
-
-    # Generate verification token
+    # Generate verification token before transaction
     token = generate_reset_token()
     token_hash_val = hash_token(token)
     expires_at = now + timedelta(hours=4)
 
-    await db.execute(
-        email_verification_tokens.insert().values(
-            user_id=current_user["id"],
-            token_hash=token_hash_val,
-            email=req.new_email.strip(),
-            created_at=now,
-            expires_at=expires_at,
+    async with db.begin():
+        # Set pending email
+        await db.execute(
+            users.update().where(users.c.id == current_user["id"]).values(
+                pending_email=req.new_email.strip(),
+                pending_email_normalized=new_email_norm,
+                updated_at=now,
+            )
         )
-    )
+
+        # Revoke existing verification tokens
+        await db.execute(
+            email_verification_tokens.update()
+            .where(
+                (email_verification_tokens.c.user_id == current_user["id"]) &
+                (email_verification_tokens.c.used_at.is_(None))
+            )
+            .values(used_at=now)
+        )
+
+        # Insert new verification token
+        await db.execute(
+            email_verification_tokens.insert().values(
+                user_id=current_user["id"],
+                token_hash=token_hash_val,
+                email=req.new_email.strip(),
+                created_at=now,
+                expires_at=expires_at,
+            )
+        )
 
     verify_link = f"{FRONTEND_ORIGIN}/authentication/modern/verify-email?token={token}"
     email_sender = get_email_sender()
@@ -145,12 +147,12 @@ async def update_current_user_username(req: UpdateUsernameRequest, request: Requ
         raise HTTPException(status_code=400, detail="New username is the same as current username")
 
     # Check uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(
             (users.c.username_normalized == username_norm) &
             (users.c.id != current_user["id"])
         )
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already taken")
 
@@ -162,13 +164,14 @@ async def update_current_user_username(req: UpdateUsernameRequest, request: Requ
             updated_at=now,
         )
     )
+    await db.commit()
 
     return {"status": "ok", "message": "Username updated"}
 
 
 @router.put("/me/password", dependencies=[Depends(_csrf_dependency)])
 async def update_current_user_password(req: ChangePasswordRequest, request: Request, response: Response, current_user: dict = Depends(require_user), db=Depends(get_db)):
-    """Change password: verify current, re-encrypt AI tokens, update hash, rotate session."""
+    """Change password: update hash, revoke other sessions, rotate current session."""
     # Verify current password
     if not await verify_password(req.current_password, current_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect current password")
@@ -184,20 +187,7 @@ async def update_current_user_password(req: ChangePasswordRequest, request: Requ
     now = datetime.now(timezone.utc)
     new_hash = await hash_password(req.new_password)
 
-    async with db.transaction():
-        # Re-encrypt AI tokens BEFORE updating password hash
-        log_with_time(f"[DEPRECATED] Re-encrypting user_ai_tokens for user {current_user['id']} — legacy system")
-        try:
-            await re_encrypt_all_user_tokens(
-                db, user_ai_tokens, current_user["id"],
-                req.current_password, req.new_password,
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to re-encrypt AI tokens. Password change aborted."
-            )
-
+    async with db.begin():
         # Update password hash
         await db.execute(
             users.update().where(users.c.id == current_user["id"]).values(
@@ -232,6 +222,7 @@ async def update_current_user_preferences(req: UpdatePreferencesRequest, request
             updated_at=now,
         )
     )
+    await db.commit()
     return {"status": "ok", "preferences": req.preferences}
 
 
@@ -289,6 +280,7 @@ async def update_current_user_avatar(request: Request, current_user: dict = Depe
             updated_at=now,
         )
     )
+    await db.commit()
 
     return {"status": "ok", "avatar_hash": avatar_hash, "avatar_size": len(sanitized_bytes)}
 
@@ -308,6 +300,7 @@ async def delete_current_user_avatar(request: Request, current_user: dict = Depe
             updated_at=now,
         )
     )
+    await db.commit()
     return {"status": "ok", "message": "Avatar deleted"}
 
 
@@ -343,4 +336,5 @@ async def update_avatar_source(req: UpdateAvatarSourceRequest, request: Request,
             updated_at=now,
         )
     )
+    await db.commit()
     return {"status": "ok", "avatar_source": req.source}

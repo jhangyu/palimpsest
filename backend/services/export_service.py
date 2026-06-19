@@ -11,6 +11,8 @@ import json
 import zipfile
 from datetime import datetime, date as _date_cls, timezone
 
+from sqlalchemy import text
+
 from core.auth import normalize_email, normalize_username
 from core.db import (
     metadata, sites, articles, crawl_attempts, rss_query_events,
@@ -102,15 +104,17 @@ async def prepare_export(db, tables_csv: str, include_audit: bool, app_version: 
         raise ValueError("No valid tables to export")
 
     # Current schema version
-    latest_version = await db.fetch_one(
-        "SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
-    )
+    latest_version = (await db.execute(
+        text("SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1")
+    )).mappings().first()
     current_version = latest_version["version"] if latest_version else app_version
 
     # Pre-compute row counts (small queries, not full-table load)
     table_counts: dict = {}
     for t_name in requested_tables:
-        cnt_row = await db.fetch_one(f'SELECT COUNT(*) AS cnt FROM "{t_name}"')
+        cnt_row = (await db.execute(
+            text(f'SELECT COUNT(*) AS cnt FROM "{t_name}"')
+        )).mappings().first()
         table_counts[t_name] = cnt_row["cnt"] if cnt_row else 0
 
     return requested_tables, current_version, table_counts
@@ -135,7 +139,7 @@ async def stream_export_json(db, requested_tables: list[str], export_time: str, 
         offset = 0
         first_row = True
         while True:
-            batch = await db.fetch_all(tbl.select().limit(1000).offset(offset))
+            batch = (await db.execute(tbl.select().limit(1000).offset(offset))).mappings().all()
             if not batch:
                 break
             for r in batch:
@@ -191,9 +195,9 @@ async def preview_import(db, import_data: dict, app_version: str) -> dict:
 
     # Schema compatibility check
     import_version = import_data["metadata"].get("schema_version", "unknown")
-    latest_version = await db.fetch_one(
-        "SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
-    )
+    latest_version = (await db.execute(
+        text("SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1")
+    )).mappings().first()
     current_version = latest_version["version"] if latest_version else app_version
     compatible = True
     if import_version != current_version:
@@ -214,10 +218,10 @@ async def preview_import(db, import_data: dict, app_version: str) -> dict:
         if t_name == "articles":
             urls = [r.get("url") for r in rows if r.get("url")]
             if urls:
-                existing_rows = await db.fetch_all(
-                    "SELECT url FROM articles WHERE url = ANY(:urls)",
-                    values={"urls": urls},
-                )
+                existing_rows = (await db.execute(
+                    text("SELECT url FROM articles WHERE url = ANY(:urls)"),
+                    {"urls": urls},
+                )).mappings().all()
                 existing_urls = {r["url"] for r in existing_rows}
             else:
                 existing_urls = set()
@@ -234,10 +238,10 @@ async def preview_import(db, import_data: dict, app_version: str) -> dict:
         elif t_name == "sites":
             urls = [r.get("url") for r in rows if r.get("url")]
             if urls:
-                existing_rows = await db.fetch_all(
-                    "SELECT url FROM sites WHERE url = ANY(:urls)",
-                    values={"urls": urls},
-                )
+                existing_rows = (await db.execute(
+                    text("SELECT url FROM sites WHERE url = ANY(:urls)"),
+                    {"urls": urls},
+                )).mappings().all()
                 existing_site_urls = {r["url"] for r in existing_rows}
             else:
                 existing_site_urls = set()
@@ -254,10 +258,10 @@ async def preview_import(db, import_data: dict, app_version: str) -> dict:
         elif t_name == "users":
             emails = [r.get("email") for r in rows if r.get("email")]
             if emails:
-                existing_rows = await db.fetch_all(
-                    "SELECT email FROM users WHERE email = ANY(:emails)",
-                    values={"emails": emails},
-                )
+                existing_rows = (await db.execute(
+                    text("SELECT email FROM users WHERE email = ANY(:emails)"),
+                    {"emails": emails},
+                )).mappings().all()
                 existing_emails = {r["email"] for r in existing_rows}
             else:
                 existing_emails = set()
@@ -274,10 +278,10 @@ async def preview_import(db, import_data: dict, app_version: str) -> dict:
         elif t_name == "roles":
             names = [r.get("name") for r in rows if r.get("name")]
             if names:
-                existing_rows = await db.fetch_all(
-                    "SELECT name FROM roles WHERE name = ANY(:names)",
-                    values={"names": names},
-                )
+                existing_rows = (await db.execute(
+                    text("SELECT name FROM roles WHERE name = ANY(:names)"),
+                    {"names": names},
+                )).mappings().all()
                 existing_names = {r["name"] for r in existing_rows}
             else:
                 existing_names = set()
@@ -324,7 +328,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
     role_id_map: dict[int, int] = {}
     user_id_map: dict[int, int] = {}
 
-    async with db.transaction():
+    async with db.begin():
         for t_name in _IMPORT_ORDER:
             if t_name not in import_data.get("data", {}):
                 continue
@@ -350,9 +354,9 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                     }
                     name = row.get("name")
                     existing = (
-                        await db.fetch_one(
+                        (await db.execute(
                             roles.select().where(roles.c.name == name)
-                        )
+                        )).mappings().first()
                         if name
                         else None
                     )
@@ -373,9 +377,10 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                                 )
                             overwritten += 1
                     else:
-                        new_id = await db.execute(
-                            roles.insert().values(**row_data)
+                        result = await db.execute(
+                            roles.insert().values(**row_data).returning(roles.c.id)
                         )
+                        new_id = result.scalar()
                         if old_id is not None:
                             role_id_map[old_id] = new_id
                         imported += 1
@@ -388,9 +393,9 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                     }
                     email = row.get("email")
                     existing = (
-                        await db.fetch_one(
+                        (await db.execute(
                             users.select().where(users.c.email == email)
-                        )
+                        )).mappings().first()
                         if email
                         else None
                     )
@@ -430,9 +435,10 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                             row_data["created_at"] = now
                         if "updated_at" not in row_data:
                             row_data["updated_at"] = now
-                        new_id = await db.execute(
-                            users.insert().values(**row_data)
+                        result = await db.execute(
+                            users.insert().values(**row_data).returning(users.c.id)
                         )
+                        new_id = result.scalar()
                         if old_id is not None:
                             user_id_map[old_id] = new_id
                         imported += 1
@@ -446,12 +452,12 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                     if new_user_id is None or new_role_id is None:
                         skipped += 1
                         continue
-                    existing = await db.fetch_one(
+                    existing = (await db.execute(
                         user_roles.select().where(
                             (user_roles.c.user_id == new_user_id) &
                             (user_roles.c.role_id == new_role_id)
                         )
-                    )
+                    )).mappings().first()
                     if existing:
                         skipped += 1
                     else:
@@ -468,9 +474,9 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                     }
                     url = row.get("url")
                     existing = (
-                        await db.fetch_one(
+                        (await db.execute(
                             sites.select().where(sites.c.url == url)
-                        )
+                        )).mappings().first()
                         if url
                         else None
                     )
@@ -487,9 +493,10 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                             )
                             overwritten += 1
                     else:
-                        new_id = await db.execute(
-                            sites.insert().values(**row_data)
+                        result = await db.execute(
+                            sites.insert().values(**row_data).returning(sites.c.id)
                         )
+                        new_id = result.scalar()
                         if old_id is not None:
                             site_id_map[old_id] = new_id
                         imported += 1
@@ -505,9 +512,9 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         row_data["site_id"] = site_id_map[old_site_id]
                     url = row.get("url")
                     existing = (
-                        await db.fetch_one(
+                        (await db.execute(
                             articles.select().where(articles.c.url == url)
-                        )
+                        )).mappings().first()
                         if url
                         else None
                     )
@@ -560,9 +567,9 @@ async def compute_database_status(db, app_migrations: list, app_version: str) ->
     app_version is APP_VERSION from the router.
     """
     # Current schema version
-    latest_version = await db.fetch_one(
-        "SELECT version, applied_at FROM schema_versions ORDER BY applied_at DESC LIMIT 1"
-    )
+    latest_version = (await db.execute(
+        text("SELECT version, applied_at FROM schema_versions ORDER BY applied_at DESC LIMIT 1")
+    )).mappings().first()
     current_version = latest_version["version"] if latest_version else "unknown"
     last_migration_at = (
         latest_version["applied_at"].isoformat()
@@ -577,7 +584,9 @@ async def compute_database_status(db, app_migrations: list, app_version: str) ->
 
     async def _count_table(name: str) -> dict:
         try:
-            row = await db.fetch_one(f'SELECT COUNT(*) AS cnt FROM "{name}"')
+            row = (await db.execute(
+                text(f'SELECT COUNT(*) AS cnt FROM "{name}"')
+            )).mappings().first()
             return {"name": name, "row_count": row["cnt"] if row else 0}
         except Exception:
             return {"name": name, "row_count": -1}
@@ -585,7 +594,7 @@ async def compute_database_status(db, app_migrations: list, app_version: str) ->
     tables_info = list(await asyncio.gather(*[_count_table(n) for n in table_names]))
 
     # Pending migrations
-    applied_rows = await db.fetch_all(schema_versions.select())
+    applied_rows = (await db.execute(schema_versions.select())).mappings().all()
     applied_versions = {r["version"] for r in applied_rows}
     pending = [
         {"version": m["version"], "description": m["description"]}

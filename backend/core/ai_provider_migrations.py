@@ -15,7 +15,29 @@ import sqlalchemy
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 
 from .auth import verify_password
-from .crypto import decrypt_token, get_token_last4, mask_token
+# NOTE: decrypt_token / get_token_last4 / mask_token were removed from crypto.py
+# in the #24 ai_tokens deprecation. The legacy migration path below (PostgresLegacyMigrationStore
+# / migrate_legacy_ai_token) is dead code since routers/ai_tokens.py was deleted.
+
+
+def get_token_last4(token: str) -> str | None:
+    """Return last 4 characters of an API token for display."""
+    return token[-4:] if token and len(token) >= 4 else None
+
+
+def mask_token(token: str) -> str | None:
+    """Return masked API token showing only last 4 characters."""
+    if not token or len(token) < 4:
+        return None
+    return "*" * min(len(token) - 4, 8) + token[-4:]
+
+
+def decrypt_token(encrypted_token: str, password: str, user_id: int, salt: str) -> str:
+    """Legacy PBKDF2+AES-GCM token decryption — deprecated with #24 ai_tokens removal."""
+    raise NotImplementedError(
+        "decrypt_token was removed in #24 ai_tokens deprecation; "
+        "this legacy migration path is no longer supported"
+    )
 from .llm.key_backends import KeyEncryptionBackend, WrappedKey
 from .llm.vault import (
     CredentialEnvelope,
@@ -256,7 +278,6 @@ SCHEMA_EXPANSION_STATEMENTS = (
     ON user_ai_providers(user_id, source_type, source_id)
     WHERE source_type IS NOT NULL AND source_id IS NOT NULL
     """,
-    "ALTER TABLE user_ai_tokens ADD COLUMN IF NOT EXISTS migrated_at TIMESTAMPTZ",
     "ALTER TABLE sites ADD COLUMN IF NOT EXISTS owner_user_id INTEGER",
     "CREATE INDEX IF NOT EXISTS idx_sites_owner_user_id ON sites(owner_user_id)",
 )
@@ -315,7 +336,10 @@ async def bootstrap_user_secret_key(
         .on_conflict_do_nothing(index_elements=["user_id"])
         .returning(user_secret_keys.c.user_id)
     )
-    return await db.fetch_one(statement) is not None
+    result = await db.execute(statement)
+    row = result.mappings().first()
+    await db.commit()
+    return row is not None
 
 
 async def backfill_existing_user_secret_keys(
@@ -326,14 +350,14 @@ async def backfill_existing_user_secret_keys(
 ) -> dict[str, int]:
     """Backfill missing user DEKs. The unique user_id key makes retries safe."""
 
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.select(users.c.id)
         .outerjoin(
             user_secret_keys, user_secret_keys.c.user_id == users.c.id
         )
         .where(user_secret_keys.c.user_id.is_(None))
         .order_by(users.c.id.asc())
-    )
+    )).mappings().all()
     created = 0
     for row in rows:
         if await bootstrap_user_secret_key(
@@ -358,15 +382,15 @@ class OwnerBackfillResult:
 async def backfill_site_owners(db) -> OwnerBackfillResult:
     """Assign null owners to the lowest-id active admin."""
 
-    null_count = await db.fetch_val(
+    null_count = (await db.execute(
         sqlalchemy.text(
             "SELECT COUNT(*) FROM sites WHERE owner_user_id IS NULL"
         )
-    )
+    )).scalar()
     if not null_count:
         return OwnerBackfillResult(OwnerBackfillStatus.COMPLETE, None, 0)
 
-    owner_user_id = await db.fetch_val(
+    owner_user_id = (await db.execute(
         sqlalchemy.text(
             """
             SELECT MIN(u.id)
@@ -376,7 +400,7 @@ async def backfill_site_owners(db) -> OwnerBackfillResult:
             WHERE u.status = 'active' AND r.name = 'admin'
             """
         )
-    )
+    )).scalar()
     if owner_user_id is None:
         return OwnerBackfillResult(
             OwnerBackfillStatus.NO_ACTIVE_ADMIN, None, 0
@@ -392,6 +416,7 @@ async def backfill_site_owners(db) -> OwnerBackfillResult:
         ),
         {"owner_user_id": owner_user_id},
     )
+    await db.commit()
     return OwnerBackfillResult(
         OwnerBackfillStatus.COMPLETE, owner_user_id, int(null_count)
     )
@@ -402,12 +427,12 @@ class OwnerContractPreconditionError(RuntimeError):
 
 
 async def validate_owner_release_b_preconditions(db) -> None:
-    null_count = await db.fetch_val(
+    null_count = (await db.execute(
         sqlalchemy.text(
             "SELECT COUNT(*) FROM sites WHERE owner_user_id IS NULL"
         )
-    )
-    orphan_count = await db.fetch_val(
+    )).scalar()
+    orphan_count = (await db.execute(
         sqlalchemy.text(
             """
             SELECT COUNT(*)
@@ -416,7 +441,7 @@ async def validate_owner_release_b_preconditions(db) -> None:
             WHERE s.owner_user_id IS NOT NULL AND u.id IS NULL
             """
         )
-    )
+    )).scalar()
     if null_count or orphan_count:
         raise OwnerContractPreconditionError(
             "site ownership backfill or referential repair is incomplete"
@@ -495,7 +520,7 @@ class PostgresLegacyMigrationStore:
         self.user_ai_providers = user_ai_providers
 
     def transaction(self):
-        return self.db.transaction()
+        return self.db.begin()
 
     async def acquire_lock(self, token_id: int) -> None:
         await self.db.execute(
@@ -506,17 +531,17 @@ class PostgresLegacyMigrationStore:
         )
 
     async def get_legacy_for_update(self, token_id: int, user_id: int):
-        return await self.db.fetch_one(
+        return (await self.db.execute(
             sqlalchemy.select(self.user_ai_tokens)
             .where(
                 (self.user_ai_tokens.c.id == token_id)
                 & (self.user_ai_tokens.c.user_id == user_id)
             )
             .with_for_update()
-        )
+        )).mappings().first()
 
     async def find_provider_by_source(self, user_id: int, source_id: int):
-        return await self.db.fetch_one(
+        return (await self.db.execute(
             sqlalchemy.select(self.user_ai_providers.c.id).where(
                 (self.user_ai_providers.c.user_id == user_id)
                 & (
@@ -525,7 +550,7 @@ class PostgresLegacyMigrationStore:
                 )
                 & (self.user_ai_providers.c.source_id == source_id)
             )
-        )
+        )).mappings().first()
 
     async def mark_legacy_migrated(
         self, token_id: int, migrated_at: datetime
@@ -537,28 +562,28 @@ class PostgresLegacyMigrationStore:
         )
 
     async def get_password_hash(self, user_id: int) -> str | None:
-        return await self.db.fetch_val(
+        return (await self.db.execute(
             sqlalchemy.select(self.users.c.password_hash).where(
                 self.users.c.id == user_id
             )
-        )
+        )).scalar()
 
     async def get_user_key_for_update(self, user_id: int):
-        return await self.db.fetch_one(
+        return (await self.db.execute(
             sqlalchemy.select(self.user_secret_keys)
             .where(self.user_secret_keys.c.user_id == user_id)
             .with_for_update()
-        )
+        )).mappings().first()
 
     async def allocate_provider_id(self) -> int:
         sequence = sqlalchemy.Sequence("user_ai_providers_id_seq")
         return int(
-            await self.db.fetch_val(sqlalchemy.select(sequence.next_value()))
+            (await self.db.execute(sqlalchemy.select(sequence.next_value()))).scalar()
         )
 
     async def next_priority(self, user_id: int) -> int:
         return int(
-            await self.db.fetch_val(
+            (await self.db.execute(
                 sqlalchemy.select(
                     sqlalchemy.func.coalesce(
                         sqlalchemy.func.max(
@@ -568,7 +593,7 @@ class PostgresLegacyMigrationStore:
                     )
                     + 1
                 ).where(self.user_ai_providers.c.user_id == user_id)
-            )
+            )).scalar()
         )
 
     async def insert_provider(self, values: dict) -> None:

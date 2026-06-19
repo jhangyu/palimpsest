@@ -6,8 +6,8 @@ for schema objects shared across routers.
 
 import os
 
-import databases
 import sqlalchemy
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from core.ai_provider_migrations import define_ai_provider_tables
 
@@ -15,7 +15,11 @@ from core.ai_provider_migrations import define_ai_provider_tables
 # Connection
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://palimpsest:palimpsest@db:5432/palimpsest")
-database = databases.Database(DATABASE_URL, min_size=5, max_size=20)
+# Ensure asyncpg driver for SQLAlchemy 2.0 async
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+engine = create_async_engine(DATABASE_URL, pool_size=5, max_overflow=15)
+async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 metadata = sqlalchemy.MetaData()
 
 # ---------------------------------------------------------------------------
@@ -163,24 +167,6 @@ auth_rate_limits = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("scope", "subject_hash", name="uq_rate_limits_scope_subject"),
 )
 
-user_ai_tokens = sqlalchemy.Table(
-    "user_ai_tokens", metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE")),
-    sqlalchemy.Column("provider", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("label", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("encrypted_token", sqlalchemy.Text, nullable=False),
-    sqlalchemy.Column("token_salt", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("token_last4", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("token_mask", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("needs_reentry", sqlalchemy.Boolean, nullable=False, server_default="false"),
-    sqlalchemy.Column("is_default", sqlalchemy.Boolean, nullable=False, server_default="false"),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False),
-    sqlalchemy.Column("updated_at", sqlalchemy.DateTime(timezone=True), nullable=False),
-    sqlalchemy.Column("last_used_at", sqlalchemy.DateTime(timezone=True), nullable=True),
-    sqlalchemy.UniqueConstraint("user_id", "provider", "label", name="uq_user_ai_tokens_user_provider_label"),
-)
-
 schema_versions = sqlalchemy.Table(
     "schema_versions", metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
@@ -200,8 +186,9 @@ from fastapi import Request  # noqa: E402
 
 
 async def get_db(request: Request):
-    """FastAPI dependency: inject database from app.state."""
-    return request.app.state.database
+    """FastAPI dependency: inject AsyncSession from session factory."""
+    async with async_session_factory() as session:
+        yield session
 
 
 async def get_kek_dep(request: Request):

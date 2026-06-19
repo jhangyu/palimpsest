@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from datetime import datetime, timedelta, timezone
 import os
 
-from core.db import get_db, users, roles, user_roles, auth_sessions, password_reset_tokens, email_verification_tokens, auth_rate_limits, user_ai_tokens
+from sqlalchemy import text
+from core.db import get_db, users, roles, user_roles, auth_sessions, password_reset_tokens, email_verification_tokens, auth_rate_limits
 from core.auth import (
     hash_password, verify_password, needs_rehash,
     generate_session_token, hash_token,
@@ -35,7 +36,7 @@ async def first_run_setup(req: FirstRunSetupRequest, request: Request, response:
     """Create the first admin user. Only works when users table is empty."""
     check_origin(request)
 
-    user_count = await db.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    user_count = (await db.execute(text("SELECT COUNT(*) as cnt FROM users"))).mappings().first()
     if user_count and user_count["cnt"] > 0:
         raise HTTPException(status_code=409, detail="Setup already completed. Users exist.")
 
@@ -54,8 +55,8 @@ async def first_run_setup(req: FirstRunSetupRequest, request: Request, response:
 
     pw_hash = await hash_password(req.password)
 
-    async with db.transaction():
-        user_id = await db.execute(
+    async with db.begin():
+        result = await db.execute(
             users.insert().values(
                 email=req.email.strip(),
                 email_normalized=email_norm,
@@ -71,18 +72,19 @@ async def first_run_setup(req: FirstRunSetupRequest, request: Request, response:
                 updated_at=now,
             )
         )
+        user_id = result.inserted_primary_key[0]
 
         # Assign admin role
-        admin_role = await db.fetch_one(roles.select().where(roles.c.name == "admin"))
+        admin_role = (await db.execute(roles.select().where(roles.c.name == "admin"))).mappings().first()
         if admin_role:
             await db.execute(user_roles.insert().values(user_id=user_id, role_id=admin_role["id"]))
         # Also assign user role
-        user_role = await db.fetch_one(roles.select().where(roles.c.name == "user"))
+        user_role = (await db.execute(roles.select().where(roles.c.name == "user"))).mappings().first()
         if user_role:
             await db.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
 
-        # Create session
-        await _create_session_and_cookies(response, request, user_id, db)
+    # Create session (outside begin block to avoid nested commit conflict)
+    await _create_session_and_cookies(response, request, user_id, db)
 
     log_with_time(f"[Auth] First-run admin created: {username_norm}")
     return {"status": "ok", "message": "Admin account created", "user_id": user_id}
@@ -101,9 +103,9 @@ async def auth_login(req: LoginRequest, request: Request, response: Response, db
         raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {retry_after} seconds.")
 
     # Find user
-    user = await db.fetch_one(
+    user = (await db.execute(
         users.select().where(users.c.email_normalized == email_norm)
-    )
+    )).mappings().first()
 
     if not user or not await verify_password(req.password, user["password_hash"]):
         await record_attempt(db, auth_rate_limits, "login", email_norm)
@@ -127,6 +129,7 @@ async def auth_login(req: LoginRequest, request: Request, response: Response, db
     await db.execute(
         users.update().where(users.c.id == user["id"]).values(last_login_at=now)
     )
+    await db.commit()
 
     # Create session
     await _create_session_and_cookies(response, request, user["id"], db)
@@ -144,6 +147,7 @@ async def auth_logout(request: Request, response: Response, current_user: dict =
         await db.execute(
             auth_sessions.update().where(auth_sessions.c.id == session_id).values(revoked_at=now)
         )
+        await db.commit()
 
     clear_session_cookie(response)
     clear_csrf_cookie(response)
@@ -180,23 +184,23 @@ async def auth_register(req: RegisterRequest, request: Request, response: Respon
     username_norm = normalize_username(req.username)
 
     # Check email uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(users.c.email_normalized == email_norm)
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
     # Check username uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(users.c.username_normalized == username_norm)
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already taken")
 
     now = datetime.now(timezone.utc)
     pw_hash = await hash_password(req.password)
 
-    user_id = await db.execute(
+    result = await db.execute(
         users.insert().values(
             email=req.email.strip(),
             email_normalized=email_norm,
@@ -211,16 +215,19 @@ async def auth_register(req: RegisterRequest, request: Request, response: Respon
             updated_at=now,
         )
     )
+    user_id = result.inserted_primary_key[0]
+    await db.commit()
 
     # Assign user role
-    user_role = await db.fetch_one(roles.select().where(roles.c.name == "user"))
+    user_role = (await db.execute(roles.select().where(roles.c.name == "user"))).mappings().first()
     if user_role:
         await db.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
+        await db.commit()
 
     # Create session
     await _create_session_and_cookies(response, request, user_id, db)
 
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if user_row is None:
         raise HTTPException(status_code=500, detail="User not found after creation")
     user_roles_list = await _get_user_roles(user_id, db)
@@ -242,9 +249,9 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request, db=
 
     await record_attempt(db, auth_rate_limits, "forgot_password", email_norm)
 
-    user = await db.fetch_one(
+    user = (await db.execute(
         users.select().where(users.c.email_normalized == email_norm)
-    )
+    )).mappings().first()
 
     if user and user["status"] == "active":
         # Revoke any existing unused reset tokens for this user
@@ -271,6 +278,7 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request, db=
                 expires_at=expires_at,
             )
         )
+        await db.commit()
 
         # Send email (dev mode: log)
         reset_link = f"{FRONTEND_ORIGIN}/authentication/modern/new-password?token={token}"
@@ -300,13 +308,13 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request, db=De
     now = datetime.now(timezone.utc)
 
     # Find valid token
-    token_row = await db.fetch_one(
+    token_row = (await db.execute(
         password_reset_tokens.select().where(
             (password_reset_tokens.c.token_hash == token_hash_val) &
             (password_reset_tokens.c.expires_at > now) &
             (password_reset_tokens.c.used_at.is_(None))
         )
-    )
+    )).mappings().first()
 
     if not token_row:
         await record_attempt(db, auth_rate_limits, "reset_password", req.token[:16])
@@ -327,14 +335,6 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request, db=De
         .values(password_hash=new_hash, updated_at=now)
     )
 
-    # Mark AI tokens as needs_reentry (password reset cannot re-encrypt since old password is unknown)
-    log_with_time(f"[DEPRECATED] Marking user_ai_tokens as needs_reentry for user {token_row['user_id']} — legacy system")
-    await db.execute(
-        user_ai_tokens.update()
-        .where(user_ai_tokens.c.user_id == token_row["user_id"])
-        .values(needs_reentry=True, updated_at=now)
-    )
-
     # Revoke all sessions for this user
     await db.execute(
         auth_sessions.update()
@@ -344,6 +344,7 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request, db=De
         )
         .values(revoked_at=now)
     )
+    await db.commit()
 
     return {"status": "ok", "message": "Password has been reset. Please login."}
 
@@ -357,13 +358,13 @@ async def auth_verify_email(req: VerifyEmailRequest, request: Request, db=Depend
     now = datetime.now(timezone.utc)
 
     # Find valid token
-    token_row = await db.fetch_one(
+    token_row = (await db.execute(
         email_verification_tokens.select().where(
             (email_verification_tokens.c.token_hash == token_hash_val) &
             (email_verification_tokens.c.expires_at > now) &
             (email_verification_tokens.c.used_at.is_(None))
         )
-    )
+    )).mappings().first()
 
     if not token_row:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
@@ -374,11 +375,12 @@ async def auth_verify_email(req: VerifyEmailRequest, request: Request, db=Depend
         .where(email_verification_tokens.c.id == token_row["id"])
         .values(used_at=now)
     )
+    await db.commit()
 
     # Promote pending email to primary email
-    user = await db.fetch_one(
+    user = (await db.execute(
         users.select().where(users.c.id == token_row["user_id"])
-    )
+    )).mappings().first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -387,12 +389,12 @@ async def auth_verify_email(req: VerifyEmailRequest, request: Request, db=Depend
     new_email_norm = normalize_email(new_email)
 
     # Check if this email is already taken by another user
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(
             (users.c.email_normalized == new_email_norm) &
             (users.c.id != user["id"])
         )
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already in use by another account")
 
@@ -408,6 +410,7 @@ async def auth_verify_email(req: VerifyEmailRequest, request: Request, db=Depend
             updated_at=now,
         )
     )
+    await db.commit()
 
     return {"status": "ok", "message": "Email verified and updated"}
 
@@ -439,6 +442,7 @@ async def auth_resend_verification(req: ResendVerificationRequest, request: Requ
         )
         .values(used_at=now)
     )
+    await db.commit()
 
     # Generate new token
     token = generate_reset_token()
@@ -454,6 +458,7 @@ async def auth_resend_verification(req: ResendVerificationRequest, request: Requ
             expires_at=expires_at,
         )
     )
+    await db.commit()
 
     verify_link = f"{FRONTEND_ORIGIN}/authentication/modern/verify-email?token={token}"
     email_sender = get_email_sender()

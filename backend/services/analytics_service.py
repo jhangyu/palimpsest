@@ -6,6 +6,7 @@ from datetime import datetime, date as _date_cls, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from dateutil import parser as dateutil_parser
+from sqlalchemy import text
 
 from routers._deps import FEED_COLORS
 
@@ -58,22 +59,24 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     # ── 1. Total + weekly counts (single SQL query, no full-table load) ──────────
     # DD-10: use proper date casting with AT TIME ZONE now that columns are TIMESTAMPTZ
-    counts_row = await db.fetch_one(
-        "SELECT COUNT(*) AS total, "
-        "COUNT(*) FILTER (WHERE created_at IS NOT NULL "
-        "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date >= :tw_start "
-        "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date <= :today) AS this_week, "
-        "COUNT(*) FILTER (WHERE created_at IS NOT NULL "
-        "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date >= :lw_start "
-        "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date <= :lw_end) AS last_week "
-        "FROM articles",
-        values={
+    counts_row = (await db.execute(
+        text(
+            "SELECT COUNT(*) AS total, "
+            "COUNT(*) FILTER (WHERE created_at IS NOT NULL "
+            "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date >= :tw_start "
+            "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date <= :today) AS this_week, "
+            "COUNT(*) FILTER (WHERE created_at IS NOT NULL "
+            "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date >= :lw_start "
+            "  AND (created_at AT TIME ZONE 'Asia/Taipei')::date <= :lw_end) AS last_week "
+            "FROM articles"
+        ),
+        {
             "tw_start": this_week_start.isoformat(),
             "today": today.isoformat(),
             "lw_start": last_week_start.isoformat(),
             "lw_end": last_week_end.isoformat(),
         },
-    )
+    )).mappings().first()
     total_article_scrap = counts_row["total"] if counts_row else 0
     new_articles_this_week = counts_row["this_week"] if counts_row else 0
     new_articles_last_week = counts_row["last_week"] if counts_row else 0
@@ -87,20 +90,24 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
     # ── 2. Median word count (SQL, fetch only word_count column) ─────────────────
     # F-M020: 90-day window to prevent loading years of historical data
     window_start = datetime.now(tz=timezone.utc) - timedelta(days=90)
-    wc_rows = await db.fetch_all(
-        "SELECT word_count FROM articles WHERE word_count IS NOT NULL AND word_count > 0"
-        " AND created_at >= :window_start",
-        values={"window_start": window_start},
-    )
+    wc_rows = (await db.execute(
+        text(
+            "SELECT word_count FROM articles WHERE word_count IS NOT NULL AND word_count > 0"
+            " AND created_at >= :window_start"
+        ),
+        {"window_start": window_start},
+    )).mappings().all()
     word_counts = [r["word_count"] for r in wc_rows]
     median_article_word_count = round(statistics.median(word_counts)) if word_counts else None
 
     # ── 3. Median feed update minutes (needs per-article published_at) ────────────
-    pub_rows = await db.fetch_all(
-        "SELECT site_id, published_at FROM articles"
-        " WHERE published_at IS NOT NULL AND site_id IS NOT NULL AND created_at >= :window_start",
-        values={"window_start": window_start},
-    )
+    pub_rows = (await db.execute(
+        text(
+            "SELECT site_id, published_at FROM articles"
+            " WHERE published_at IS NOT NULL AND site_id IS NOT NULL AND created_at >= :window_start"
+        ),
+        {"window_start": window_start},
+    )).mappings().all()
     site_articles_times: dict[int, list[datetime]] = defaultdict(list)
     for a in pub_rows:
         try:
@@ -140,15 +147,17 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     # ── 4. Daily counts by site within window (SQL GROUP BY, no Python date loop) ─
     # DD-10: use AT TIME ZONE for proper Taipei date bucketing
-    daily_sql_rows = await db.fetch_all(
-        "SELECT (a.created_at AT TIME ZONE 'Asia/Taipei')::date::text AS date, a.site_id, "
-        "COALESCE(s.name, 'Feed #' || a.site_id::text) AS site_name, COUNT(*) AS count "
-        "FROM articles a "
-        "LEFT JOIN sites s ON s.id = a.site_id "
-        "WHERE a.created_at IS NOT NULL AND a.created_at >= :start "
-        "GROUP BY 1, 2, 3 ORDER BY 1",
-        values={"start": window_start_date},
-    )
+    daily_sql_rows = (await db.execute(
+        text(
+            "SELECT (a.created_at AT TIME ZONE 'Asia/Taipei')::date::text AS date, a.site_id, "
+            "COALESCE(s.name, 'Feed #' || a.site_id::text) AS site_name, COUNT(*) AS count "
+            "FROM articles a "
+            "LEFT JOIN sites s ON s.id = a.site_id "
+            "WHERE a.created_at IS NOT NULL AND a.created_at >= :start "
+            "GROUP BY 1, 2, 3 ORDER BY 1"
+        ),
+        {"start": window_start_date},
+    )).mappings().all()
 
     daily_feed_counts: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     site_name_map: dict[int, str] = {}
@@ -197,13 +206,15 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     # ── 5. Traffic metrics: RSS query (SQL GROUP BY) ─────────────────────────────
     # Note: rss_query_events.requested_at is still VARCHAR — keep substr for now
-    rss_sql_rows = await db.fetch_all(
-        "SELECT substr(requested_at, 1, 10) AS date, COUNT(*) AS count "
-        "FROM rss_query_events "
-        "WHERE requested_at IS NOT NULL AND requested_at >= :start "
-        "GROUP BY 1",
-        values={"start": window_start_date},
-    )
+    rss_sql_rows = (await db.execute(
+        text(
+            "SELECT substr(requested_at, 1, 10) AS date, COUNT(*) AS count "
+            "FROM rss_query_events "
+            "WHERE requested_at IS NOT NULL AND requested_at >= :start "
+            "GROUP BY 1"
+        ),
+        {"start": window_start_date},
+    )).mappings().all()
     daily_rss_counts: dict[str, int] = {
         row["date"]: row["count"] for row in rss_sql_rows if row["date"] in date_set
     }
@@ -215,15 +226,17 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     # ── 6. Traffic metrics: crawl_attempts (SQL GROUP BY) ────────────────────────
     # Note: crawl_attempts.started_at is still VARCHAR — keep substr for now
-    crawl_sql_rows = await db.fetch_all(
-        "SELECT substr(started_at, 1, 10) AS date, "
-        "SUM(COALESCE(articles_saved, 0) + COALESCE(articles_updated, 0)) AS success_count, "
-        "SUM(COALESCE(articles_failed, 0)) AS fail_count "
-        "FROM crawl_attempts "
-        "WHERE started_at IS NOT NULL AND started_at >= :start "
-        "GROUP BY 1",
-        values={"start": window_start_date},
-    )
+    crawl_sql_rows = (await db.execute(
+        text(
+            "SELECT substr(started_at, 1, 10) AS date, "
+            "SUM(COALESCE(articles_saved, 0) + COALESCE(articles_updated, 0)) AS success_count, "
+            "SUM(COALESCE(articles_failed, 0)) AS fail_count "
+            "FROM crawl_attempts "
+            "WHERE started_at IS NOT NULL AND started_at >= :start "
+            "GROUP BY 1"
+        ),
+        {"start": window_start_date},
+    )).mappings().all()
     daily_scrap_success: dict[str, int] = {}
     daily_scrap_fail: dict[str, int] = {}
     for row in crawl_sql_rows:
@@ -246,11 +259,13 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     # ── 7. Article growth (cumulative, SQL GROUP BY) ──────────────────────────────
     # DD-10: use AT TIME ZONE for proper Taipei date bucketing
-    growth_sql_rows = await db.fetch_all(
-        "SELECT (created_at AT TIME ZONE 'Asia/Taipei')::date::text AS date, COUNT(*) AS count "
-        "FROM articles WHERE created_at IS NOT NULL "
-        "GROUP BY 1 ORDER BY 1"
-    )
+    growth_sql_rows = (await db.execute(
+        text(
+            "SELECT (created_at AT TIME ZONE 'Asia/Taipei')::date::text AS date, COUNT(*) AS count "
+            "FROM articles WHERE created_at IS NOT NULL "
+            "GROUP BY 1 ORDER BY 1"
+        )
+    )).mappings().all()
     all_dates_with_counts = [(row["date"], row["count"]) for row in growth_sql_rows]
     cumulative = 0
     date_cumulative: dict[str, int] = {}
@@ -267,13 +282,15 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
     }
 
     # ── 8. Latest articles (JOIN with sites, no separate sites fetch) ─────────────
-    latest_rows = await db.fetch_all(
-        "SELECT a.site_id, COALESCE(s.name, 'Feed #' || a.site_id::text) AS feed_name, "
-        "a.title, a.url, a.created_at, a.word_count "
-        "FROM articles a "
-        "LEFT JOIN sites s ON s.id = a.site_id "
-        "ORDER BY a.created_at DESC NULLS LAST LIMIT 10"
-    )
+    latest_rows = (await db.execute(
+        text(
+            "SELECT a.site_id, COALESCE(s.name, 'Feed #' || a.site_id::text) AS feed_name, "
+            "a.title, a.url, a.created_at, a.word_count "
+            "FROM articles a "
+            "LEFT JOIN sites s ON s.id = a.site_id "
+            "ORDER BY a.created_at DESC NULLS LAST LIMIT 10"
+        )
+    )).mappings().all()
     latest_articles = [
         {
             "feed_name": row["feed_name"],
@@ -346,7 +363,7 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
         "c_week_from": week_start_utc,
         "c_month_from": month_start_utc,
     }
-    counts_row = await db.fetch_one(counts_sql, values=counts_params)
+    counts_row = (await db.execute(text(counts_sql), counts_params)).mappings().first()
     filter_counts = {
         "today": counts_row["today_count"] if counts_row else 0,
         "week": counts_row["week_count"] if counts_row else 0,
@@ -386,7 +403,7 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
         " LIMIT :lim OFFSET :off"
     )
     all_params = {**search_params, **time_params, "lim": page_size, "off": offset}
-    rows = await db.fetch_all(main_sql, values=all_params)
+    rows = (await db.execute(text(main_sql), all_params)).mappings().all()
 
     article_list = [
         {

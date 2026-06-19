@@ -23,12 +23,12 @@ async def ownership_transfer_gate(db, user_id: int) -> list[dict]:
     Non-empty result means the user cannot be deleted or blocked
     until ownership is transferred.
     """
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.text(
             "SELECT id, name, url FROM sites WHERE owner_user_id = :user_id"
         ),
         {"user_id": user_id},
-    )
+    )).mappings().all()
     return [dict(row) for row in rows]
 
 
@@ -39,13 +39,13 @@ async def get_sites_with_owner_status(db) -> list[dict]:
     - owner_status: the owner's status value ('active', 'blocked', etc.) or NULL for unowned sites
     - owner_user_id: the owning user's id or NULL
     """
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.text(
             "SELECT s.*, u.status AS owner_status "
             "FROM sites s "
             "LEFT JOIN users u ON u.id = s.owner_user_id"
         )
-    )
+    )).mappings().all()
     return [dict(row) for row in rows]
 
 
@@ -54,11 +54,11 @@ async def verify_transfer_target(db, new_owner_id: int) -> dict | None:
 
     Returns the user row (id, email, status) or None if not found / not active.
     """
-    row = await db.fetch_one(
+    row = (await db.execute(
         sqlalchemy.text(
             "SELECT id, email, status FROM users "
             "WHERE id = :new_owner_id AND status = 'active'"
         ),
         {"new_owner_id": new_owner_id},
-    )
+    )).mappings().first()
     return dict(row) if row else None

@@ -14,7 +14,6 @@ from sqlalchemy.exc import IntegrityError
 
 from .ai_provider_migrations import AIProviderTables, bootstrap_user_secret_key
 from .llm.service import build_environment_fallback
-from .crypto import get_token_last4, mask_token
 from .llm.base import LLMProvider as LLMProviderProtocol
 from .llm.key_backends import KeyEncryptionBackend, WrappedKey
 from .llm.models import ProviderConfig, ProviderError
@@ -30,6 +29,22 @@ from .llm.vault import (
 
 VALID_PROTOCOLS = ("openai", "anthropic", "gemini")
 VALID_EFFORTS = ("low", "medium", "high")
+
+
+# ---------------------------------------------------------------------------
+# Token display helpers (crypto.py no longer exports these after #24 removal)
+# ---------------------------------------------------------------------------
+
+def get_token_last4(token: str) -> str | None:
+    """Return last 4 characters of an API token for display."""
+    return token[-4:] if token and len(token) >= 4 else None
+
+
+def mask_token(token: str) -> str | None:
+    """Return masked API token showing only last 4 characters."""
+    if not token or len(token) < 4:
+        return None
+    return "*" * min(len(token) - 4, 8) + token[-4:]
 
 
 # ---------------------------------------------------------------------------
@@ -89,18 +104,18 @@ def _credential_envelope(row) -> CredentialEnvelope:
 
 async def _get_user_dek(db, tables: AIProviderTables, backend: KeyEncryptionBackend, *, user_id: int) -> bytes:
     """Fetch and unwrap the user's DEK, bootstrapping if needed."""
-    key_row = await db.fetch_one(
+    key_row = (await db.execute(
         sqlalchemy.select(tables.user_secret_keys).where(
             tables.user_secret_keys.c.user_id == user_id
         )
-    )
+    )).mappings().first()
     if key_row is None:
         await bootstrap_user_secret_key(db, tables.user_secret_keys, backend, user_id=user_id)
-        key_row = await db.fetch_one(
+        key_row = (await db.execute(
             sqlalchemy.select(tables.user_secret_keys).where(
                 tables.user_secret_keys.c.user_id == user_id
             )
-        )
+        )).mappings().first()
     if key_row is None:
         raise ProviderNotFoundError("user secret key could not be initialized")
     return await unwrap_user_dek(backend, _user_key_envelope(key_row))
@@ -108,11 +123,11 @@ async def _get_user_dek(db, tables: AIProviderTables, backend: KeyEncryptionBack
 
 async def _fetch_provider(db, tables: AIProviderTables, *, provider_id: int) -> Any:
     """Fetch a single provider row or raise ``ProviderNotFoundError``."""
-    row = await db.fetch_one(
+    row = (await db.execute(
         sqlalchemy.select(tables.user_ai_providers).where(
             tables.user_ai_providers.c.id == provider_id
         )
-    )
+    )).mappings().first()
     if row is None:
         raise ProviderNotFoundError("provider not found")
     return row
@@ -160,14 +175,14 @@ def _mask_provider(row) -> dict:
 
 async def _next_priority(db, tables: AIProviderTables, *, user_id: int) -> int:
     """Return the next available priority value for the user."""
-    result = await db.fetch_val(
+    result = (await db.execute(
         sqlalchemy.select(
             sqlalchemy.func.coalesce(
                 sqlalchemy.func.max(tables.user_ai_providers.c.priority), -1
             )
             + 1
         ).where(tables.user_ai_providers.c.user_id == user_id)
-    )
+    )).scalar()
     return int(result)
 
 
@@ -178,14 +193,14 @@ async def _next_priority(db, tables: AIProviderTables, *, user_id: int) -> int:
 
 async def list_user_providers(db, tables: AIProviderTables, *, user_id: int) -> dict:
     """List user's providers ordered by (priority, id). Masked metadata only."""
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.select(tables.user_ai_providers)
         .where(tables.user_ai_providers.c.user_id == user_id)
         .order_by(
             tables.user_ai_providers.c.priority.asc(),
             tables.user_ai_providers.c.id.asc(),
         )
-    )
+    )).mappings().all()
     return {"providers": [_mask_provider(r) for r in rows]}
 
 
@@ -218,11 +233,11 @@ async def create_provider(
     # We need a provider_id before encryption (it's part of AAD).
     # Use the sequence to allocate one.
     provider_id = int(
-        await db.fetch_val(
+        (await db.execute(
             sqlalchemy.select(
                 sqlalchemy.Sequence("user_ai_providers_id_seq").next_value()
             )
-        )
+        )).scalar()
     )
 
     credential = encrypt_provider_credential(
@@ -262,7 +277,9 @@ async def create_provider(
     }
     try:
         await db.execute(tables.user_ai_providers.insert().values(**values))
+        await db.commit()
     except IntegrityError as exc:
+        await db.rollback()
         if "uq_user_ai_providers_user_label" in str(exc).lower():
             raise ProviderLabelConflictError(
                 f"label '{label}' already exists"
@@ -385,14 +402,16 @@ async def update_provider(
             )
             .values(**updates)
         )
+        await db.commit()
     except IntegrityError as exc:
+        await db.rollback()
         if "uq_user_ai_providers_user_label" in str(exc).lower():
             raise ProviderLabelConflictError(
                 f"label '{label}' already exists"
             ) from None
         raise
 
-    if result == 0:
+    if result.rowcount == 0:
         raise ProviderRevisionConflictError(
             f"provider {provider_id} was concurrently modified"
             f" (expected revision {revision})"
@@ -421,7 +440,8 @@ async def delete_provider(
             & (tables.user_ai_providers.c.revision == revision)
         )
     )
-    if result == 0:
+    await db.commit()
+    if result.rowcount == 0:
         raise ProviderRevisionConflictError(
             f"provider {provider_id} was concurrently modified"
             f" (expected revision {revision})"
@@ -442,11 +462,11 @@ async def reorder_providers(
         raise ValueError("duplicate provider IDs in reorder list")
 
     # Fetch all user providers
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.select(tables.user_ai_providers).where(
             tables.user_ai_providers.c.user_id == user_id
         )
-    )
+    )).mappings().all()
     existing_ids = {r["id"] for r in rows}
 
     # Check no missing and no extra
@@ -470,16 +490,17 @@ async def reorder_providers(
             )
 
     now = _now()
-    for priority, pid in enumerate(ordered_ids):
-        row = next(r for r in rows if r["id"] == pid)
-        await db.execute(
-            tables.user_ai_providers.update()
-            .where(
-                (tables.user_ai_providers.c.id == pid)
-                & (tables.user_ai_providers.c.user_id == user_id)
+    async with db.begin():
+        for priority, pid in enumerate(ordered_ids):
+            row = next(r for r in rows if r["id"] == pid)
+            await db.execute(
+                tables.user_ai_providers.update()
+                .where(
+                    (tables.user_ai_providers.c.id == pid)
+                    & (tables.user_ai_providers.c.user_id == user_id)
+                )
+                .values(priority=priority, updated_at=now, revision=row["revision"] + 1)
             )
-            .values(priority=priority, updated_at=now, revision=row["revision"] + 1)
-        )
 
     return await list_user_providers(db, tables, user_id=user_id)
 
@@ -587,6 +608,7 @@ async def test_provider_connection(
             .where(tables.user_ai_providers.c.id == provider_id)
             .values(**health_updates)
         )
+        await db.commit()
 
     return {
         "provider_id": provider_id,
@@ -637,6 +659,7 @@ async def toggle_provider_enabled(
         .where(tables.user_ai_providers.c.id == provider_id)
         .values(enabled=enabled, updated_at=now)
     )
+    await db.commit()
 
     updated = await _fetch_provider(db, tables, provider_id=provider_id)
     return _mask_provider(updated)
@@ -650,7 +673,7 @@ async def get_runtime_status(
     user_id: int,
 ) -> dict:
     """Return runtime status: enabled profiles chain + environment fallback."""
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.select(tables.user_ai_providers)
         .where(
             (tables.user_ai_providers.c.user_id == user_id)
@@ -660,7 +683,7 @@ async def get_runtime_status(
             tables.user_ai_providers.c.priority.asc(),
             tables.user_ai_providers.c.id.asc(),
         )
-    )
+    )).mappings().all()
 
     chain = [
         {

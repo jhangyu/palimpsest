@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import sqlalchemy
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -33,7 +33,7 @@ from scheduler import create_scheduler, setup_jobs, acquire_scheduler_lock, rele
 
 # --- Foundation / router imports ---
 from core.db import (
-    database, metadata, DATABASE_URL,
+    engine, async_session_factory, metadata, DATABASE_URL,
     users, auth_sessions, password_reset_tokens, email_verification_tokens,
     articles, schema_versions, ai_tables,
 )
@@ -55,57 +55,61 @@ async def _backfill_articles():
 
     # Backfill created_at / updated_at
     # DD-10: published_at is now TIMESTAMPTZ; row value is a datetime object
-    rows = await database.fetch_all(
-        select(articles.c.id, articles.c.published_at)
-        .where(articles.c.created_at == None)  # noqa: E711
-        .limit(500)
-    )
-    if rows:
-        log_with_time(f"[Backfill] Backfilling created_at/updated_at for {len(rows)} articles...")
-        for row in rows:
-            ts = None
-            if row['published_at']:
+    async with async_session_factory() as session:
+        rows = (await session.execute(
+            select(articles.c.id, articles.c.published_at)
+            .where(articles.c.created_at == None)  # noqa: E711
+            .limit(500)
+        )).mappings().all()
+        if rows:
+            log_with_time(f"[Backfill] Backfilling created_at/updated_at for {len(rows)} articles...")
+            for row in rows:
+                ts = None
+                if row['published_at']:
+                    try:
+                        val = row['published_at']
+                        if isinstance(val, datetime):
+                            ts = val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+                        elif isinstance(val, str):
+                            parsed = dateutil_parser.parse(val)
+                            ts = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+                    except Exception:
+                        pass
+                if ts is None:
+                    ts = datetime.now(timezone.utc)
                 try:
-                    val = row['published_at']
-                    if isinstance(val, datetime):
-                        ts = val if val.tzinfo else val.replace(tzinfo=timezone.utc)
-                    elif isinstance(val, str):
-                        parsed = dateutil_parser.parse(val)
-                        ts = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-                except Exception:
-                    pass
-            if ts is None:
-                ts = datetime.now(timezone.utc)
-            try:
-                await database.execute(
-                    update(articles)
-                    .where(articles.c.id == row['id'])
-                    .where(articles.c.created_at == None)  # noqa: E711
-                    .values(created_at=ts, updated_at=ts)
-                )
-            except Exception as e:
-                log_with_time(f"[Backfill] Warning: failed to backfill article {row['id']}: {e}")
+                    await session.execute(
+                        update(articles)
+                        .where(articles.c.id == row['id'])
+                        .where(articles.c.created_at == None)  # noqa: E711
+                        .values(created_at=ts, updated_at=ts)
+                    )
+                except Exception as e:
+                    log_with_time(f"[Backfill] Warning: failed to backfill article {row['id']}: {e}")
+            await session.commit()
 
     # Backfill word_count
-    wc_rows = await database.fetch_all(
-        select(articles.c.id, articles.c.content)
-        .where(articles.c.word_count == None)  # noqa: E711
-        .where(articles.c.content != None)  # noqa: E711
-        .limit(500)
-    )
-    if wc_rows:
-        log_with_time(f"[Backfill] Backfilling word_count for {len(wc_rows)} articles...")
-        for row in wc_rows:
-            try:
-                wc = compute_visible_word_count(row['content'])
-                await database.execute(
-                    update(articles)
-                    .where(articles.c.id == row['id'])
-                    .where(articles.c.word_count == None)  # noqa: E711
-                    .values(word_count=wc)
-                )
-            except Exception as e:
-                log_with_time(f"[Backfill] Warning: failed to compute word_count for article {row['id']}: {e}")
+    async with async_session_factory() as session:
+        wc_rows = (await session.execute(
+            select(articles.c.id, articles.c.content)
+            .where(articles.c.word_count == None)  # noqa: E711
+            .where(articles.c.content != None)  # noqa: E711
+            .limit(500)
+        )).mappings().all()
+        if wc_rows:
+            log_with_time(f"[Backfill] Backfilling word_count for {len(wc_rows)} articles...")
+            for row in wc_rows:
+                try:
+                    wc = compute_visible_word_count(row['content'])
+                    await session.execute(
+                        update(articles)
+                        .where(articles.c.id == row['id'])
+                        .where(articles.c.word_count == None)  # noqa: E711
+                        .values(word_count=wc)
+                    )
+                except Exception as e:
+                    log_with_time(f"[Backfill] Warning: failed to compute word_count for article {row['id']}: {e}")
+            await session.commit()
 
     log_with_time("[Backfill] Article backfill completed.")
 
@@ -117,7 +121,8 @@ async def _backfill_articles():
 async def scheduled_crawl_job():
     """排程任務：取出所有網站並並行執行爬蟲（最多 5 個同時進行）"""
     print("[Scheduler] Running scheduled crawl...")
-    all_sites = await get_sites_with_owner_status(database)
+    async with async_session_factory() as session:
+        all_sites = await get_sites_with_owner_status(session)
     semaphore = asyncio.Semaphore(5)
 
     async def crawl_with_limit(site):
@@ -146,27 +151,25 @@ async def scheduled_crawl_job():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await database.connect()
-    app.state.database = database
-    # Create tables if not exist
+    # Create tables if not exist (uses sync engine for DDL)
     sync_url = DATABASE_URL.replace("+asyncpg", "").replace("postgresql://", "postgresql://")
-    engine = sqlalchemy.create_engine(sync_url)
+    sync_engine = sqlalchemy.create_engine(sync_url)
 
-    await asyncio.to_thread(metadata.create_all, engine)
+    await asyncio.to_thread(metadata.create_all, sync_engine)
 
     # Run idempotent migration for existing DBs
-    await asyncio.to_thread(_run_schema_migration, engine)
+    await asyncio.to_thread(_run_schema_migration, sync_engine)
 
     # --- AI Provider schema expansion ---
-    from sqlalchemy import text as sa_text_ai
-    with engine.connect() as conn:
+    with sync_engine.connect() as conn:
         for stmt in SCHEMA_EXPANSION_STATEMENTS:
             try:
-                conn.execute(sa_text_ai(stmt))
+                conn.execute(text(stmt))
             except Exception as e:
                 log_with_time(f"[Migration] AI provider schema expansion note: {e}")
         conn.commit()
     log_with_time("[Migration] AI provider schema expansion completed.")
+    sync_engine.dispose()
 
     # --- LLM Provider Profiles feature flag ---
     _llm_profiles_enabled = os.getenv("LLM_PROVIDER_PROFILES_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -183,9 +186,11 @@ async def lifespan(app: FastAPI):
             # Check if any providers exist that require vault
             provider_count = None
             try:
-                provider_count = await database.fetch_one(
-                    "SELECT COUNT(*) as cnt FROM user_ai_providers"
-                )
+                async with async_session_factory() as session:
+                    result = await session.execute(
+                        text("SELECT COUNT(*) as cnt FROM user_ai_providers")
+                    )
+                    provider_count = result.mappings().first()
                 has_providers = provider_count and provider_count["cnt"] > 0
             except Exception as db_exc:
                 raise RuntimeError(
@@ -210,53 +215,60 @@ async def lifespan(app: FastAPI):
 
     # --- Backfill user secret keys and site owners ---
     if app.state.kek_backend is not None:
-        try:
-            await backfill_existing_user_secret_keys(database, users, ai_tables.user_secret_keys, app.state.kek_backend)
-            log_with_time("[Startup] User secret key backfill completed.")
-        except Exception as e:
-            log_with_time(f"[Startup] User secret key backfill note: {e}")
-        try:
-            result = await backfill_site_owners(database)
-            log_with_time(f"[Startup] Site owner backfill: {result.status.value}")
-        except Exception as e:
-            log_with_time(f"[Startup] Site owner backfill note: {e}")
+        async with async_session_factory() as session:
+            try:
+                await backfill_existing_user_secret_keys(session, users, ai_tables.user_secret_keys, app.state.kek_backend)
+                log_with_time("[Startup] User secret key backfill completed.")
+            except Exception as e:
+                log_with_time(f"[Startup] User secret key backfill note: {e}")
+            try:
+                result = await backfill_site_owners(session)
+                log_with_time(f"[Startup] Site owner backfill: {result.status.value}")
+            except Exception as e:
+                log_with_time(f"[Startup] Site owner backfill note: {e}")
 
     # Seed initial schema version if not exists
-    try:
-        existing_version = await database.fetch_one(
-            schema_versions.select().where(schema_versions.c.version == "0.1.0")
-        )
-        if not existing_version:
-            await database.execute(
-                schema_versions.insert().values(
-                    version="0.1.0",
-                    description="Initial schema",
-                    applied_at=datetime.now(timezone.utc),
+    async with async_session_factory() as session:
+        try:
+            existing_version = (await session.execute(
+                schema_versions.select().where(schema_versions.c.version == "0.1.0")
+            )).mappings().first()
+            if not existing_version:
+                await session.execute(
+                    schema_versions.insert().values(
+                        version="0.1.0",
+                        description="Initial schema",
+                        applied_at=datetime.now(timezone.utc),
+                    )
                 )
-            )
-            log_with_time("[Startup] Seeded initial schema version 0.1.0")
-    except Exception as e:
-        log_with_time(f"[Startup] Schema version seeding note: {e}")
+                await session.commit()
+                log_with_time("[Startup] Seeded initial schema version 0.1.0")
+        except Exception as e:
+            log_with_time(f"[Startup] Schema version seeding note: {e}")
 
     # First-run check
-    user_count = await database.fetch_one(
-        select(func.count().label("cnt")).select_from(users)
-    )
+    async with async_session_factory() as session:
+        user_count = (await session.execute(
+            select(func.count().label("cnt")).select_from(users)
+        )).mappings().first()
     if user_count and user_count["cnt"] == 0:
         log_with_time("[Startup] First-run setup required: no users found. POST /auth/first-run-setup to create admin.")
 
     # Add session/token cleanup job (daily)
     async def _cleanup_job():
         try:
-            s_count = await cleanup_expired_sessions(database, auth_sessions)
-            t_count = await cleanup_expired_tokens(database, password_reset_tokens, email_verification_tokens)
-            if s_count or t_count:
-                log_with_time(f"[Cleanup] Removed {s_count} expired sessions, {t_count} expired tokens")
+            async with async_session_factory() as session:
+                s_count = await cleanup_expired_sessions(session, auth_sessions)
+                t_count = await cleanup_expired_tokens(session, password_reset_tokens, email_verification_tokens)
+                if s_count or t_count:
+                    log_with_time(f"[Cleanup] Removed {s_count} expired sessions, {t_count} expired tokens")
         except Exception as e:
             log_with_time(f"[Cleanup] Error: {e}")
 
     # Start scheduler only if this worker acquires the advisory lock (prevents thundering herd)
-    _scheduler_lock_acquired = await acquire_scheduler_lock(database)
+    # Use a persistent connection for the advisory lock (session-level in PostgreSQL)
+    lock_conn = await engine.connect()
+    _scheduler_lock_acquired = await acquire_scheduler_lock(lock_conn)
     if _scheduler_lock_acquired:
         setup_jobs(scheduler, scheduled_crawl_job, _cleanup_job)
         scheduler.start()
@@ -279,9 +291,10 @@ async def lifespan(app: FastAPI):
 
     if _scheduler_lock_acquired:
         scheduler.shutdown()
-        await release_scheduler_lock(database)
-    await database.disconnect()
-    print("[Shutdown] Database disconnected.")
+        await release_scheduler_lock(lock_conn)
+    await lock_conn.close()
+    await engine.dispose()
+    print("[Shutdown] Database engine disposed.")
 
 
 # ---------------------------------------------------------------------------
@@ -342,7 +355,6 @@ async def request_logging_middleware(request: Request, call_next):
 from routers.auth import router as auth_router
 from routers.users import router as users_router
 from routers.admin import router as admin_router
-from routers.ai_tokens import router as ai_tokens_router
 from routers.ai_providers import router as ai_providers_router
 from routers.database import router as database_router
 from routers.sites import router as sites_router
@@ -351,7 +363,6 @@ from routers.analytics import router as analytics_router
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(admin_router)
-app.include_router(ai_tokens_router)
 app.include_router(ai_providers_router)
 app.include_router(database_router)
 app.include_router(sites_router)
@@ -371,7 +382,8 @@ FRONTEND_DIR = Path(
 async def health_check():
     """Health check endpoint for container orchestration"""
     try:
-        await database.execute(sqlalchemy.text("SELECT 1"))
+        async with async_session_factory() as session:
+            await session.execute(text("SELECT 1"))
         return {"status": "healthy", "db": "connected"}
     except Exception as e:
         return JSONResponse(

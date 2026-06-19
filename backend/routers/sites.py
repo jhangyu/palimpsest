@@ -14,6 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from pydantic import BaseModel, field_validator
 from dateutil import parser as dateutil_parser
 from rfeed import Item, Feed
+from sqlalchemy import text
 
 from core.ai import analyze_with_providers
 from core.crawler import crawl_site_logic, _utcnow_iso as _utcnow_iso_impl
@@ -79,11 +80,25 @@ class PreviewRequest(BaseModel):
 async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, debug_writer=None, owner_user_id=None, db=None, kek_backend=None):
     """Wrapper that records a crawl attempt around crawl_site_logic."""
     if db is None:
-        from core.db import database as _fallback_db
-        db = _fallback_db
+        from core.db import async_session_factory
+        async with async_session_factory() as _session:
+            return await _record_crawl_attempt(
+                site_id=site_id,
+                trigger_type=trigger_type,
+                url=url,
+                list_rules=list_rules,
+                content_rules=content_rules,
+                force_update=force_update,
+                scrape_method=scrape_method,
+                debug_writer=debug_writer,
+                owner_user_id=owner_user_id,
+                db=_session,
+                kek_backend=kek_backend,
+            )
+
     attempt_id = None
     try:
-        attempt_id = await db.execute(
+        result = await db.execute(
             crawl_attempts.insert().values(
                 site_id=site_id,
                 started_at=_utcnow_iso(),
@@ -93,6 +108,8 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
                 articles_failed=0, content_fetch_failed=0, parse_failed=0,
             )
         )
+        await db.commit()
+        attempt_id = result.inserted_primary_key[0]
     except Exception as e:
         log_with_time(f"[CrawlAttempt] Failed to create attempt record: {e}")
 
@@ -133,6 +150,7 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
                     error_message=crawl_result.get("error_message"),
                 )
             )
+            await db.commit()
         except Exception as e:
             log_with_time(f"[CrawlAttempt] Failed to update attempt record: {e}")
 
@@ -257,7 +275,9 @@ async def create_site(
         scrape_method=site.scrape_method or "scrapling",
         owner_user_id=current_user["id"],
     )
-    site_id = await db.execute(query)
+    result = await db.execute(query)
+    await db.commit()
+    site_id = result.inserted_primary_key[0]
     # 背景觸發爬蟲（初始抓取視為手動重爬），with attempt recording
     background_tasks.add_task(
         _record_crawl_attempt,
@@ -278,7 +298,7 @@ async def create_site(
 async def get_site(site_id: int, current_user: dict = Depends(require_user), db=Depends(get_db)):
     """取得特定網站資詳細資料"""
     query = sites.select().where(sites.c.id == site_id)
-    row = await db.fetch_one(query)
+    row = (await db.execute(query)).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Site not found")
     is_admin = "admin" in current_user.get("roles", [])
@@ -290,7 +310,7 @@ async def get_site(site_id: int, current_user: dict = Depends(require_user), db=
 async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict = Depends(require_user), db=Depends(get_db)):
     """更新網站設定"""
     query = sites.select().where(sites.c.id == site_id)
-    site = await db.fetch_one(query)
+    site = (await db.execute(query)).mappings().first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -304,13 +324,14 @@ async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict 
 
     query = sites.update().where(sites.c.id == site_id).values(**values)
     await db.execute(query)
+    await db.commit()
     return {"status": "updated", "site_id": site_id}
 
 @router.post("/sites/{site_id}/duplicate", dependencies=[Depends(_csrf_dependency)])
 async def duplicate_site(site_id: int, current_user: dict = Depends(require_user), db=Depends(get_db)):
     """複製網站設定 (不含文章，不自動爬取)"""
     query = sites.select().where(sites.c.id == site_id)
-    site = await db.fetch_one(query)
+    site = (await db.execute(query)).mappings().first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -328,22 +349,26 @@ async def duplicate_site(site_id: int, current_user: dict = Depends(require_user
         scrape_method=site['scrape_method'] or "scrapling",
         owner_user_id=current_user["id"],
     )
-    new_id = await db.execute(new_query)
+    result = await db.execute(new_query)
+    await db.commit()
+    new_id = result.inserted_primary_key[0]
     return {"id": new_id, "status": "duplicated"}
 
 @router.get("/sites/")
 async def list_sites(current_user: dict = Depends(require_user), db=Depends(get_db)):
     """列出所有網站（只返回清單需要的欄位，排除 list_rules/content_rules 大型 JSON）"""
-    rows = await db.fetch_all(
-        "SELECT id, name, url, refresh_frequency, scrape_method, "
-        "consecutive_failure_count, owner_user_id FROM sites"
-    )
+    rows = (await db.execute(
+        text(
+            "SELECT id, name, url, refresh_frequency, scrape_method, "
+            "consecutive_failure_count, owner_user_id FROM sites"
+        )
+    )).mappings().all()
     return [dict(row) for row in rows]
 
 @router.delete("/sites/{site_id}", dependencies=[Depends(_csrf_dependency)])
 async def delete_site(site_id: int, current_user: dict = Depends(require_user), db=Depends(get_db)):
     """刪除指定網站及其所有文章與相關事件"""
-    site = await db.fetch_one(sites.select().where(sites.c.id == site_id))
+    site = (await db.execute(sites.select().where(sites.c.id == site_id))).mappings().first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -351,7 +376,7 @@ async def delete_site(site_id: int, current_user: dict = Depends(require_user), 
     if not check_site_owner_or_admin(site, current_user["id"], is_admin):
         raise HTTPException(status_code=403, detail="Not authorized to modify this site")
 
-    async with db.transaction():
+    async with db.begin():
         # 刪除相關 crawl attempts 和 RSS query events
         await db.execute(crawl_attempts.delete().where(crawl_attempts.c.site_id == site_id))
         await db.execute(rss_query_events.delete().where(rss_query_events.c.site_id == site_id))
@@ -388,6 +413,7 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
                     status_code=404,
                 )
             )
+            await db.commit()
         except Exception as e:
             log_with_time(f"[RSS] Failed to record 404 query event: {e}")
         raise HTTPException(status_code=404, detail="Site not found")
@@ -395,7 +421,7 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
     site_name_normalized = normalize_site_name(site['name'])
 
     query = articles.select().where(articles.c.site_id == site['id']).order_by(articles.c.id.desc()).limit(limit)
-    rows = await db.fetch_all(query)
+    rows = (await db.execute(query)).mappings().all()
 
     items = []
     for row in rows:
@@ -435,6 +461,7 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
                 status_code=200,
             )
         )
+        await db.commit()
     except Exception as e:
         log_with_time(f"[RSS] Failed to record 200 query event: {e}")
 
@@ -445,7 +472,7 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
     """手動觸發指定網站爬取"""
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] trigger_crawl called for site {site_id}")
     query = sites.select().where(sites.c.id == site_id)
-    site = await db.fetch_one(query)
+    site = (await db.execute(query)).mappings().first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 

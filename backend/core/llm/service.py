@@ -112,23 +112,23 @@ async def resolve_chain(
 
     # Fetch user providers
     t = tables.user_ai_providers
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         sqlalchemy.select(t)
         .where(
             (t.c.user_id == user_id) & (t.c.enabled == True)  # noqa: E712
         )
         .order_by(t.c.priority.asc(), t.c.id.asc())
-    )
+    )).mappings().all()
 
     if rows:
         # Attempt to unwrap user DEK once
         dek: bytes | None = None
         try:
-            key_row = await db.fetch_one(
+            key_row = (await db.execute(
                 sqlalchemy.select(tables.user_secret_keys).where(
                     tables.user_secret_keys.c.user_id == user_id
                 )
-            )
+            )).mappings().first()
             if key_row is not None:
                 from .key_backends import WrappedKey
 

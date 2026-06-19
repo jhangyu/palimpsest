@@ -75,7 +75,7 @@ async def get_current_user(request: Request, db=Depends(get_db)) -> dict | None:
 
     now = datetime.now(timezone.utc)
 
-    rows = await db.fetch_all(
+    rows = (await db.execute(
         text(
             "SELECT u.*, r.name AS role_name, s.id AS session_id "
             "FROM auth_sessions s "
@@ -87,8 +87,8 @@ async def get_current_user(request: Request, db=Depends(get_db)) -> dict | None:
             "  AND s.revoked_at IS NULL "
             "  AND u.status = 'active'"
         ),
-        values={"hash": token_hash_val, "now": now},
-    )
+        {"hash": token_hash_val, "now": now},
+    )).mappings().all()
 
     if not rows:
         return None
@@ -161,9 +161,9 @@ async def get_site_by_name_or_id(site_identifier: str, db):
     # 先嘗試當作 ID 查詢
     try:
         site_id = int(site_identifier)
-        row = await db.fetch_one(
+        row = (await db.execute(
             sa_select(*_rss_cols).where(sites.c.id == site_id)
-        )
+        )).mappings().first()
         if row:
             return row
     except (ValueError, TypeError):
@@ -174,11 +174,11 @@ async def get_site_by_name_or_id(site_identifier: str, db):
     # Replicate space→'_' and lowercase in SQL; non-alnum removal is an edge-case
     # not representable portably, but site names are expected to be clean.
     normalized = normalize_site_name(site_identifier)
-    row = await db.fetch_one(
+    row = (await db.execute(
         sa_select(*_rss_cols).where(
             sa_func.lower(sa_func.replace(sites.c.name, ' ', '_')) == normalized
         )
-    )
+    )).mappings().first()
     if row:
         return row
     return None
@@ -202,6 +202,7 @@ async def _create_session_and_cookies(response: Response, request: Request, user
             expires_at=now + timedelta(hours=_session_ttl_hours()),
         )
     )
+    await db.commit()
 
     set_session_cookie(response, session_token)
     set_csrf_cookie(response, csrf_token)
@@ -236,16 +237,16 @@ def _user_to_me_response(user_row: dict, user_roles_list: list[str]) -> dict:
 
 async def _get_user_roles(user_id: int, db) -> list[str]:
     """Fetch role names for a user."""
-    role_rows = await db.fetch_all(
+    role_rows = (await db.execute(
         user_roles.select().where(user_roles.c.user_id == user_id)
-    )
+    )).mappings().all()
     role_ids = [r["role_id"] for r in role_rows]
     if not role_ids:
         return []
     from sqlalchemy import select
-    all_roles = await db.fetch_all(
+    all_roles = (await db.execute(
         select(roles).where(roles.c.id.in_(role_ids))
-    )
+    )).mappings().all()
     return [r["name"] for r in all_roles]
 
 

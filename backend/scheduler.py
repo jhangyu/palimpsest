@@ -9,11 +9,12 @@ Interface contract:
   - async acquire_scheduler_lock(db) -> bool
       Attempts to acquire a cluster-wide PostgreSQL advisory lock so that only
       one worker runs scheduled jobs.  Returns True if the lock was acquired.
-      db must be a databases.Database instance.
+      db must be an AsyncSession or AsyncConnection (SQLAlchemy 2.0 async).
 
   - async release_scheduler_lock(db) -> None
       Releases the advisory lock previously acquired by this session.
       Safe to call even if the lock is not held (PostgreSQL will ignore it).
+      Must use the same db instance that acquired the lock.
 
   - setup_jobs(scheduler, crawl_fn, cleanup_fn) -> None
       Registers the two standard interval jobs on *scheduler*.
@@ -26,6 +27,7 @@ main.py.
 
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy import text
 
 # Arbitrary but stable 64-bit integer used as the advisory lock key.
 # All workers in the cluster must use the same value.
@@ -70,8 +72,8 @@ async def acquire_scheduler_lock(db) -> bool:
 
     Parameters
     ----------
-    db : databases.Database
-        An active databases.Database connection.
+    db : AsyncSession | AsyncConnection
+        An active SQLAlchemy async connection or session.
 
     Returns
     -------
@@ -79,10 +81,11 @@ async def acquire_scheduler_lock(db) -> bool:
         True  — lock acquired; this worker should start the scheduler.
         False — another worker already holds the lock; skip starting scheduler.
     """
-    row = await db.fetch_one(
-        "SELECT pg_try_advisory_lock(:lock_id) AS acquired",
-        values={"lock_id": _SCHEDULER_LOCK_ID},
+    result = await db.execute(
+        text("SELECT pg_try_advisory_lock(:lock_id) AS acquired"),
+        {"lock_id": _SCHEDULER_LOCK_ID},
     )
+    row = result.mappings().first()
     return bool(row["acquired"]) if row is not None else False
 
 
@@ -92,9 +95,9 @@ async def release_scheduler_lock(db) -> None:
 
     Parameters
     ----------
-    db : databases.Database
-        An active databases.Database connection (same session that acquired
-        the lock).
+    db : AsyncSession | AsyncConnection
+        An active SQLAlchemy async connection or session (same one that
+        acquired the lock).
 
     Notes
     -----
@@ -102,8 +105,8 @@ async def release_scheduler_lock(db) -> None:
     silently ignored here.
     """
     await db.execute(
-        "SELECT pg_advisory_unlock(:lock_id)",
-        values={"lock_id": _SCHEDULER_LOCK_ID},
+        text("SELECT pg_advisory_unlock(:lock_id)"),
+        {"lock_id": _SCHEDULER_LOCK_ID},
     )
 
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import text
 from core.db import get_db, users, roles, user_roles, auth_sessions, sites, password_reset_tokens
 from routers._deps import (
     require_admin, _csrf_dependency,
@@ -35,12 +36,11 @@ async def admin_list_users(
     page_size = max(1, min(100, page_size))
     offset = (page - 1) * page_size
 
-    total_row = await db.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    total_row = (await db.execute(text("SELECT COUNT(*) as cnt FROM users"))).mappings().first()
     total = total_row["cnt"] if total_row else 0
 
     # Single JOIN query replaces N+1 _get_user_roles() calls
-    from sqlalchemy import text as _sa_text
-    join_q = _sa_text("""
+    join_q = text("""
         SELECT u.*, array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) AS role_names
         FROM users u
         LEFT JOIN user_roles ur ON ur.user_id = u.id
@@ -49,7 +49,7 @@ async def admin_list_users(
         ORDER BY u.id
         LIMIT :lim OFFSET :off
     """)
-    rows = await db.fetch_all(join_q, values={"lim": page_size, "off": offset})
+    rows = (await db.execute(join_q, {"lim": page_size, "off": offset})).mappings().all()
 
     user_list = []
     for row in rows:
@@ -72,16 +72,16 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
     username_norm = normalize_username(req.username)
 
     # Check email uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(users.c.email_normalized == email_norm)
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
     # Check username uniqueness
-    existing = await db.fetch_one(
+    existing = (await db.execute(
         users.select().where(users.c.username_normalized == username_norm)
-    )
+    )).mappings().first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already taken")
 
@@ -90,7 +90,7 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
     # Create user with known-invalid hash placeholder (user must reset via invite link)
     temp_hash = "!INVITE_PENDING"
 
-    user_id = await db.execute(
+    result = await db.execute(
         users.insert().values(
             email=req.email.strip(),
             email_normalized=email_norm,
@@ -105,13 +105,16 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
             updated_at=now,
         )
     )
+    user_id = result.inserted_primary_key[0]
+    await db.commit()
 
     # Pre-fetch all roles in one query, then use dict lookup (avoids N+1)
-    all_roles_rows = await db.fetch_all(roles.select())
+    all_roles_rows = (await db.execute(roles.select())).mappings().all()
     role_map = {r["name"]: r["id"] for r in all_roles_rows}
     for role_name in req.roles:
         if role_name in role_map:
             await db.execute(user_roles.insert().values(user_id=user_id, role_id=role_map[role_name]))
+    await db.commit()
 
     # Create invite/reset token
     token = generate_reset_token()
@@ -126,12 +129,13 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
             expires_at=expires_at,
         )
     )
+    await db.commit()
 
     invite_link = f"{FRONTEND_ORIGIN}/authentication/modern/new-password?token={token}"
     email_sender = get_email_sender()
     await email_sender.send_invite_email(req.email.strip(), invite_link)
 
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if user_row is None:
         raise HTTPException(status_code=500, detail="User not found after creation")
     role_list = await _get_user_roles(user_id, db)
@@ -141,7 +145,7 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
 @router.get("/users/{user_id}")
 async def admin_get_user(user_id: int, request: Request, current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """Get user details by ID."""
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if not user_row:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -152,7 +156,7 @@ async def admin_get_user(user_id: int, request: Request, current_user: dict = De
 @router.put("/users/{user_id}", dependencies=[Depends(_csrf_dependency)])
 async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: Request, current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """Admin update user (full_name, status)."""
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if not user_row:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -181,8 +185,9 @@ async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: 
     await db.execute(
         users.update().where(users.c.id == user_id).values(**values)
     )
+    await db.commit()
 
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if user_row is None:
         raise HTTPException(status_code=404, detail="User not found")
     role_list = await _get_user_roles(user_id, db)
@@ -192,7 +197,7 @@ async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: 
 @router.delete("/users/{user_id}", dependencies=[Depends(_csrf_dependency)])
 async def admin_delete_user(user_id: int, request: Request, current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """Soft block a user (set status=blocked, revoke sessions)."""
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if not user_row:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -212,7 +217,7 @@ async def admin_delete_user(user_id: int, request: Request, current_user: dict =
 
     now = datetime.now(timezone.utc)
 
-    async with db.transaction():
+    async with db.begin():
         await db.execute(
             users.update().where(users.c.id == user_id).values(status="blocked", updated_at=now)
         )
@@ -233,12 +238,12 @@ async def admin_delete_user(user_id: int, request: Request, current_user: dict =
 @router.put("/users/{user_id}/roles", dependencies=[Depends(_csrf_dependency)])
 async def admin_update_user_roles(user_id: int, req: AdminUpdateRolesRequest, request: Request, current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """Assign roles to a user (replaces existing roles)."""
-    user_row = await db.fetch_one(users.select().where(users.c.id == user_id))
+    user_row = (await db.execute(users.select().where(users.c.id == user_id))).mappings().first()
     if not user_row:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Validate role names (pre-fetch all roles once, reuse for both validation and insert)
-    all_roles = await db.fetch_all(roles.select())
+    all_roles = (await db.execute(roles.select())).mappings().all()
     role_map_update = {r["name"]: r["id"] for r in all_roles}
     for role_name in req.roles:
         if role_name not in role_map_update:
@@ -246,11 +251,13 @@ async def admin_update_user_roles(user_id: int, req: AdminUpdateRolesRequest, re
 
     # Remove existing roles
     await db.execute(user_roles.delete().where(user_roles.c.user_id == user_id))
+    await db.commit()
 
     # Add new roles using pre-fetched role_map (no per-role DB query)
     for role_name in req.roles:
         if role_name in role_map_update:
             await db.execute(user_roles.insert().values(user_id=user_id, role_id=role_map_update[role_name]))
+    await db.commit()
 
     return {"status": "ok", "roles": req.roles}
 
@@ -258,14 +265,14 @@ async def admin_update_user_roles(user_id: int, req: AdminUpdateRolesRequest, re
 @router.get("/roles")
 async def admin_list_roles(request: Request, current_user: dict = Depends(require_admin), db=Depends(get_db)):
     """List all roles with user counts."""
-    all_roles = await db.fetch_all(roles.select().order_by(roles.c.id))
+    all_roles = (await db.execute(roles.select().order_by(roles.c.id))).mappings().all()
 
     result = []
     for role_row in all_roles:
-        count_row = await db.fetch_one(
-            "SELECT COUNT(*) as cnt FROM user_roles WHERE role_id = :rid",
-            values={"rid": role_row["id"]},
-        )
+        count_row = (await db.execute(
+            text("SELECT COUNT(*) as cnt FROM user_roles WHERE role_id = :rid"),
+            {"rid": role_row["id"]},
+        )).mappings().first()
         result.append({
             "id": role_row["id"],
             "name": role_row["name"],
@@ -285,9 +292,9 @@ async def update_site_owner(site_id: int, request: Request, current_user: dict =
         raise HTTPException(status_code=400, detail="owner_user_id is required and must be an integer")
 
     # Verify site exists
-    site = await db.fetch_one(
+    site = (await db.execute(
         sites.select().where(sites.c.id == site_id)
-    )
+    )).mappings().first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -299,4 +306,5 @@ async def update_site_owner(site_id: int, request: Request, current_user: dict =
     await db.execute(
         sites.update().where(sites.c.id == site_id).values(owner_user_id=new_owner_id)
     )
+    await db.commit()
     return {"site_id": site_id, "owner_user_id": new_owner_id}

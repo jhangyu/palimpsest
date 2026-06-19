@@ -7,7 +7,7 @@ import httpx
 from datetime import datetime
 from hashlib import md5
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core.db import sites, articles
 from core.scraper import fetch_page
@@ -67,16 +67,16 @@ def compute_visible_word_count(content: str) -> int:
         return 0
     # Strip script/style/template/noscript blocks first, then all remaining HTML tags.
     # Regex approach is ~10x faster than BeautifulSoup and avoids parser overhead.
-    text = _SCRIPT_RE.sub('', content)
-    text = _TAG_RE.sub(' ', text)
-    text = text.strip()
-    if not text:
+    text_content = _SCRIPT_RE.sub('', content)
+    text_content = _TAG_RE.sub(' ', text_content)
+    text_content = text_content.strip()
+    if not text_content:
         return 0
 
     count = 0
     buf = []  # buffer for non-CJK tokens
 
-    for ch in text:
+    for ch in text_content:
         cp = ord(ch)
         is_cjk = (
             (0x4E00 <= cp <= 0x9FFF) or    # CJK Unified Ideographs
@@ -286,17 +286,18 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         # 自動修復邏輯
         if len(articles_found) == 0:
             log_with_time(f"[Crawl] Warning: No items found for site {site_id}. Rules might be broken.")
-            row = await db.fetch_one(
+            row = (await db.execute(
                 select(sites.c.consecutive_failure_count)
                 .where(sites.c.id == site_id)
-            )
-            current_count = row[0] if row else 0
+            )).mappings().first()
+            current_count = row['consecutive_failure_count'] if row else 0
             new_count = current_count + 1
             await db.execute(
                 sites.update()
                 .where(sites.c.id == site_id)
                 .values(consecutive_failure_count=new_count)
             )
+            await db.commit()
 
             if new_count >= FAILURE_THRESHOLD:
                 if owner_user_id is not None and ai_tables is not None and kek_backend is not None:
@@ -318,6 +319,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                         .where(sites.c.id == site_id)
                         .values(list_rules=json.dumps(new_list_rules), consecutive_failure_count=0)
                     )
+                    await db.commit()
                     list_rules = new_list_rules
                     articles_found = parse_listing(page, list_rules, url)
                     result["articles_found"] = len(articles_found)
@@ -330,6 +332,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 .where(sites.c.id == site_id)
                 .values(consecutive_failure_count=0)
             )
+            await db.commit()
 
         # 過濾文章（排程模式：只抓不存在的）
         # PERF-005: Batch existence check — one query instead of N individual queries
@@ -338,10 +341,10 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         else:
             discovered_urls = [a['url'] for a in articles_found]
             if discovered_urls:
-                rows = await db.fetch_all(
-                    "SELECT url FROM articles WHERE url = ANY(:urls)",
-                    values={"urls": discovered_urls}
-                )
+                rows = (await db.execute(
+                    text("SELECT url FROM articles WHERE url = ANY(:urls)"),
+                    {"urls": discovered_urls}
+                )).mappings().all()
                 existing_url_set = {row['url'] for row in rows}
             else:
                 existing_url_set = set()
@@ -443,30 +446,34 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 try:
                     if force_update:
                         # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
-                        await db.execute("""
-                            INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
-                            VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
-                            ON CONFLICT (url) DO UPDATE SET
-                                site_id = :sid, title = :title, content = :content,
-                                image_url = :image_url, published_at = :pub_date,
-                                updated_at = :updated_at, word_count = :word_count,
-                                author = :author
-                        """, values={
-                            "sid": site_id, "title": title, "url": a_url,
-                            "content": content_text, "image_url": image_url,
-                            "pub_date": pub_date, "created_at": now_utc,
-                            "updated_at": now_utc, "word_count": wc,
-                            "author": author,
-                        })
+                        await db.execute(
+                            text("""
+                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
+                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
+                                ON CONFLICT (url) DO UPDATE SET
+                                    site_id = :sid, title = :title, content = :content,
+                                    image_url = :image_url, published_at = :pub_date,
+                                    updated_at = :updated_at, word_count = :word_count,
+                                    author = :author
+                            """),
+                            {
+                                "sid": site_id, "title": title, "url": a_url,
+                                "content": content_text, "image_url": image_url,
+                                "pub_date": pub_date, "created_at": now_utc,
+                                "updated_at": now_utc, "word_count": wc,
+                                "author": author,
+                            }
+                        )
+                        await db.commit()
                         log_with_time(f"[Crawl] Force updated: {title[:30]}...")
                         crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
                         result["articles_updated"] += 1
                     else:
                         # 排程模式：檢查 published_at 是否改變
-                        existing = await db.fetch_one(
+                        existing = (await db.execute(
                             select(articles.c.id, articles.c.published_at, articles.c.created_at)
                             .where(articles.c.url == a_url)
-                        )
+                        )).mappings().first()
                         if existing:
                             old_pub_date = existing['published_at']
                             if old_pub_date == pub_date:
@@ -487,6 +494,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                                     author=author,
                                 )
                             )
+                            await db.commit()
                             log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "updated"})
                             result["articles_updated"] += 1
@@ -506,6 +514,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                                     author=author,
                                 )
                             )
+                            await db.commit()
                             log_with_time(f"[Crawl] Saved: {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "saved"})
                             result["articles_saved"] += 1
