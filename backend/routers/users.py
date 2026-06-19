@@ -186,6 +186,7 @@ async def update_current_user_password(req: ChangePasswordRequest, request: Requ
 
     async with db.transaction():
         # Re-encrypt AI tokens BEFORE updating password hash
+        log_with_time(f"[DEPRECATED] Re-encrypting user_ai_tokens for user {current_user['id']} — legacy system")
         try:
             await re_encrypt_all_user_tokens(
                 db, user_ai_tokens, current_user["id"],

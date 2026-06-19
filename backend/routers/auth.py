@@ -328,6 +328,7 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request, db=De
     )
 
     # Mark AI tokens as needs_reentry (password reset cannot re-encrypt since old password is unknown)
+    log_with_time(f"[DEPRECATED] Marking user_ai_tokens as needs_reentry for user {token_row['user_id']} — legacy system")
     await db.execute(
         user_ai_tokens.update()
         .where(user_ai_tokens.c.user_id == token_row["user_id"])
