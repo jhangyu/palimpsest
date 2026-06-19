@@ -1,8 +1,7 @@
 # backend/core/security_models.py
 """Pydantic request/response models for auth, user, and admin endpoints."""
 
-from pydantic import BaseModel, EmailStr, field_validator
-import re
+from pydantic import BaseModel
 
 
 # --- Auth ---
@@ -110,37 +109,6 @@ class AdminUserListResponse(BaseModel):
 
 class AdminUpdateRolesRequest(BaseModel):
     roles: list[str]
-
-
-# --- AI Tokens (used by A2 in Phase 4, defined here for shared model) ---
-
-class CreateTokenRequest(BaseModel):
-    provider: str
-    label: str
-    token: str  # plaintext token value
-    current_password: str
-
-class UpdateTokenRequest(BaseModel):
-    token: str  # plaintext token value
-    current_password: str
-
-class RevealTokenRequest(BaseModel):
-    current_password: str
-
-class TestTokenRequest(BaseModel):
-    current_password: str
-
-class TokenResponse(BaseModel):
-    id: int
-    provider: str
-    label: str
-    token_mask: str | None = None
-    token_last4: str | None = None
-    needs_reentry: bool = False
-    is_default: bool = False
-    created_at: str
-    updated_at: str
-    last_used_at: str | None = None
 
 
 # --- AI Provider migration ---

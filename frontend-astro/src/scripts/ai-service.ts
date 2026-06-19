@@ -3,8 +3,7 @@
  * ai-service.ts — Settings / AI Service page handler
  *
  * Implements AI provider CRUD, reorder, enable/disable, test, and reveal flows.
- * Uses direct fetch calls (credentials: "include", CSRF header) consistent with
- * ai-tokens.ts patterns.
+ * Uses direct fetch calls (credentials: "include", CSRF header).
  *
  * Security considerations:
  * - API keys are NEVER stored in module-level variables.
