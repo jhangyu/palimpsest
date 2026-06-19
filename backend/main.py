@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import sqlalchemy
+from sqlalchemy import func, select, update
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -41,7 +42,7 @@ from routers.database import _run_schema_migration, APP_VERSION, MIGRATIONS
 from routers.sites import _record_crawl_attempt, _background_tasks
 
 # --- Scheduler ---
-scheduler = create_scheduler()
+scheduler = create_scheduler(DATABASE_URL)
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +55,11 @@ async def _backfill_articles():
 
     # Backfill created_at / updated_at
     # DD-10: published_at is now TIMESTAMPTZ; row value is a datetime object
-    rows = await database.fetch_all("SELECT id, published_at FROM articles WHERE created_at IS NULL LIMIT 500")
+    rows = await database.fetch_all(
+        select(articles.c.id, articles.c.published_at)
+        .where(articles.c.created_at == None)  # noqa: E711
+        .limit(500)
+    )
     if rows:
         log_with_time(f"[Backfill] Backfilling created_at/updated_at for {len(rows)} articles...")
         for row in rows:
@@ -73,22 +78,31 @@ async def _backfill_articles():
                 ts = datetime.now(timezone.utc)
             try:
                 await database.execute(
-                    "UPDATE articles SET created_at = :ts, updated_at = :ts WHERE id = :id AND created_at IS NULL",
-                    values={"ts": ts, "id": row['id']}
+                    update(articles)
+                    .where(articles.c.id == row['id'])
+                    .where(articles.c.created_at == None)  # noqa: E711
+                    .values(created_at=ts, updated_at=ts)
                 )
             except Exception as e:
                 log_with_time(f"[Backfill] Warning: failed to backfill article {row['id']}: {e}")
 
     # Backfill word_count
-    wc_rows = await database.fetch_all("SELECT id, content FROM articles WHERE word_count IS NULL AND content IS NOT NULL LIMIT 500")
+    wc_rows = await database.fetch_all(
+        select(articles.c.id, articles.c.content)
+        .where(articles.c.word_count == None)  # noqa: E711
+        .where(articles.c.content != None)  # noqa: E711
+        .limit(500)
+    )
     if wc_rows:
         log_with_time(f"[Backfill] Backfilling word_count for {len(wc_rows)} articles...")
         for row in wc_rows:
             try:
                 wc = compute_visible_word_count(row['content'])
                 await database.execute(
-                    "UPDATE articles SET word_count = :wc WHERE id = :id AND word_count IS NULL",
-                    values={"wc": wc, "id": row['id']}
+                    update(articles)
+                    .where(articles.c.id == row['id'])
+                    .where(articles.c.word_count == None)  # noqa: E711
+                    .values(word_count=wc)
                 )
             except Exception as e:
                 log_with_time(f"[Backfill] Warning: failed to compute word_count for article {row['id']}: {e}")
@@ -225,7 +239,9 @@ async def lifespan(app: FastAPI):
         log_with_time(f"[Startup] Schema version seeding note: {e}")
 
     # First-run check
-    user_count = await database.fetch_one("SELECT COUNT(*) as cnt FROM users")
+    user_count = await database.fetch_one(
+        select(func.count().label("cnt")).select_from(users)
+    )
     if user_count and user_count["cnt"] == 0:
         log_with_time("[Startup] First-run setup required: no users found. POST /auth/first-run-setup to create admin.")
 
@@ -355,7 +371,7 @@ FRONTEND_DIR = Path(
 async def health_check():
     """Health check endpoint for container orchestration"""
     try:
-        await database.execute("SELECT 1")
+        await database.execute(sqlalchemy.text("SELECT 1"))
         return {"status": "healthy", "db": "connected"}
     except Exception as e:
         return JSONResponse(

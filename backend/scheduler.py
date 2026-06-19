@@ -2,8 +2,9 @@
 scheduler.py — APScheduler factory and PostgreSQL advisory lock helpers.
 
 Interface contract:
-  - create_scheduler() -> AsyncIOScheduler
-      Returns a fresh, unconfigured AsyncIOScheduler instance.
+  - create_scheduler(database_url) -> AsyncIOScheduler
+      Returns an AsyncIOScheduler with persistent SQLAlchemy job store when
+      database_url is provided, or in-memory store otherwise.
 
   - async acquire_scheduler_lock(db) -> bool
       Attempts to acquire a cluster-wide PostgreSQL advisory lock so that only
@@ -23,6 +24,7 @@ All dependencies are passed as parameters; this module does NOT import from
 main.py.
 """
 
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Arbitrary but stable 64-bit integer used as the advisory lock key.
@@ -30,9 +32,36 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 _SCHEDULER_LOCK_ID: int = 0x50414C5F5343484E  # "PAL_SCHN" in hex
 
 
-def create_scheduler() -> AsyncIOScheduler:
-    """Return a new AsyncIOScheduler ready to be configured and started."""
-    return AsyncIOScheduler()
+def create_scheduler(database_url: str | None = None) -> AsyncIOScheduler:
+    """Return an AsyncIOScheduler with optional persistent job store.
+
+    Parameters
+    ----------
+    database_url : str | None
+        Async database URL (e.g. ``postgresql+asyncpg://...``).  When provided,
+        the ``+asyncpg`` driver suffix is stripped so that APScheduler's
+        synchronous SQLAlchemy job store can connect.  When *None*, the
+        scheduler uses the default in-memory job store.
+    """
+    jobstores = {}
+    if database_url:
+        # APScheduler's SQLAlchemyJobStore requires a synchronous URL.
+        sync_url = database_url.replace("+asyncpg", "")
+        jobstores["default"] = SQLAlchemyJobStore(
+            url=sync_url,
+            tablename="apscheduler_jobs",
+        )
+
+    job_defaults = {
+        "coalesce": True,           # Collapse missed runs into one execution
+        "max_instances": 1,         # Prevent concurrent execution of the same job
+        "misfire_grace_time": 300,  # 5-minute grace period for misfired jobs
+    }
+
+    return AsyncIOScheduler(
+        jobstores=jobstores,
+        job_defaults=job_defaults,
+    )
 
 
 async def acquire_scheduler_lock(db) -> bool:
@@ -91,5 +120,11 @@ def setup_jobs(scheduler: AsyncIOScheduler, crawl_fn, cleanup_fn) -> None:
     cleanup_fn : async callable
         Job that purges expired sessions/tokens; runs every 24 hours ± 3600 s.
     """
-    scheduler.add_job(crawl_fn, "interval", hours=1, jitter=300)
-    scheduler.add_job(cleanup_fn, "interval", hours=24, jitter=3600)
+    scheduler.add_job(
+        crawl_fn, "interval", hours=1, jitter=300,
+        id="scheduled_crawl", replace_existing=True,
+    )
+    scheduler.add_job(
+        cleanup_fn, "interval", hours=24, jitter=3600,
+        id="session_cleanup", replace_existing=True,
+    )
