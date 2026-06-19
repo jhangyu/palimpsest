@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Optional
 
 
 Effort = Literal["low", "medium", "high"]
@@ -64,8 +64,8 @@ class ProviderConfig:
 @dataclass(frozen=True)
 class LLMGenerationRequest:
     prompt: str
-    model: str
     max_tokens: int
+    model: Optional[str] = None
     temperature: float | None = None
     thinking: bool = False
     effort: Effort = "low"
@@ -73,8 +73,8 @@ class LLMGenerationRequest:
     def __post_init__(self) -> None:
         if not self.prompt:
             raise ValueError("prompt is required")
-        if not self.model.strip():
-            raise ValueError("model is required")
+        if self.model is not None and not self.model.strip():
+            raise ValueError("model must be non-empty if provided")
         if self.max_tokens <= 0:
             raise ValueError("max_tokens must be positive")
         if self.effort not in ("low", "medium", "high"):

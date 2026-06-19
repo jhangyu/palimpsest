@@ -5,6 +5,7 @@ Scrapling 抓取抽象層。
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
 from typing import Optional
@@ -12,6 +13,9 @@ from typing import Optional
 
 def log_with_time(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+
+
+_SCRAPER_POOL = ThreadPoolExecutor(max_workers=4)
 
 
 # 預設 headers：現代 Chrome UA + 繁體中文 Accept-Language
@@ -58,7 +62,7 @@ async def fetch_page(url: str, method: str = "scrapling", headers: Optional[dict
             log_with_time(f"[Scraper] Fetching (scrapling): {url}")
             loop = asyncio.get_running_loop()
             page = await loop.run_in_executor(
-                None,
+                _SCRAPER_POOL,
                 partial(_fetch_scrapling_sync, url, merged_headers),
             )
             log_with_time(f"[Scraper] Status {page.status}: {url}")

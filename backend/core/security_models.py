@@ -2,7 +2,6 @@
 """Pydantic request/response models for auth, user, and admin endpoints."""
 
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional, Any
 import re
 
 
@@ -16,13 +15,13 @@ class RegisterRequest(BaseModel):
     email: str
     username: str
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 class FirstRunSetupRequest(BaseModel):
     email: str
     username: str
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 class ForgotPasswordRequest(BaseModel):
     email: str
@@ -41,7 +40,7 @@ class ResendVerificationRequest(BaseModel):
 # --- Current User ---
 
 class UpdateProfileRequest(BaseModel):
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 class UpdateEmailRequest(BaseModel):
     new_email: str
@@ -64,30 +63,30 @@ class UserResponse(BaseModel):
     id: int
     email: str
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     status: str
-    email_verified_at: Optional[str] = None
+    email_verified_at: str | None = None
     avatar_source: str = "none"
-    avatar_hash: Optional[str] = None
+    avatar_hash: str | None = None
     created_at: str
     updated_at: str
-    last_login_at: Optional[str] = None
+    last_login_at: str | None = None
     roles: list[str] = []
 
 class UserMeResponse(BaseModel):
     id: int
     email: str
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     status: str
-    email_verified_at: Optional[str] = None
-    pending_email: Optional[str] = None
+    email_verified_at: str | None = None
+    pending_email: str | None = None
     avatar_source: str = "none"
-    avatar_hash: Optional[str] = None
+    avatar_hash: str | None = None
     preferences: dict = {}
     created_at: str
     updated_at: str
-    last_login_at: Optional[str] = None
+    last_login_at: str | None = None
     roles: list[str] = []
 
 
@@ -96,12 +95,12 @@ class UserMeResponse(BaseModel):
 class AdminCreateUserRequest(BaseModel):
     email: str
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     roles: list[str] = ["user"]
 
 class AdminUpdateUserRequest(BaseModel):
-    full_name: Optional[str] = None
-    status: Optional[str] = None  # active / inactive / blocked
+    full_name: str | None = None
+    status: str | None = None  # active / inactive / blocked
 
 class AdminUserListResponse(BaseModel):
     users: list[UserResponse]
@@ -135,16 +134,17 @@ class TokenResponse(BaseModel):
     id: int
     provider: str
     label: str
-    token_mask: Optional[str] = None
-    token_last4: Optional[str] = None
+    token_mask: str | None = None
+    token_last4: str | None = None
     needs_reentry: bool = False
     is_default: bool = False
     created_at: str
     updated_at: str
-    last_used_at: Optional[str] = None
+    last_used_at: str | None = None
 
 
 # --- AI Provider migration ---
+# TODO: Remove after migration to unified AI provider backend is complete.
 
 class LegacyProviderMigrationRequest(BaseModel):
     token_id: int
@@ -154,7 +154,7 @@ class LegacyProviderMigrationRequest(BaseModel):
 class LegacyProviderMigrationItemResponse(BaseModel):
     token_id: int
     status: str
-    provider_id: Optional[int] = None
+    provider_id: int | None = None
 
 
 class LegacyProviderMigrationResponse(BaseModel):

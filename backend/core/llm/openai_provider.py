@@ -5,6 +5,8 @@ from typing import Any
 
 from .base import (
     BaseHTTPProvider,
+    UNKNOWN_CAPABILITIES,
+    _optional_string,
     require_nonempty_text,
     require_model,
     require_thinking_support,
@@ -28,11 +30,6 @@ from .models import (
 )
 
 
-UNKNOWN_CAPABILITIES = ProviderCapabilities(
-    supports_thinking=False,
-    supports_effort=False,
-    thinking_disable_mode="omitted",
-)
 REASONING_MODEL_PATTERN = re.compile(
     r"^(?:"
     r"o(?:1|3|4)(?:-(?:mini|pro|preview|latest|\d{4}-\d{2}-\d{2}))?"
@@ -155,10 +152,6 @@ def _openai_content_text(content: Any) -> str:
         ]
         return "".join(part for part in parts if isinstance(part, str)).strip()
     raise response_shape_error()
-
-
-def _optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) else None
 
 
 def _capabilities_for_model(

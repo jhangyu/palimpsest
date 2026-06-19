@@ -1,7 +1,6 @@
 # backend/core/parser.py
 """Pure parsing layer — Scrapling-based article and listing parsers."""
 from urllib.parse import urljoin
-from typing import Optional, Dict
 from .vue_parser import (
     extract_vue_content,
     extract_date_from_vue_data,
@@ -24,7 +23,7 @@ def normalize_selector(selector: str) -> str:
     return selector
 
 
-def extract_article_info(item, list_rules: dict, base_url: str) -> Optional[Dict[str, str]]:
+def extract_article_info(item, list_rules: dict, base_url: str) -> dict[str, str] | None:
     """
     Extract URL and title from a list item element.
 

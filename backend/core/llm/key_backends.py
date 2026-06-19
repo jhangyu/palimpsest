@@ -124,8 +124,14 @@ class FileKeyEncryptionBackend:
             raise KeyVersionNotFoundError("KEK version is unavailable") from None
         if not stat.S_ISREG(info.st_mode):
             raise KeyBackendConfigurationError("KEK file is not a regular file")
-        if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-            raise KeyBackendConfigurationError("KEK file is writable by group or others")
+        # Reject any group or other read/write access (M-3 fix: previously only
+        # checked write bits, allowing world-readable files such as 0o644).
+        if info.st_mode & (stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH):
+            raise KeyBackendConfigurationError(
+                f"KEK file {path} has overly permissive permissions: "
+                f"{oct(info.st_mode & 0o777)}. "
+                f"Expected 0o600 or stricter. Run: chmod 600 {path}"
+            )
         try:
             payload = path.read_bytes()
         except OSError:

@@ -58,7 +58,7 @@ async def analyze_with_providers(
 
     request = LLMGenerationRequest(
         prompt=prompt,
-        model="placeholder",
+        model=None,
         max_tokens=4096,
         temperature=None,
         thinking=False,

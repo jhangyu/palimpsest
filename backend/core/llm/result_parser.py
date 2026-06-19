@@ -138,7 +138,8 @@ def validate_list_rules(rules: dict) -> dict:
 def validate_content_rules(rules: dict) -> dict:
     """Validate that content rules contain all required string fields.
 
-    Required fields: title, body, date, image, author.
+    Required fields (must not be empty): title, body.
+    Optional fields (empty string is OK): date, image, author.
 
     Args:
         rules: Dict returned by the LLM (after parsing).
@@ -149,14 +150,22 @@ def validate_content_rules(rules: dict) -> dict:
     Raises:
         ValueError: If any required field is missing or not a string.
     """
-    required = ("title", "body", "date", "image", "author")
-    for field in required:
+    required_fields = ("title", "body")
+    optional_fields = ("date", "image", "author")
+    all_fields = required_fields + optional_fields
+
+    # Check all fields are present and are strings
+    for field in all_fields:
         if field not in rules:
             raise ValueError(f"Content rules missing required field: '{field}'")
         if not isinstance(rules[field], str):
             raise ValueError(
                 f"Content rules field '{field}' must be a string, got {type(rules[field]).__name__}"
             )
+
+    # Check that required fields are not empty
+    for field in required_fields:
         if not rules[field].strip():
             raise ValueError(f"Content rules field '{field}' must not be empty")
+
     return rules

@@ -5,6 +5,9 @@ from typing import Any
 
 from .base import (
     BaseHTTPProvider,
+    THINKING_BUDGETS,
+    UNKNOWN_CAPABILITIES,
+    _optional_string,
     require_nonempty_text,
     require_model,
     require_thinking_support,
@@ -28,12 +31,6 @@ from .models import (
 )
 
 
-UNKNOWN_CAPABILITIES = ProviderCapabilities(
-    supports_thinking=False,
-    supports_effort=False,
-    thinking_disable_mode="omitted",
-)
-THINKING_BUDGETS = {"low": 1024, "medium": 4096, "high": 8192}
 MODEL_SUFFIX_PATTERN = r"(?:-(?:latest|\d{8}))?"
 ADAPTIVE_MODEL_PATTERN = re.compile(
     rf"^claude-(?:opus-4-(?:6|7|8)|sonnet-4-6|(?:fable|mythos)-5)"
@@ -154,10 +151,6 @@ class AnthropicProvider(BaseHTTPProvider):
             "anthropic-version": self.anthropic_version,
             "Content-Type": "application/json",
         }
-
-
-def _optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) else None
 
 
 def _capabilities_for_model(

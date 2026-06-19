@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import json
-from typing import AsyncIterator, Callable, Protocol
+from typing import Any, AsyncIterator, Callable, Protocol
 
 import httpx
 
@@ -11,6 +11,7 @@ from .models import (
     LLMGenerationRequest,
     LLMResponse,
     ModelInfo,
+    ProviderCapabilities,
     ProviderConfig,
     ProviderError,
     ProviderHealth,
@@ -18,7 +19,30 @@ from .models import (
 from .network_policy import NetworkPolicyError
 
 
+# ---------------------------------------------------------------------------
+# Shared constants and helpers used by all provider implementations
+# ---------------------------------------------------------------------------
+
+UNKNOWN_CAPABILITIES = ProviderCapabilities(
+    supports_thinking=False,
+    supports_effort=False,
+    thinking_disable_mode="omitted",
+)
+
+THINKING_BUDGETS: dict[str, int] = {"low": 1024, "medium": 4096, "high": 8192}
+
+
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+# ---------------------------------------------------------------------------
+
 ClientFactory = Callable[[ProviderConfig], httpx.AsyncClient]
+
+# Module-level cache for httpx.AsyncClient instances to avoid TLS handshake
+# overhead on every request. Clients are keyed by base_url and timeout_seconds.
+_client_cache: dict[str, httpx.AsyncClient] = {}
 
 
 class LLMProvider(Protocol):
@@ -56,15 +80,23 @@ class BaseHTTPProvider:
     async def _get_client(
         self, config: ProviderConfig
     ) -> AsyncIterator[httpx.AsyncClient]:
+        # Testing escape hatch: if client is pre-injected, use it directly
         if self._client is not None:
             yield self._client
             return
 
         if self._client_factory is None:
             raise RuntimeError("client factory is not configured")
-        client = self._client_factory(config)
-        async with client:
-            yield client
+
+        # Generate cache key from config properties
+        cache_key = f"{config.base_url}:{config.timeout_seconds}"
+
+        # Check if client already exists in cache
+        if cache_key not in _client_cache:
+            _client_cache[cache_key] = self._client_factory(config)
+
+        # Yield cached client without closing it to allow reuse
+        yield _client_cache[cache_key]
 
     async def _request_json(
         self,

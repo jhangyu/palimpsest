@@ -13,16 +13,19 @@
 - Session cleanup
 """
 
+import asyncio
 import secrets
 import hashlib
 import re
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from functools import partial
+from cachetools import TTLCache
 
 from argon2 import PasswordHasher, Type as Argon2Type
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from fastapi import Request, Response, HTTPException, Depends
+from sqlalchemy import text
 
 
 # --- Password Hashing (Argon2id) ---
@@ -36,15 +39,27 @@ _ph = PasswordHasher(
 )
 
 
-def hash_password(password: str) -> str:
-    """Hash a password using Argon2id. Returns PHC string."""
-    return _ph.hash(password)
+async def hash_password(password: str) -> str:
+    """Hash a password using Argon2id. Returns PHC string.
+
+    Runs in a thread pool executor to avoid blocking the async event loop
+    (Argon2id with memory_cost=65536 takes ~150-250ms). (DPERF-001)
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _ph.hash, password)
 
 
-def verify_password(password: str, password_hash: str) -> bool:
-    """Verify a password against an Argon2id hash. Returns True/False."""
+async def verify_password(password: str, password_hash: str) -> bool:
+    """Verify a password against an Argon2id hash. Returns True/False.
+
+    Runs in a thread pool executor to avoid blocking the async event loop
+    (Argon2id with memory_cost=65536 takes ~150-250ms). (DPERF-001)
+    """
+    loop = asyncio.get_running_loop()
     try:
-        return _ph.verify(password_hash, password)
+        return await loop.run_in_executor(
+            None, partial(_ph.verify, password_hash, password)
+        )
     except (VerifyMismatchError, VerificationError, InvalidHashError):
         return False
 
@@ -275,7 +290,7 @@ RATE_LIMIT_CONFIG = {
 
 async def check_rate_limit(
     database, auth_rate_limits, scope: str, subject: str
-) -> tuple[bool, Optional[int]]:
+) -> tuple[bool, int | None]:
     """Check if a rate limit applies.
 
     Args:
@@ -425,6 +440,23 @@ async def cleanup_expired_tokens(database, password_reset_tokens, email_verifica
     return count
 
 
+# --- Session Cache (DPERF-002) ---
+
+_session_cache: TTLCache = TTLCache(maxsize=256, ttl=60)
+
+
+def invalidate_session_cache(token_hash: str | None = None) -> None:
+    """Invalidate cached session entry.
+
+    Call on password change, logout, or session revocation.
+    If token_hash is given, removes only that entry; otherwise clears all.
+    """
+    if token_hash:
+        _session_cache.pop(token_hash, None)
+    else:
+        _session_cache.clear()
+
+
 # --- FastAPI Dependencies ---
 # These are created as factories that take the DB and table objects,
 # because the tables are defined in main.py.
@@ -435,49 +467,49 @@ def make_get_current_user(database, users_table, user_roles_table, roles_table, 
     Returns an async function that resolves the current user from the session cookie.
     Returns None if no valid session.
     """
-    async def get_current_user(request: Request) -> Optional[dict]:
+    async def get_current_user(request: Request) -> dict | None:
         session_token = request.cookies.get("session_token")
         if not session_token:
             return None
 
         token_hash_val = hash_token(session_token)
+
+        # Check TTL cache before hitting DB (DPERF-002).
+        cached = _session_cache.get(token_hash_val)
+        if cached is not None:
+            return cached
+
         now = datetime.now(timezone.utc)
 
-        # Find valid session
-        session_row = await database.fetch_one(
-            auth_sessions.select().where(
-                (auth_sessions.c.token_hash == token_hash_val) &
-                (auth_sessions.c.expires_at > now) &
-                (auth_sessions.c.revoked_at.is_(None))
-            )
+        # Single JOIN replaces 3-4 sequential queries (DPERF-002).
+        # May return multiple rows when a user has multiple roles.
+        rows = await database.fetch_all(
+            text(
+                "SELECT u.*, r.name AS role_name, s.id AS session_id "
+                "FROM auth_sessions s "
+                "JOIN users u ON u.id = s.user_id "
+                "LEFT JOIN user_roles ur ON ur.user_id = u.id "
+                "LEFT JOIN roles r ON r.id = ur.role_id "
+                "WHERE s.token_hash = :hash "
+                "  AND s.expires_at > :now "
+                "  AND s.revoked_at IS NULL "
+                "  AND u.status = 'active'"
+            ),
+            values={"hash": token_hash_val, "now": now},
         )
-        if not session_row:
+
+        if not rows:
             return None
 
-        # Fetch user
-        user = await database.fetch_one(
-            users_table.select().where(users_table.c.id == session_row["user_id"])
-        )
-        if not user:
-            return None
+        # Aggregate: all rows share the same user/session data; collect role names.
+        first_row = dict(rows[0])
+        session_id = first_row.pop("session_id")
+        first_row.pop("role_name", None)
+        role_names = [row["role_name"] for row in rows if row["role_name"] is not None]
 
-        if user["status"] != "active":
-            return None
-
-        # Fetch roles
-        role_rows = await database.fetch_all(
-            user_roles_table.select().where(user_roles_table.c.user_id == user["id"])
-        )
-        role_ids = [r["role_id"] for r in role_rows]
-        role_names = []
-        if role_ids:
-            from sqlalchemy import select
-            all_roles = await database.fetch_all(
-                select(roles_table).where(roles_table.c.id.in_(role_ids))
-            )
-            role_names = [r["name"] for r in all_roles]
-
-        return {**dict(user), "roles": role_names, "_session_id": session_row["id"]}
+        result = {**first_row, "roles": role_names, "_session_id": session_id}
+        _session_cache[token_hash_val] = result
+        return result
 
     return get_current_user
 

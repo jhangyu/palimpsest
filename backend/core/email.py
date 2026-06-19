@@ -6,6 +6,7 @@ Production: placeholder for SMTP integration (not implemented in Phase 1).
 """
 
 import os
+from abc import ABC, abstractmethod
 from datetime import datetime
 
 
@@ -13,17 +14,23 @@ def _log_with_time(msg: str):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 
-class EmailSender:
-    """Base email sender protocol."""
+class EmailSender(ABC):
+    """Base email sender abstraction."""
 
+    @abstractmethod
     async def send_reset_email(self, email: str, reset_link: str) -> None:
-        raise NotImplementedError
+        """Send password reset email."""
+        pass
 
+    @abstractmethod
     async def send_invite_email(self, email: str, invite_link: str) -> None:
-        raise NotImplementedError
+        """Send user invitation email."""
+        pass
 
+    @abstractmethod
     async def send_verification_email(self, email: str, verify_link: str) -> None:
-        raise NotImplementedError
+        """Send email verification email."""
+        pass
 
 
 class DevEmailSender(EmailSender):

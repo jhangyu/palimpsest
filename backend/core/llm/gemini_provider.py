@@ -5,6 +5,9 @@ from typing import Any
 
 from .base import (
     BaseHTTPProvider,
+    THINKING_BUDGETS,
+    UNKNOWN_CAPABILITIES,
+    _optional_string,
     require_nonempty_text,
     require_model,
     require_thinking_support,
@@ -28,12 +31,6 @@ from .models import (
 )
 
 
-UNKNOWN_CAPABILITIES = ProviderCapabilities(
-    supports_thinking=False,
-    supports_effort=False,
-    thinking_disable_mode="omitted",
-)
-THINKING_BUDGETS = {"low": 1024, "medium": 4096, "high": 8192}
 GEMINI_25_MODEL_PATTERN = re.compile(
     r"^gemini-2\.5-(?:pro|flash(?:-lite)?)(?:-(?:preview|latest|\d{2}-\d{4}))?$"
 )
@@ -162,10 +159,6 @@ class GeminiProvider(BaseHTTPProvider):
             "x-goog-api-key": api_key,
             "Content-Type": "application/json",
         }
-
-
-def _optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) else None
 
 
 def _capabilities_for_model(

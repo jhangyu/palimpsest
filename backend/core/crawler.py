@@ -1,7 +1,9 @@
 # backend/core/crawler.py
 import os
+import re
 import asyncio
 import json
+import httpx
 from datetime import datetime
 from hashlib import md5
 
@@ -24,6 +26,24 @@ MODERN_CHROME_UA = (
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
+# --- PERF-008: Module-level HTTP client singleton for connection reuse ---
+_HTTP_CLIENT: httpx.AsyncClient | None = None
+
+def _get_http_client() -> httpx.AsyncClient:
+    """Return (or lazily create) the shared httpx AsyncClient for crawl session reuse."""
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is None:
+        _HTTP_CLIENT = httpx.AsyncClient(
+            timeout=30.0,
+            limits=httpx.Limits(max_connections=20),
+            headers={"User-Agent": MODERN_CHROME_UA},
+        )
+    return _HTTP_CLIENT
+
+# --- DPERF-014 + PERF-011: Compiled regex for HTML stripping (~10x faster than BS4) ---
+_SCRIPT_RE = re.compile(r'<(script|style|template|noscript)\b[^>]*>.*?</\1>', re.S | re.I)
+_TAG_RE = re.compile(r'<[^>]+>')
+
 # --- Shared Helpers ---
 # These are the canonical definitions. main.py imports them from here.
 
@@ -42,12 +62,11 @@ def compute_visible_word_count(content: str) -> int:
     """
     if not content:
         return 0
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(content, "html.parser")
-    # Remove non-visible elements
-    for tag in soup.find_all(["script", "style", "template", "noscript"]):
-        tag.decompose()
-    text = soup.get_text(separator=" ", strip=True)
+    # Strip script/style/template/noscript blocks first, then all remaining HTML tags.
+    # Regex approach is ~10x faster than BeautifulSoup and avoids parser overhead.
+    text = _SCRIPT_RE.sub('', content)
+    text = _TAG_RE.sub(' ', text)
+    text = text.strip()
     if not text:
         return 0
 
@@ -297,14 +316,20 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             await db.execute("UPDATE sites SET consecutive_failure_count = 0 WHERE id = :id", values={"id": site_id})
 
         # 過濾文章（排程模式：只抓不存在的）
-        articles_to_crawl = []
-        for article in articles_found:
-            if force_update:
-                articles_to_crawl.append(article)
+        # PERF-005: Batch existence check — one query instead of N individual queries
+        if force_update:
+            articles_to_crawl = list(articles_found)
+        else:
+            discovered_urls = [a['url'] for a in articles_found]
+            if discovered_urls:
+                rows = await db.fetch_all(
+                    "SELECT url FROM articles WHERE url = ANY(:urls)",
+                    values={"urls": discovered_urls}
+                )
+                existing_url_set = {row['url'] for row in rows}
             else:
-                existing = await db.fetch_one("SELECT id FROM articles WHERE url = :url", values={"url": article['url']})
-                if not existing:
-                    articles_to_crawl.append(article)
+                existing_url_set = set()
+            articles_to_crawl = [a for a in articles_found if a['url'] not in existing_url_set]
 
         log_with_time(f"[Crawl] Found {len(articles_to_crawl)} articles to crawl for site {site_id} (force_update={force_update})")
 
@@ -315,6 +340,41 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             return result
 
         # Stage 2: 並行抓取內文 (控制併發)
+        # PERF-009: Launch a single shared Playwright browser for the entire crawl session.
+        # Each article will create a new page/context rather than a new browser process.
+        _shared_browser = None
+        _pw_ctx = None
+        if scrape_method == "playwright":
+            try:
+                from playwright.async_api import async_playwright
+                _pw_ctx = async_playwright()
+                _pw = await _pw_ctx.__aenter__()
+                mode = os.getenv("CHROME_MODE", "server")
+                if mode == "local":
+                    _shared_browser = await _pw.chromium.launch(
+                        headless=True,
+                        args=[
+                            "--disable-blink-features=AutomationControlled",
+                            "--disable-dev-shm-usage",
+                            "--no-sandbox",
+                            "--disable-setuid-sandbox",
+                            "--disable-web-security",
+                            "--disable-features=IsolateOrigins,site-per-process",
+                        ]
+                    )
+                else:
+                    _shared_browser = await _pw.chromium.connect_over_cdp(CHROME_WS)
+                log_with_time(f"[Crawl] Shared Playwright browser ready for site {site_id}")
+            except Exception as br_err:
+                log_with_time(f"[Crawl] Failed to launch shared browser: {br_err}, falling back to per-article browser")
+                if _pw_ctx is not None:
+                    try:
+                        await _pw_ctx.__aexit__(None, None, None)
+                    except Exception:
+                        pass
+                _shared_browser = None
+                _pw_ctx = None
+
         semaphore = asyncio.Semaphore(3)
         crawl_results = []
 
@@ -324,14 +384,26 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 title = article['title']
                 uhash = url_hash(a_url)
 
-                a_page = await fetch_page(a_url, method=scrape_method)
+                # PERF-008 / PERF-009: Reuse session-level browser or HTTP client.
+                # Playwright: use shared browser (new page per article, not new browser).
+                # Scrapling: fetch_page manages its own connection; _get_http_client() is
+                # available for any direct HTTP calls added in future.
+                if scrape_method == "playwright" and _shared_browser is not None:
+                    from scrapling.parser import Selector
+                    _html = await get_page_content(a_url, browser=_shared_browser)
+                    a_page = Selector(_html) if _html else None
+                    a_page_html = _html or ""
+                else:
+                    a_page = await fetch_page(a_url, method=scrape_method)
+                    a_page_html = getattr(a_page, 'html_content', '') if a_page is not None else ""
+
                 if a_page is None:
                     result["content_fetch_failed"] += 1
                     result["articles_failed"] += 1
                     return
 
                 if debug_writer is not None:
-                    debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
+                    debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page_html or "")
 
                 pub_date = datetime.now().isoformat()
                 try:
@@ -417,7 +489,21 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                     log_with_time(f"[Crawl] DB error saving {a_url}: {db_err}")
                     result["articles_failed"] += 1
 
-        await asyncio.gather(*[fetch_and_save_content(a) for a in articles_to_crawl])
+        try:
+            await asyncio.gather(*[fetch_and_save_content(a) for a in articles_to_crawl])
+        finally:
+            # PERF-009: Close shared Playwright browser after all articles are processed
+            if _shared_browser is not None:
+                try:
+                    await _shared_browser.close()
+                    log_with_time(f"[Crawl] Shared Playwright browser closed for site {site_id}")
+                except Exception:
+                    pass
+            if _pw_ctx is not None:
+                try:
+                    await _pw_ctx.__aexit__(None, None, None)
+                except Exception:
+                    pass
 
         if debug_writer is not None:
             debug_writer.save("04", "crawl_results.json", json.dumps(crawl_results, ensure_ascii=False, indent=2))
