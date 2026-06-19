@@ -1,4 +1,6 @@
 /* global fetch */
+import { getCached, setCache, invalidateCache } from '@/scripts/cache'
+
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8088' : ''
 
 // --- Auth Types ---
@@ -342,11 +344,15 @@ export const api = {
   // --- Site Methods ---
 
   getSites: async (): Promise<Site[]> => {
+    const cached = getCached<Site[]>('sites')
+    if (cached) return cached
     const res = await fetch(`${API_BASE}/sites/`, {
       credentials: 'include'
     })
     await throwOnError(res)
-    return res.json()
+    const data: Site[] = await res.json()
+    setCache('sites', data)
+    return data
   },
 
   getSite: async (id: number): Promise<Site> => {
@@ -364,6 +370,7 @@ export const api = {
       credentials: 'include'
     })
     await throwOnError(res)
+    invalidateCache('sites')
   },
 
   updateSite: async (id: number, payload: Partial<Site>): Promise<void> => {
@@ -374,6 +381,7 @@ export const api = {
       body: JSON.stringify(payload)
     })
     await throwOnError(res)
+    invalidateCache('sites')
   },
 
   duplicateSite: async (id: number): Promise<void> => {
@@ -383,6 +391,7 @@ export const api = {
       credentials: 'include'
     })
     await throwOnError(res)
+    invalidateCache('sites')
   },
 
   triggerCrawl: async (id: number, debug = false): Promise<void> => {
@@ -440,6 +449,7 @@ export const api = {
       body: JSON.stringify(payload)
     })
     await throwOnError(res)
+    invalidateCache('sites')
     return res.json()
   },
 

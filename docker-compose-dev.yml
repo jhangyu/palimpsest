@@ -1,4 +1,20 @@
+# =============================================================================
+# Palimpsest — Local Development Docker Compose
+# =============================================================================
+# For local development only. Uses ./.dev-secrets for the KEK keyring.
+#
+# Before first run:
+#   1. Adjust volume paths below to match your environment
+#   2. Generate a dev KEK:
+#        mkdir -p ./.dev-secrets
+#        python -c "import os; open('./.dev-secrets/v1.key','wb').write(os.urandom(32))"
+#   3. Set LLM_FALLBACK_API_KEY and other secrets (or use provider profiles)
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
   db:
     image: postgres:15-alpine
     container_name: palimpsest-db
@@ -7,7 +23,8 @@ services:
       POSTGRES_PASSWORD: palimpsest
       POSTGRES_DB: palimpsest
     volumes:
-      - /Users/jhangyu/project/palimpsest/data/postgres:/var/lib/postgresql/data
+      # Adjust base path to your environment
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U palimpsest -d palimpsest"]
       interval: 10s
@@ -16,6 +33,9 @@ services:
     networks:
       - palimpsest-network
 
+  # ---------------------------------------------------------------------------
+  # Headless Chrome (browserless)
+  # ---------------------------------------------------------------------------
   chrome:
     image: browserless/chrome:latest
     container_name: palimpsest-chrome
@@ -27,12 +47,17 @@ services:
     networks:
       - palimpsest-network
 
+  # ---------------------------------------------------------------------------
+  # Palimpsest Application
+  # ---------------------------------------------------------------------------
   app:
-    image: jhangyu/palimpsest:0.01
+    image: jhangyu/palimpsest:0.02
     container_name: palimpsest-app
     environment:
+      # --- Database ---
       DATABASE_URL: postgresql://palimpsest:palimpsest@db:5432/palimpsest
-      MINIMAX_API_KEY: ""
+
+      # --- Chrome / Browserless ---
       CHROME_MODE: server
       CHROME_WS_ENDPOINT: ws://chrome:3000
       BROWSER_WS_URL: ws://chrome:3000
@@ -40,12 +65,56 @@ services:
       POSTGRES_PORT: 5432
       CHROME_HOST: chrome
       CHROME_PORT: 3000
+
+      # --- App ---
       BACKEND_PORT: 8088
       PALIMPSEST_DATA_DIR: /app/data
       PALIMPSEST_LOG_DIR: /app/log
+
+      # --- LLM Provider Profiles (envelope encryption) ---
+      LLM_KEK_PATH: /run/secrets/llm_kek
+      LLM_KEK_VERSION: v1
+      LLM_PROVIDER_PROFILES_ENABLED: "true"
+
+      # --- LLM Environment Fallback ---
+      # Used when no user provider is available or profiles are disabled
+      LLM_FALLBACK_ENABLED: "true"
+      LLM_FALLBACK_PROTOCOL: openai
+      # LLM_FALLBACK_BASE_URL: https://api.openai.com/v1
+      # LLM_FALLBACK_API_KEY: sk-your-key-here
+      # LLM_FALLBACK_MODEL: gpt-4o
+      # LLM_FALLBACK_TEMPERATURE: "0.1"
+      LLM_FALLBACK_MAX_TOKENS: "4096"
+      LLM_FALLBACK_THINKING: "false"
+      LLM_FALLBACK_EFFORT: low
+
+      # --- Auth & Security ---
+      # Comma-separated CORS origins (leave empty to allow all — dev only)
+      ALLOWED_ORIGINS: "http://localhost:5174,http://localhost:8088"
+      # Frontend origin for constructing reset/invite/verify links
+      FRONTEND_ORIGIN: "http://localhost:5174"
+      # Set to true in production (requires HTTPS)
+      SESSION_COOKIE_SECURE: "false"
+      # Session TTL in hours
+      SESSION_TTL_HOURS: "24"
+      # Allow public user registration (admin creates users when false)
+      AUTH_ALLOW_PUBLIC_REGISTRATION: "false"
+      # Development: expose reset/invite links in logs
+      AUTH_DEV_EXPOSE_RESET_LINK: "true"
+
+      # --- SMTP (optional — required in production for reset/invite emails) ---
+      # SMTP_HOST: smtp.example.com
+      # SMTP_PORT: "587"
+      # SMTP_USERNAME: ""
+      # SMTP_PASSWORD: ""
+      # SMTP_FROM_EMAIL: noreply@example.com
+
     volumes:
-      - /Users/jhangyu/project/palimpsest/data:/app/data
-      - /Users/jhangyu/project/palimpsest/log:/app/log
+      # Adjust base path to your environment
+      - ./data:/app/data
+      - ./log:/app/log
+      # Dev KEK keyring — generate before first run (see top of file)
+      - ./.dev-secrets:/run/secrets/llm_kek:ro
     ports:
       - "8088:8088"
     depends_on:
@@ -64,3 +133,4 @@ services:
 
 networks:
   palimpsest-network:
+    driver: bridge

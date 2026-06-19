@@ -40,6 +40,19 @@ if [[ "${CHROME_MODE:-server}" != "local" && "${WAIT_FOR_CHROME:-true}" == "true
   wait_for_tcp "${CHROME_HOST:-chrome}" "${CHROME_PORT:-3000}" "Browserless Chrome"
 fi
 
+# Validate KEK keyring when provider profiles are enabled
+if [[ "${LLM_PROVIDER_PROFILES_ENABLED:-true}" == "true" ]]; then
+  KEK_PATH="${LLM_KEK_PATH:-/run/secrets/llm_kek}"
+  KEK_VERSION="${LLM_KEK_VERSION:-v1}"
+  if [[ ! -d "${KEK_PATH}" ]]; then
+    echo "WARNING: KEK keyring directory not found at ${KEK_PATH}. AI provider features may be unavailable."
+  elif [[ ! -f "${KEK_PATH}/${KEK_VERSION}.key" ]]; then
+    echo "WARNING: KEK key file ${KEK_VERSION}.key not found in ${KEK_PATH}."
+  else
+    echo "KEK keyring verified: ${KEK_PATH}/${KEK_VERSION}.key"
+  fi
+fi
+
 echo "Starting backend on ${APP_HOST}:${BACKEND_PORT}..."
 cd /app/backend
 python -m uvicorn main:app --host "${APP_HOST}" --port "${BACKEND_PORT}" &

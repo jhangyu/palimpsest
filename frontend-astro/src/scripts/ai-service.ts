@@ -14,6 +14,7 @@
  */
 
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
+import { getCached, setCache, invalidateCache } from '@/scripts/cache'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -47,8 +48,13 @@ export interface AIProvider {
 
 interface RuntimeStatus {
   chain: { id: number; label: string; protocol: string }[]
-  environment_fallback: boolean
-  environment_provider?: string
+  environment_fallback: {
+    enabled: boolean
+    protocol: string
+    model: string
+    label: string
+  } | null
+  profiles_enabled: boolean
   [key: string]: unknown
 }
 
@@ -118,10 +124,14 @@ async function throwOnErrorWithCode(res: Response): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function listProviders(): Promise<AIProvider[]> {
+  const cached = getCached<AIProvider[]>('providers')
+  if (cached) return cached
   const res = await fetch(PROVIDERS_BASE, { credentials: 'include' })
   await throwOnError(res)
   const data = await res.json()
-  return Array.isArray(data) ? data : (data.providers ?? [])
+  const providers: AIProvider[] = Array.isArray(data) ? data : (data.providers ?? [])
+  setCache('providers', providers)
+  return providers
 }
 
 async function getRuntimeStatus(): Promise<RuntimeStatus> {
@@ -148,6 +158,7 @@ async function createProvider(payload: {
     body: JSON.stringify(payload)
   })
   await throwOnErrorWithCode(res)
+  invalidateCache('providers')
   return res.json()
 }
 
@@ -173,6 +184,7 @@ async function updateProvider(
     body: JSON.stringify(payload)
   })
   await throwOnErrorWithCode(res)
+  invalidateCache('providers')
   return res.json()
 }
 
@@ -184,9 +196,10 @@ async function deleteProvider(id: number, revision: number): Promise<void> {
     body: JSON.stringify({ revision })
   })
   await throwOnErrorWithCode(res)
+  invalidateCache('providers')
 }
 
-async function testProvider(id: number): Promise<{ success: boolean; message: string }> {
+async function testProvider(id: number): Promise<{ provider_id: number; health_status: string; last_tested_at: string | null; last_failure_code: string | null }> {
   const res = await fetch(`${PROVIDERS_BASE}/${id}/test`, {
     method: 'POST',
     headers: stateChangingHeaders(),
@@ -218,6 +231,7 @@ async function setProviderEnabled(id: number, enabled: boolean): Promise<AIProvi
     body: JSON.stringify({ enabled })
   })
   await throwOnError(res)
+  invalidateCache('providers')
   return res.json()
 }
 
@@ -232,6 +246,7 @@ async function reorderProviders(
     body: JSON.stringify({ ordered_ids: orderedIds, revision })
   })
   await throwOnErrorWithCode(res)
+  invalidateCache('providers')
   return res.json()
 }
 
@@ -931,9 +946,9 @@ async function loadRuntimeStatus(): Promise<void> {
     }
 
     if (envFallbackContainer) {
-      if (status.environment_fallback) {
-        const providerName = status.environment_provider
-          ? escapeHtml(String(status.environment_provider))
+      if (status.environment_fallback?.enabled) {
+        const providerName = status.environment_fallback?.label
+          ? escapeHtml(status.environment_fallback.label)
           : 'environment variable'
         envFallbackContainer.innerHTML = `
           <div class="alert alert-info mb-0 py-2 px-3 d-flex align-items-center" role="alert">
@@ -1024,10 +1039,11 @@ export async function initAIServicePage(): Promise<void> {
       target.classList.add('disabled')
       try {
         const result = await testProvider(provider.id)
-        if (result.success) {
-          showToast(`${provider.label}: ${result.message}`, 'success')
+        if (result.health_status === 'ok') {
+          showToast(`${provider.label}: Connection successful`, 'success')
         } else {
-          showToast(`${provider.label}: ${result.message}`, 'danger')
+          const reason = result.last_failure_code || 'Unknown error'
+          showToast(`${provider.label}: ${reason}`, 'danger')
         }
       } catch (err) {
         showToast(err instanceof Error ? err.message : 'Test failed.', 'danger')

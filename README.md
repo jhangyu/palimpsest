@@ -1,115 +1,405 @@
 # palimpsest
 
-palimpsest is an AI-assisted RSS feed generator. It crawls dynamic web pages, asks an LLM to infer list/content selectors, extracts article content, stores results, and serves standard RSS feeds.
-
-The current UI is the Astro frontend.
+AI-assisted RSS feed generator. Provide a target website URL, and the system automatically crawls pages, uses AI to infer CSS selectors for list and article content, extracts structured articles, and serves standard RSS feeds.
 
 ## Features
 
-- FastAPI backend for feed management, analysis, crawling, and RSS output.
-- Playwright crawler with Browserless Chrome support for JavaScript-rendered pages.
-- MiniMax-powered structure analysis for list pages and article pages.
-- PostgreSQL in Docker, with local host bind mount support.
-- Astro + React Islands dashboard served by FastAPI in Docker.
-- Optional debug output for crawler and AI analysis workflows.
+### Feed Engine
+- Multi-method crawling: Playwright (headless Chromium) via Browserless Chrome or local browser, with browser reuse and `asyncio.gather` + `Semaphore(3)` parallel fetching
+- AI-powered selector inference: list page and article page structure analysis using configurable multi-provider LLMs
+- Smart HTML extraction: Vue.js template detection, gallery decoding, HTML sanitization with configurable tag whitelists
+- Self-healing: automatic re-analysis when a feed fails consecutively
+- Background scheduler: APScheduler with per-site refresh intervals and random jitter to prevent thundering herd
+- Debug output system: per-stage intermediate artifacts for crawler and AI analysis troubleshooting
+
+### AI Provider Layer
+- Multi-provider abstraction: OpenAI, Anthropic, Gemini, and custom OpenAI-compatible providers
+- Ordered fallback engine: configurable per-user priority chain with shared total deadline, progressive failure classification
+- Per-user credential vault: KEK/DEK envelope encryption, API keys never stored in plaintext
+- AI Service management UI: full CRUD, drag-to-reorder, enable/disable toggle, model discovery, connection test, API key reveal (password-gated)
+- SSRF protection: DNS resolution validation with exact allowlist for private/LAN services
+- Environment fallback: configurable `LLM_FALLBACK_*` variables when no user provider is configured
+
+### Authentication & RBAC
+- Argon2id password hashing with automatic rehash on login
+- Server-side HttpOnly sessions with configurable TTL
+- CSRF double-submit cookie pattern on all state-changing endpoints
+- Role-based access control (admin / user) with first-run admin setup
+- Admin user management: invite, update, block, role assignment
+- Email verification flow, password reset with time-limited tokens
+- User profile management: full name, username, email, avatar upload (JPEG/PNG/WebP, max 512 KB), Gravatar support
+- Rate limiting on auth endpoints (login, forgot-password, reset-password, resend-verification)
+
+### Dashboard (Astro Frontend)
+- Astro 5 + asteroadmin + gentelella v4 admin layout
+- Vanilla TypeScript business logic (not React components)
+- SCSS pipeline: sass-embedded + PostCSS + LightningCSS
+- ECharts integration with dark mode support, stacked bar charts
+- TanStack Table for sortable/paginated data tables
+- PWA-ready, dark mode (light default) with FOUC prevention
+- 129 Astro pages, 0 lint errors
+
+### Analytics
+- Real analytics data: `rss_query_events` and `crawl_attempts` tracking
+- CJK-aware shared word count helper (English tokens + CJK character count)
+- Daily/weekly bucketing in Asia/Taipei timezone
+- Overview API: summary metrics, article growth, feed distribution, traffic charts, latest articles table
+- Article list page with time filtering (today/week/month/all), search, and pagination
+
+### Database Management (Admin Only)
+- Database status dashboard: schema version, table row counts, pending migrations
+- Export: JSON or ZIP download of configurable table sets
+- Import: file upload with conflict preview and skip/overwrite modes
+- Idempotent migration runner with version tracking table
+
+### Operations
+- PostgreSQL-only backend (no SQLite support)
+- Docker Compose deployment: PostgreSQL 15 + Browserless Chrome + App
+- Health check endpoints for container orchestration
+- KEK (Key Encryption Key) stored outside the database via Docker Secrets or dev key files
 
 ## Repository Layout
 
 ```text
 .
-├── backend/                 # FastAPI API, crawler, AI analysis, RSS generation
-├── frontend-astro/          # Primary Astro dashboard
-├── tests/                   # Ad hoc/manual test scripts
-├── Dockerfile               # App image: backend + built Astro frontend
-├── docker-compose.yml       # App + PostgreSQL + Browserless Chrome
-├── entrypoint.sh            # Container startup script
-├── restart.sh               # Local non-Docker startup helper
-├── .env.example             # Environment variable template
-└── README.md
+├── backend/                          # FastAPI application
+│   ├── main.py                       # App entry point, 57+ API routes, lifespan, scheduler
+│   └── core/                         # Business logic modules
+│       ├── ai.py                     # AI structure analysis, template extraction, gallery decoding
+│       ├── ai_providers.py           # Provider CRUD repository/service layer
+│       ├── ai_provider_migrations.py # AI provider schema and migration helpers
+│       ├── ai_tokens.py              # Legacy AI token vault (password-based encryption)
+│       ├── auth.py                   # Argon2id hashing, sessions, CSRF, rate limits, dependencies
+│       ├── crawler.py                # Playwright crawler, parallel fetching, word count helper
+│       ├── crawl_utils.py            # Shared crawl utilities (normalize, extract, parse)
+│       ├── crypto.py                 # AES-GCM authenticated encryption, token mask/reveal
+│       ├── debug.py                  # Debug writer with per-stage artifact output
+│       ├── email.py                  # Email sender (SMTP or dev-mode log output)
+│       ├── ownership.py              # Feed ownership authorization helpers
+│       ├── sanitizer.py              # HTML sanitizer with configurable tag whitelists
+│       ├── security_models.py        # Pydantic models for all auth/user/admin/token schemas
+│       ├── vue_parser.py             # Vue.js template JSON extraction
+│       └── llm/                      # LLM abstraction layer
+│           ├── base.py               # LLMProvider Protocol, BaseHTTPProvider
+│           ├── service.py            # Resolver + ordered fallback engine
+│           ├── result_parser.py      # Prompt builder and result parser
+│           ├── models.py             # Shared LLM data models
+│           ├── endpoints.py          # Endpoint URL normalization per protocol
+│           ├── registry.py           # Protocol-to-adapter registry
+│           ├── key_backends.py       # Versioned file/Docker Secret KEK backend
+│           ├── vault.py              # DEK envelope encryption, KEK rotation primitives
+│           ├── network_policy.py     # SSRF validation and verified-IP allowlist
+│           ├── network_transport.py  # Verified-IP HTTP transport with DNS pinning
+│           ├── openai_provider.py    # OpenAI-compatible adapter
+│           ├── anthropic_provider.py # Anthropic-compatible adapter
+│           └── gemini_provider.py    # Gemini-compatible adapter
+├── frontend-astro/                   # Astro dashboard
+│   ├── config/astro.config.mjs       # Astro configuration (Vite proxy, allowedHosts)
+│   ├── tools/dev.mjs                 # Dev server driver (Astro + CSS watch)
+│   ├── tools/css.mjs                 # CSS pipeline (SCSS -> PostCSS -> LightningCSS)
+│   ├── src/html/pages/               # Astro page templates (129 pages)
+│   ├── src/html/layouts/             # Layout components (admin layout, sidebar, head)
+│   ├── src/scripts/                  # TypeScript business logic (17 modules)
+│   ├── src/js/                       # Rollup IIFE bundles (dark mode, sidebar)
+│   ├── src/scss/                     # SCSS sources (gentelella + custom)
+│   └── tests/smoke.spec.ts           # Playwright E2E smoke test
+├── tests/                            # Backend test suite (270 passed, 79 skipped)
+│   ├── conftest.py                   # Pytest fixtures (test DB, auth fixtures)
+│   ├── test_auth.py                  # Auth unit/integration tests (31)
+│   ├── test_ai_tokens.py             # AI token vault tests (14)
+│   ├── test_csrf_cors.py             # CSRF/CORS tests (9)
+│   ├── test_auth_rate_limits.py      # Rate limit tests (7)
+│   ├── test_user_profile.py          # User profile tests (14)
+│   ├── test_user_preferences.py      # Preferences tests (4)
+│   ├── test_llm_*.py                 # LLM adapter, vault, fallback, registry tests
+│   └── test_*_migration*.py          # Migration and site ownership tests
+├── docs/                             # AI development notes and task logs
+├── Dockerfile                        # Multi-stage: frontend build + Python runtime
+├── docker-compose.yml                # Production deployment (app image jhangyu/palimpsest:0.02)
+├── docker-compose-dev.yml            # Development compose variant
+├── entrypoint.sh                     # Container startup: wait for DB/Chrome, validate KEK, launch uvicorn
+├── restart.sh                        # Local dev startup helper (backend + Astro dev server)
+└── .env.example                      # Environment variable template
 ```
 
-Ignored local-only directories:
+Ignored directories (not in version control):
 
-- `data/`: PostgreSQL bind mount.
-- `log/`: runtime logs, debug output, historical local outputs.
-- `node_modules/`, `.venv/`, `venv/`, `.astro/`, `dist/`: generated dependencies/build output.
-- `docs/` and non-README Markdown files are local AI development notes and are intentionally not published on `main`.
+- `data/`: PostgreSQL bind mount and app runtime data
+- `log/`: runtime logs and debug output
+- `.dev-secrets/`: local KEK keyring for development
+- `node_modules/`, `.venv/`, `venv/`, `.astro/`, `dist/`: generated dependencies and build output
 
 ## Requirements
 
-For Docker usage:
+### Docker Deployment
 
-- Docker
-- Docker Compose v2
-- MiniMax API key
+- Docker and Docker Compose v2
+- A KEK keyring for AI provider encryption (see Quick Start)
+- Optionally, LLM provider API keys for AI features
 
-For local development without Docker:
+### Local Development
 
 - Python 3.11+
 - Node.js 20+
 - npm
-- Playwright browser dependencies
-- PostgreSQL
+- Playwright browser dependencies (`playwright install chromium`)
+- PostgreSQL 15+
 
 ## Quick Start With Docker
 
-Published app image:
+Pull the published image:
 
 ```bash
-docker pull jhangyu/palimpsest:0.01
+docker pull jhangyu/palimpsest:0.02
 ```
 
-1. Set the MiniMax API key in `docker-compose.yml` or in the Portainer stack editor:
+### 1. Prepare the KEK keyring
+
+AI provider credentials are encrypted with a KEK (Key Encryption Key) stored outside the database. Create a keyring directory with a versioned key file:
+
+```bash
+mkdir -p secrets/llm_kek
+# Generate a 32-byte random key (hex-encoded)
+openssl rand -hex 32 > secrets/llm_kek/v1.key
+# Secure the file
+chmod 600 secrets/llm_kek/v1.key
+```
+
+### 2. Configure environment
+
+Copy `.env.example` to `.env` and adjust as needed. At minimum, set the LLM fallback if you want AI analysis without configuring per-user providers:
 
 ```yaml
-MINIMAX_API_KEY: "your_api_key_here"
+# docker-compose.yml environment section
+LLM_FALLBACK_ENABLED: "true"
+LLM_FALLBACK_PROTOCOL: openai
+LLM_FALLBACK_BASE_URL: https://api.openai.com/v1
+LLM_FALLBACK_API_KEY: sk-your-key-here
+LLM_FALLBACK_MODEL: gpt-4o-mini
 ```
 
-2. Start the stack:
+Or configure providers per-user through the AI Service page after first login.
+
+### 3. Start the stack
 
 ```bash
-docker compose up --build
+docker compose up -d
 ```
 
-3. Open the services:
+### 4. First-run setup
 
-- App dashboard and Backend API: http://localhost:8088
-- Browserless Chrome: http://localhost:3000
+Open http://localhost:8088 and create the admin account via the first-run setup form. This endpoint is only available when the users table is empty.
 
-PostgreSQL data is mounted to:
+### 5. Services
 
-```text
-/Users/jhangyu/project/palimpsest/data/postgres
-```
+| Service | Port | URL |
+| --- | --- | --- |
+| App dashboard + API | 8088 | http://localhost:8088 |
+| Browserless Chrome | 3000 | http://localhost:3000 |
 
-The app container also mounts the project data directory:
+PostgreSQL data is mounted from the host path configured in `docker-compose.yml`. The app container also bind-mounts `data/` and `log/` directories. Update host-side paths in `docker-compose.yml` if the project is moved.
 
-```text
-/Users/jhangyu/project/palimpsest/data -> /app/data
-```
+## Environment Variables
 
-This directory is intentionally ignored by Git.
+### Database
 
-The compose file uses explicit defaults instead of `${...}` interpolation and absolute host bind mounts so it can be imported directly into Portainer. If the project is moved, update the host-side paths in `docker-compose.yml`.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `POSTGRES_USER` | `palimpsest` | PostgreSQL user |
+| `POSTGRES_PASSWORD` | `palimpsest` | PostgreSQL password |
+| `POSTGRES_DB` | `palimpsest` | PostgreSQL database name |
+| `DATABASE_URL` | auto | Connection string (auto-composed in Docker) |
 
-## Port Overrides
+### App
 
-If local services already use the default ports, override them at startup:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BACKEND_PORT` | `8088` | App/API host port |
+| `ASTRO_PORT` | `5174` | Astro dev server port (local dev only) |
+| `CHROME_PORT` | `3000` | Browserless Chrome host port |
+| `PALIMPSEST_LOG_DIR` | `/app/log` | Log and debug artifact directory |
+| `PALIMPSEST_DATA_DIR` | `/app/data` | Application data directory |
+| `MAX_CONCURRENT_SESSIONS` | `10` | Browserless Chrome concurrency limit |
+| `CHROME_CONNECTION_TIMEOUT` | `300000` | Browserless connection timeout (ms) |
+| `CHROME_MODE` | `server` | `server` for Browserless, `local` for local Chromium |
+| `CHROME_WS_ENDPOINT` | `ws://chrome:3000` | Browserless WebSocket endpoint |
+| `BROWSER_WS_URL` | `ws://chrome:3000` | Browserless WebSocket URL |
 
-```bash
-# Edit docker-compose.yml:
-# "8088:8088" -> "18088:8088"
-# "3000:3000" -> "13000:3000"
-docker compose up --build
-```
+### LLM Provider Profiles
 
-Then open:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LLM_PROVIDER_PROFILES_ENABLED` | `true` | Enable per-user AI provider profiles with envelope encryption |
+| `LLM_KEK_PATH` | `/run/secrets/llm_kek` | Path to KEK keyring directory |
+| `LLM_KEK_VERSION` | `v1` | Active KEK version (matches filename `{version}.key`) |
 
-- App dashboard and Backend API: http://localhost:18088
+### LLM Environment Fallback
+
+Used when no user provider is configured or profiles are disabled.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LLM_FALLBACK_ENABLED` | `true` | Enable environment-level LLM fallback |
+| `LLM_FALLBACK_PROTOCOL` | `openai` | Protocol: `openai`, `anthropic`, `gemini`, or `custom` |
+| `LLM_FALLBACK_BASE_URL` | (empty) | Provider base URL |
+| `LLM_FALLBACK_API_KEY` | (empty) | Provider API key |
+| `LLM_FALLBACK_MODEL` | (empty) | Model name |
+| `LLM_FALLBACK_TEMPERATURE` | (empty) | Generation temperature |
+| `LLM_FALLBACK_MAX_TOKENS` | `4096` | Max output tokens |
+| `LLM_FALLBACK_THINKING` | `false` | Enable thinking/reasoning |
+| `LLM_FALLBACK_EFFORT` | `low` | Reasoning effort level |
+
+### Legacy
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MINIMAX_API_KEY` | (empty) | Deprecated; use `LLM_FALLBACK_*` instead. Will be removed in next major release. |
+
+### Auth & Security
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ALLOWED_ORIGINS` | auto | Comma-separated CORS origins; leave empty for dev defaults |
+| `FRONTEND_ORIGIN` | `http://localhost:5174` | Frontend origin for constructing reset/invite/verify links |
+| `SESSION_COOKIE_SECURE` | `false` | Set to `true` in production (requires HTTPS) |
+| `SESSION_TTL_HOURS` | `24` | Session time-to-live in hours |
+| `AUTH_ALLOW_PUBLIC_REGISTRATION` | `false` | Allow public user registration |
+| `AUTH_DEV_EXPOSE_RESET_LINK` | `true` | Dev mode: log reset/invite/verify links (NEVER enable in production) |
+| `AUTH_DEV_RESET_LINK_FILE` | (empty) | Optional file path to write dev reset/invite links |
+
+### SMTP
+
+Required in production for password reset and invitation emails.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SMTP_HOST` | (empty) | SMTP server host |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USERNAME` | (empty) | SMTP authentication username |
+| `SMTP_PASSWORD` | (empty) | SMTP authentication password |
+| `SMTP_FROM_EMAIL` | `noreply@example.com` | From address for outgoing emails |
+
+## API Overview
+
+### Auth Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/auth/first-run-setup` | None | Create first admin (only when users table is empty) |
+| `POST` | `/auth/login` | None | Authenticate and create session |
+| `POST` | `/auth/logout` | User | Revoke current session |
+| `GET` | `/auth/me` | None | Get current user or 401 |
+| `POST` | `/auth/register` | None | Public registration (if enabled) |
+| `POST` | `/auth/forgot-password` | None | Request password reset link |
+| `POST` | `/auth/reset-password` | None | Reset password with token |
+| `POST` | `/auth/verify-email` | None | Verify pending email change |
+| `POST` | `/auth/resend-verification` | User | Resend verification email |
+
+### User Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/users/me` | User | Get current user profile |
+| `PUT` | `/users/me` | User | Update full name |
+| `PUT` | `/users/me/email` | User | Set pending email (sends verification) |
+| `PUT` | `/users/me/username` | User | Change username |
+| `PUT` | `/users/me/password` | User | Change password (re-encrypts AI tokens, rotates sessions) |
+| `PUT` | `/users/me/preferences` | User | Update preferences JSON |
+| `PUT` | `/users/me/avatar` | User | Upload avatar (max 512 KB, JPEG/PNG/WebP) |
+| `DELETE` | `/users/me/avatar` | User | Delete avatar |
+| `GET` | `/users/me/avatar` | User | Serve avatar or redirect to Gravatar |
+| `PUT` | `/users/me/avatar-source` | User | Set avatar source (`none` / `gravatar`) |
+
+### Admin Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/admin/users` | Admin | List users with pagination |
+| `POST` | `/admin/users` | Admin | Create user (sends invite link) |
+| `GET` | `/admin/users/{id}` | Admin | Get user details |
+| `PUT` | `/admin/users/{id}` | Admin | Update user (full_name, status) |
+| `DELETE` | `/admin/users/{id}` | Admin | Soft-block user |
+| `PUT` | `/admin/users/{id}/roles` | Admin | Assign roles |
+| `GET` | `/admin/roles` | Admin | List roles with user counts |
+| `PUT` | `/admin/sites/{id}/owner` | Admin | Transfer feed ownership |
+
+### Feed / Crawl Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/analyze/list?url=...` | User | AI analysis of list page structure |
+| `POST` | `/analyze/content?url=...` | User | AI analysis of article page structure |
+| `POST` | `/crawl/preview` | User | Dry-run preview of crawl rules |
+| `GET` | `/sites/` | User | List all sites |
+| `POST` | `/sites/` | User | Create site and start background crawl |
+| `GET` | `/sites/{id}` | User | Get site details |
+| `PUT` | `/sites/{id}` | User | Update site (owner or admin) |
+| `DELETE` | `/sites/{id}` | User | Delete site and its articles (owner or admin) |
+| `POST` | `/sites/{id}/duplicate` | User | Duplicate site configuration |
+| `POST` | `/crawl/{id}` | User | Trigger manual crawl |
+
+### RSS Endpoint
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/rss/{identifier}?limit=10` | None | RSS feed (identifier = site name or ID) |
+
+### Analytics Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/analytics/overview?days=30` | User | Aggregated analytics (summary, charts, latest articles) |
+| `GET` | `/articles/list?filter=all&page=1` | User | Paginated article list with time filtering and search |
+
+### Settings Endpoints
+
+#### AI Provider Management
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/settings/ai-providers` | User | List user's AI providers |
+| `POST` | `/settings/ai-providers` | User | Create AI provider |
+| `PUT` | `/settings/ai-providers/{id}` | User | Update provider (revision-protected) |
+| `DELETE` | `/settings/ai-providers/{id}` | User | Delete provider |
+| `PUT` | `/settings/ai-providers/order` | User | Reorder provider priority chain |
+| `PUT` | `/settings/ai-providers/{id}/enabled` | User | Toggle provider enabled/disabled |
+| `POST` | `/settings/ai-providers/{id}/test` | User | Test provider connection |
+| `POST` | `/settings/ai-providers/{id}/reveal` | User | Reveal API key (password-gated) |
+| `POST` | `/settings/ai-providers/actions/discover-models` | User | Discover available models |
+| `GET` | `/settings/ai-providers/runtime-status` | User | Get runtime/environment status |
+
+#### Legacy AI Tokens
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/settings/ai-tokens` | User | List AI tokens (masked) |
+| `POST` | `/settings/ai-tokens` | User | Create AI token |
+| `PUT` | `/settings/ai-tokens/{id}` | User | Update AI token |
+| `DELETE` | `/settings/ai-tokens/{id}` | User | Delete AI token |
+| `POST` | `/settings/ai-tokens/{id}/test` | User | Test token connectivity |
+| `POST` | `/settings/ai-tokens/{id}/reveal` | User | Reveal plaintext token |
+| `PUT` | `/settings/ai-tokens/{id}/default` | User | Set as default for provider |
+
+#### Database Management (Admin Only)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/settings/database/status` | Admin | Schema version, table counts, pending migrations |
+| `POST` | `/settings/database/migrate` | Admin | Execute pending migrations |
+| `GET` | `/settings/database/export` | Admin | Export as JSON or ZIP |
+| `POST` | `/settings/database/import/preview` | Admin | Preview import conflicts |
+| `POST` | `/settings/database/import` | Admin | Execute import (skip/overwrite) |
+
+### System
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/health` | None | Health check (DB connectivity) |
+| `GET` | `/{path}` | None | Serve built Astro frontend |
 
 ## Local Development
 
-The existing local startup helper starts the backend and Astro dev server:
+The restart script starts the backend and Astro dev server together:
 
 ```bash
 ./restart.sh
@@ -117,68 +407,75 @@ The existing local startup helper starts the backend and Astro dev server:
 
 Expected local ports:
 
-- Backend API: http://localhost:8088
-- Astro frontend: http://localhost:5174
+| Service | Port | URL |
+| --- | --- | --- |
+| Backend API | 8088 | http://localhost:8088 |
+| Astro frontend (dev) | 5174 | http://localhost:5174 |
 
-For manual backend startup:
+Setup a local KEK for development:
 
 ```bash
-cd backend
-python -m uvicorn main:app --host 0.0.0.0 --port 8088
+mkdir -p .dev-secrets
+openssl rand -hex 32 > .dev-secrets/v1.key
+chmod 600 .dev-secrets/v1.key
 ```
 
-For manual Astro startup:
+Set in `.env`:
+
+```env
+LLM_KEK_PATH=.dev-secrets
+LLM_KEK_VERSION=v1
+```
+
+Manual startup:
 
 ```bash
+# Backend
+cd backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8088
+
+# Astro (in another terminal)
 cd frontend-astro
 npm install
 npm run dev -- --host 0.0.0.0 --port 5174
 ```
 
-## Environment Variables
+Note: in development mode, the frontend sends API requests directly to `http://localhost:8088`. The backend must allow this origin in `ALLOWED_ORIGINS`.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `MINIMAX_API_KEY` | empty | Required for AI selector analysis. |
-| `POSTGRES_USER` | `palimpsest` | Docker PostgreSQL user. |
-| `POSTGRES_PASSWORD` | `palimpsest` | Docker PostgreSQL password. |
-| `POSTGRES_DB` | `palimpsest` | Docker PostgreSQL database. |
-| `BACKEND_PORT` | `8088` | Host port for the Docker app and FastAPI. |
-| `CHROME_PORT` | `3000` | Host port for Browserless Chrome. |
-| `PALIMPSEST_LOG_DIR` | `/app/log` | Container log/debug artifact directory, bind-mounted from `./log`. |
-| `MAX_CONCURRENT_SESSIONS` | `10` | Browserless Chrome concurrency limit. |
-| `CHROME_CONNECTION_TIMEOUT` | `300000` | Browserless connection timeout in milliseconds. |
-
-The backend also supports:
-
-- `DATABASE_URL`
-- `CHROME_MODE`
-- `CHROME_WS_ENDPOINT`
-- `BROWSER_WS_URL`
-
-Docker Compose sets these automatically for the containerized stack.
-
-## API Overview
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/analyze/list` | Analyze a list page and infer list selectors. |
-| `POST` | `/analyze/content` | Analyze an article page and infer content selectors. |
-| `POST` | `/crawl/preview` | Preview crawling without saving. |
-| `GET` | `/sites/` | List configured sites. |
-| `POST` | `/sites/` | Create a site and start crawling. |
-| `GET` | `/sites/{id}` | Fetch one site. |
-| `PUT` | `/sites/{id}` | Update one site. |
-| `DELETE` | `/sites/{id}` | Delete one site and its articles. |
-| `POST` | `/sites/{id}/duplicate` | Duplicate site settings. |
-| `POST` | `/crawl/{id}` | Trigger a crawl for one site. |
-| `GET` | `/rss/{identifier}` | Return the generated RSS feed. |
+The CSS pipeline runs via `tools/dev.mjs` alongside the Astro dev server. If SCSS changes are not reflected, ensure the dev server was started with `tools/dev.mjs` (not `astro dev` directly).
 
 ## Testing
 
-Frontend Playwright tests live in `frontend-astro/tests/`.
+### Backend Tests
 
-Run them after starting the Astro dev server:
+Requires a running PostgreSQL test database. The conftest creates test tables per session.
+
+```bash
+# Set PYTHONPATH for dual import styles
+export PYTHONPATH="$(pwd):$(pwd)/backend:$(pwd)/tests"
+
+# Run all backend tests
+python -m pytest tests/ -v
+
+# Run specific test suites
+python -m pytest tests/test_auth.py -v
+python -m pytest tests/test_llm_provider_crud.py -v
+python -m pytest tests/test_llm_fallback.py -v
+```
+
+Current status: **270 passed, 79 skipped**.
+
+### Integration Smoke Tests
+
+Shell scripts in `tests/` verify basic API and service health:
+
+```bash
+./tests/test_all.sh
+```
+
+### Frontend E2E Tests
+
+Playwright smoke test for the Astro dashboard:
 
 ```bash
 cd frontend-astro
@@ -186,16 +483,32 @@ npm install
 npx playwright test
 ```
 
-The `tests/` directory contains local/ad hoc verification scripts that are not part of the main CI path yet.
+## Architecture Decisions
 
-## Development Notes
-
-- Keep AI development notes on the local-only `ai-notes` branch.
-- Do not commit `.env`, `data/`, `log/`, local DB files, or dependency directories.
-- Use Conventional Commits when committing changes.
+- **PostgreSQL-only**: SQLite support has been removed. `DATABASE_URL` must point to PostgreSQL.
+- **Browser strategy**: Service mode (Browserless Chrome at `ws://chrome:3000`) in Docker; local mode (`CHROME_MODE=local`) for dev. Browser connections are reused within a crawl run.
+- **Parallel crawling**: `asyncio.gather` + `Semaphore(3)` limits concurrent page fetches.
+- **Scheduler**: APScheduler `AsyncIOScheduler` runs every hour with `jitter=300` (random 0-300 second stagger). Per-site `refresh_frequency` controls interval; currently one global schedule drives all sites.
+- **Reverse proxy**: Nginx Proxy Manager -> Astro (port 5174) -> Vite proxy -> Backend (port 8088). In production, `API_BASE = ""` (relative path). In dev, API calls go directly to `localhost:8088`.
+- **Frontend JS**: Two independent pipelines: `src/js/` (Rollup IIFE for layout utilities) and `src/scripts/` (Astro Vite for business logic). They must not import from each other. Cross-pipeline communication uses `CustomEvent`.
+- **CSS pipeline**: SCSS -> sass-embedded + PostCSS + LightningCSS, independent of Vite. Dev mode auto-watches via `tools/dev.mjs`.
+- **CJK word count**: Shared `compute_visible_word_count()` helper. English words counted by token, CJK by character. Used in crawler inserts, updates, and backfill to ensure consistency.
+- **Timezone**: DB stores timezone-aware UTC. API bucketing converts to `Asia/Taipei` before grouping.
+- **KEK storage**: KEK lives outside the database (Docker Secret or local `.dev-secrets/`). If the KEK is unavailable at startup and providers exist, the app refuses to start (fail-closed).
 
 ## Security
 
-Never commit real API keys or local database files. Use `.env.example` as the public template and keep `.env` private.
+- **API keys**: Never commit real API keys, KEK key material, or `.env` files. Use `.env.example` as the public template.
+- **Provider credentials**: Encrypted at rest using KEK/DEK envelope encryption with AAD binding (user, provider, protocol, base URL, version). Ciphertext is bound to its connection context to prevent credential swapping attacks.
+- **SSRF protection**: Custom provider base URLs are DNS-resolved and validated. Loopback, private, link-local, and metadata IPs are rejected unless explicitly allowlisted.
+- **Session cookies**: `HttpOnly`, `SameSite=Lax`, server-side validated. CSRF double-submit cookie on all state-changing endpoints.
+- **Password hashing**: Argon2id with automatic in-place rehash on login when parameters change.
+- **Sensitive endpoints**: Rate-limited (login, password reset, email verification). Admin-only database export and import endpoints are access-controlled.
+- **Exposure**: If an API key or credential has ever appeared in a log, screenshot, or commit, rotate it before publishing the repository.
 
-If an API key has ever been exposed in a shared log, screenshot, or commit, rotate it before publishing the repository.
+## Development Notes
+
+- Development process and conventions are documented in `rule.md`. See `maintenance_docs_guide.md` for the document maintenance policy.
+- All generated and local-only directories (`data/`, `log/`, `.dev-secrets/`, `node_modules/`, `.venv/`, `dist/`) are gitignored.
+- Use Conventional Commits when committing changes.
+- The `docs/` directory contains AI development notes and task logs; these are local reference material, not published documentation.
