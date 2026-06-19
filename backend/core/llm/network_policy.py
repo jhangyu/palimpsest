@@ -79,6 +79,7 @@ async def validate_provider_base_url(
         addresses.append(address)
         if (
             address.is_global
+            and not address.is_link_local
             and not address.is_multicast
             and not address.is_reserved
             and not address.is_unspecified

@@ -56,6 +56,12 @@ const securitySettingsConfig: PageHeaderProps = {
                   <span>Security</span>
                 </a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href={getPathPrefix('/users/ai-service')}>
+                  <i class="ri-robot-line"></i>
+                  <span>AI Service</span>
+                </a>
+              </li>
             </ul>
           </nav>
         </div>
@@ -160,35 +166,23 @@ const securitySettingsConfig: PageHeaderProps = {
         </div>
       </div>
 
-      <!-- AI Tokens -->
-      <div class="card mt-4" id="ai-tokens-section">
-        <div class="card-header">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-              <i class="ri-key-2-line me-2"></i>
-              <h5 class="card-title mb-0">AI Service Tokens</h5>
-            </div>
-            <button type="button" class="btn btn-primary btn-sm" id="ai-tokens-add-btn">
-              <i class="ri-add-line me-1"></i>Add Token
-            </button>
-          </div>
-        </div>
+      <!-- AI Service (moved to dedicated page) -->
+      <div class="card mt-4">
         <div class="card-body">
-          <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
-            <i class="ri-lock-line me-2 flex-shrink-0 mt-1"></i>
+          <div class="d-flex gap-3 align-items-center">
+            <i class="ri-robot-line text-primary fs-3"></i>
             <div>
-              <strong>Security notice:</strong> Your tokens are encrypted using your account password.
-              Only masked values are shown in the list. Use the <i class="ri-eye-line"></i> Reveal button
-              to view the plaintext — your password will be required.
+              <h6 class="mb-1">AI Service</h6>
+              <p class="text-muted mb-0 small">
+                AI provider settings have moved to a dedicated page.
+              </p>
             </div>
-          </div>
-
-          <!-- Dynamic token list rendered by ai-tokens.ts -->
-          <div id="ai-tokens-list">
-            <div class="text-center py-5 text-muted">
-              <i class="ri-key-2-line fs-2 d-block mb-2"></i>
-              <p class="mb-0">No AI tokens configured. Add one to use your own API key.</p>
-            </div>
+            <a
+              href={getPathPrefix('/users/ai-service')}
+              class="btn btn-outline-primary btn-sm ms-auto"
+            >
+              <i class="ri-arrow-right-line me-1"></i>Go to AI Service
+            </a>
           </div>
         </div>
       </div>
@@ -214,11 +208,9 @@ const securitySettingsConfig: PageHeaderProps = {
 
 <script>
   import { initSecurityPage } from '@/scripts/users'
-  import { initAITokensPage } from '@/scripts/ai-tokens'
 
   const init = () => {
     initSecurityPage()
-    initAITokensPage()
   }
 
   document.addEventListener('DOMContentLoaded', init)

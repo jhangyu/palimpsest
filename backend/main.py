@@ -26,7 +26,7 @@ from dateutil import parser as dateutil_parser
 load_dotenv()
 
 # Fixed imports: use core module
-from core.ai import analyze_structure
+from core.ai import analyze_with_providers
 from core.crawler import crawl_site_logic, get_page_content, compute_visible_word_count, _utcnow_iso as _utcnow_iso_impl
 from core.scraper import fetch_page
 from core.debug import create_debug_writer
@@ -71,6 +71,37 @@ from core.ai_tokens import (
     test_user_token,
     set_default_token,
     resolve_minimax_token,
+)
+from core.ai_providers import (
+    list_user_providers,
+    create_provider,
+    update_provider,
+    delete_provider,
+    reorder_providers,
+    discover_models,
+    test_provider_connection,
+    reveal_api_key,
+    toggle_provider_enabled,
+    get_runtime_status,
+    ProviderNotFoundError,
+    ProviderRevisionConflictError,
+    ProviderLabelConflictError,
+    ProviderOwnershipError,
+)
+from core.ai_provider_migrations import (
+    define_ai_provider_tables,
+    SCHEMA_EXPANSION_STATEMENTS,
+    bootstrap_user_secret_key,
+    backfill_existing_user_secret_keys,
+    backfill_site_owners,
+)
+from core.llm.key_backends import FileKeyEncryptionBackend
+from core.llm.service import NoProviderAvailableError
+from core.ownership import (
+    check_site_owner_or_admin,
+    ownership_transfer_gate,
+    get_sites_with_owner_status,
+    verify_transfer_target,
 )
 
 # Helper for timestamped logging
@@ -260,6 +291,11 @@ schema_versions = sqlalchemy.Table(
     sqlalchemy.Column("applied_at", sqlalchemy.DateTime(timezone=True), nullable=False),
 )
 
+# --- AI Provider Tables ---
+_ai_tables = define_ai_provider_tables(metadata)
+
+_kek_backend: FileKeyEncryptionBackend | None = None
+
 # --- App Version & Migration Registry ---
 APP_VERSION = "0.1.0"
 
@@ -270,7 +306,7 @@ MIGRATIONS = [
 # --- Scheduler ---
 scheduler = AsyncIOScheduler()
 
-async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, debug_writer=None):
+async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, debug_writer=None, owner_user_id=None):
     """Wrapper that records a crawl attempt around crawl_site_logic."""
     attempt_id = None
     try:
@@ -296,6 +332,9 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
         debug_writer=debug_writer,
         force_update=force_update,
         scrape_method=scrape_method,
+        owner_user_id=owner_user_id,
+        ai_tables=_ai_tables,
+        kek_backend=_kek_backend,
     )
 
     if crawl_result is None:
@@ -327,8 +366,7 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
 async def scheduled_crawl_job():
     """排程任務：取出所有網站並執行爬蟲（排程模式：只更新時間改變的文章）"""
     print("[Scheduler] Running scheduled crawl...")
-    query = "SELECT * FROM sites"
-    all_sites = await database.fetch_all(query)
+    all_sites = await get_sites_with_owner_status(database)
     for site in all_sites:
         try:
             await _record_crawl_attempt(
@@ -339,6 +377,7 @@ async def scheduled_crawl_job():
                 content_rules=site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules']),
                 force_update=False,
                 scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
+                owner_user_id=site.get("owner_user_id"),
             )
         except Exception as e:
             print(f"[Scheduler] Error crawling site {site['id']}: {e}")
@@ -584,6 +623,41 @@ async def lifespan(app: FastAPI):
     # Run idempotent migration for existing DBs
     await asyncio.to_thread(_run_schema_migration, engine)
 
+    # --- AI Provider schema expansion ---
+    from sqlalchemy import text as sa_text_ai
+    with engine.connect() as conn:
+        for stmt in SCHEMA_EXPANSION_STATEMENTS:
+            try:
+                conn.execute(sa_text_ai(stmt))
+            except Exception as e:
+                log_with_time(f"[Migration] AI provider schema expansion note: {e}")
+        conn.commit()
+    log_with_time("[Migration] AI provider schema expansion completed.")
+
+    # --- KEK backend init ---
+    global _kek_backend
+    kek_path = os.getenv("LLM_KEK_PATH", "/run/secrets/llm_kek")
+    kek_version = os.getenv("LLM_KEK_VERSION", "v1")
+    try:
+        _kek_backend = FileKeyEncryptionBackend(kek_path, kek_version)
+        log_with_time(f"[Startup] KEK backend initialized from {kek_path} (version={kek_version})")
+    except Exception as e:
+        log_with_time(f"[Startup] KEK backend unavailable ({e}); AI provider features disabled")
+        _kek_backend = None
+
+    # --- Backfill user secret keys and site owners ---
+    if _kek_backend is not None:
+        try:
+            await backfill_existing_user_secret_keys(database, users, _ai_tables.user_secret_keys, _kek_backend)
+            log_with_time("[Startup] User secret key backfill completed.")
+        except Exception as e:
+            log_with_time(f"[Startup] User secret key backfill note: {e}")
+        try:
+            result = await backfill_site_owners(database)
+            log_with_time(f"[Startup] Site owner backfill: {result.status.value}")
+        except Exception as e:
+            log_with_time(f"[Startup] Site owner backfill note: {e}")
+
     # Backfill existing articles
     await _backfill_articles()
 
@@ -669,6 +743,12 @@ FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
 # Session TTL
 def _session_ttl_hours() -> int:
     return int(os.getenv("SESSION_TTL_HOURS", "24"))
+
+
+def _require_kek() -> FileKeyEncryptionBackend:
+    if _kek_backend is None:
+        raise HTTPException(status_code=503, detail="AI provider encryption not configured")
+    return _kek_backend
 
 
 # --- Helper Functions ---
@@ -808,6 +888,49 @@ class PreviewRequest(BaseModel):
     target_url: Optional[str] = None  # 用於 content 模式下的單篇文章測試
     debug: Optional[bool] = False
     scrape_method: Optional[str] = "scrapling"
+
+# --- AI Provider Request Models ---
+class CreateProviderRequest(BaseModel):
+    label: str
+    protocol: str
+    base_url: str
+    model: str
+    api_key: str
+    temperature: float | None = None
+    max_tokens: int = 4096
+    thinking: bool = False
+    effort: str = "low"
+
+class UpdateProviderRequest(BaseModel):
+    revision: int
+    label: str | None = None
+    protocol: str | None = None
+    base_url: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    thinking: bool | None = None
+    effort: str | None = None
+
+class DeleteProviderRequest(BaseModel):
+    revision: int
+
+class ReorderProvidersRequest(BaseModel):
+    ordered_ids: list[int]
+    revision: int
+
+class ToggleProviderEnabledRequest(BaseModel):
+    enabled: bool
+
+class DiscoverModelsRequest(BaseModel):
+    protocol: str
+    base_url: str
+    api_key: str | None = None
+    provider_id: int | None = None
+
+class RevealProviderKeyRequest(BaseModel):
+    current_password: str
 
 # --- Analytics Helpers ---
 
@@ -1037,6 +1160,8 @@ async def auth_register(req: RegisterRequest, request: Request, response: Respon
     await _create_session_and_cookies(response, request, user_id)
 
     user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if user_row is None:
+        raise HTTPException(status_code=500, detail="User not found after creation")
     user_roles_list = await _get_user_roles(user_id)
     return _user_to_me_response(dict(user_row), user_roles_list)
 
@@ -1289,7 +1414,7 @@ async def get_current_user_profile(request: Request, current_user: dict = Depend
 async def update_current_user_profile(req: UpdateProfileRequest, request: Request, current_user: dict = Depends(_require_user)):
     """Update current user's full_name."""
     now = datetime.now(timezone.utc)
-    values = {"updated_at": now}
+    values: dict = {"updated_at": now}
     if req.full_name is not None:
         values["full_name"] = req.full_name.strip() if req.full_name else None
 
@@ -1298,6 +1423,8 @@ async def update_current_user_profile(req: UpdateProfileRequest, request: Reques
     )
 
     user_row = await database.fetch_one(users.select().where(users.c.id == current_user["id"]))
+    if user_row is None:
+        raise HTTPException(status_code=500, detail="User not found after update")
     return _user_to_me_response(dict(user_row), current_user.get("roles", []))
 
 
@@ -1689,6 +1816,8 @@ async def admin_create_user(req: AdminCreateUserRequest, request: Request, curre
     await email_sender.send_invite_email(req.email.strip(), invite_link)
 
     user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if user_row is None:
+        raise HTTPException(status_code=500, detail="User not found after creation")
     role_list = await _get_user_roles(user_id)
     return _user_to_response(dict(user_row), role_list)
 
@@ -1712,7 +1841,7 @@ async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: 
         raise HTTPException(status_code=404, detail="User not found")
 
     now = datetime.now(timezone.utc)
-    values = {"updated_at": now}
+    values: dict = {"updated_at": now}
 
     if req.full_name is not None:
         values["full_name"] = req.full_name.strip() if req.full_name else None
@@ -1738,6 +1867,8 @@ async def admin_update_user(user_id: int, req: AdminUpdateUserRequest, request: 
     )
 
     user_row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if user_row is None:
+        raise HTTPException(status_code=404, detail="User not found")
     role_list = await _get_user_roles(user_id)
     return _user_to_response(dict(user_row), role_list)
 
@@ -1752,6 +1883,16 @@ async def admin_delete_user(user_id: int, request: Request, current_user: dict =
     # Prevent self-block
     if user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
+
+    owned_sites = await ownership_transfer_gate(database, user_id)
+    if owned_sites:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "User owns feeds that must be transferred first",
+                "owned_sites": owned_sites,
+            },
+        )
 
     now = datetime.now(timezone.utc)
 
@@ -1818,6 +1959,31 @@ async def admin_list_roles(request: Request, current_user: dict = Depends(_requi
         })
 
     return {"roles": result}
+
+
+@app.put("/admin/sites/{site_id}/owner", dependencies=[Depends(_csrf_dependency)])
+async def update_site_owner(site_id: int, request: Request, current_user: dict = Depends(_require_admin)):
+    body = await request.json()
+    new_owner_id = body.get("owner_user_id")
+    if not new_owner_id or not isinstance(new_owner_id, int):
+        raise HTTPException(status_code=400, detail="owner_user_id is required and must be an integer")
+
+    # Verify site exists
+    site = await database.fetch_one(
+        sites.select().where(sites.c.id == site_id)
+    )
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    target = await verify_transfer_target(database, new_owner_id)
+    if not target:
+        raise HTTPException(status_code=400, detail="Target user not found or not active")
+
+    # Update owner
+    await database.execute(
+        sites.update().where(sites.c.id == site_id).values(owner_user_id=new_owner_id)
+    )
+    return {"site_id": site_id, "owner_user_id": new_owner_id}
 
 
 # ============================================================
@@ -1964,6 +2130,178 @@ async def settings_set_default_ai_token(token_id: int, current_user: dict = Depe
         raise HTTPException(status_code=400, detail=str(e))
 
     return token_resp
+
+
+# ============================================================
+# AI PROVIDER ROUTES
+# ============================================================
+
+@app.get("/settings/ai-providers")
+async def list_ai_providers(current_user: dict = Depends(_require_user)):
+    result = await list_user_providers(database, _ai_tables, user_id=current_user["id"])
+    return result
+
+@app.get("/settings/ai-providers/runtime-status")
+async def get_ai_provider_runtime_status(current_user: dict = Depends(_require_user)):
+    result = await get_runtime_status(
+        database, _ai_tables, _kek_backend,
+        user_id=current_user["id"],
+    )
+    return result
+
+@app.post("/settings/ai-providers/actions/discover-models", dependencies=[Depends(_csrf_dependency)])
+async def discover_ai_models(req: DiscoverModelsRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    try:
+        result = await discover_models(
+            database, _ai_tables, kek,
+            user_id=current_user["id"],
+            protocol=req.protocol,
+            base_url=req.base_url,
+            api_key=req.api_key,
+            provider_id=req.provider_id,
+        )
+        return result
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.put("/settings/ai-providers/order", dependencies=[Depends(_csrf_dependency)])
+async def reorder_ai_providers(req: ReorderProvidersRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    try:
+        result = await reorder_providers(
+            database, _ai_tables,
+            user_id=current_user["id"],
+            ordered_ids=req.ordered_ids,
+            revision=req.revision,
+        )
+        return result
+    except ProviderRevisionConflictError:
+        raise HTTPException(status_code=409, detail={"code": "revision_conflict", "message": "Provider settings changed; reload and retry."})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"code": "invalid_order", "message": str(e)})
+
+@app.post("/settings/ai-providers", dependencies=[Depends(_csrf_dependency)])
+async def create_ai_provider(req: CreateProviderRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    try:
+        result = await create_provider(
+            database, _ai_tables, kek,
+            user_id=current_user["id"],
+            label=req.label,
+            protocol=req.protocol,
+            base_url=req.base_url,
+            model=req.model,
+            api_key=req.api_key,
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+            thinking=req.thinking,
+            effort=req.effort,
+        )
+        return Response(
+            content=json.dumps(result, default=str),
+            status_code=201,
+            media_type="application/json",
+        )
+    except ProviderLabelConflictError:
+        raise HTTPException(status_code=409, detail={"code": "label_conflict", "message": "A provider with this label already exists."})
+
+@app.put("/settings/ai-providers/{provider_id}", dependencies=[Depends(_csrf_dependency)])
+async def update_ai_provider(provider_id: int, req: UpdateProviderRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    kwargs = {}
+    for field in ("label", "protocol", "base_url", "model", "temperature", "max_tokens", "thinking", "effort"):
+        if field in req.model_fields_set:
+            kwargs[field] = getattr(req, field)
+    if "api_key" in req.model_fields_set and req.api_key is not None:
+        kwargs["api_key"] = req.api_key
+    try:
+        result = await update_provider(
+            database, _ai_tables, kek,
+            user_id=current_user["id"],
+            provider_id=provider_id,
+            revision=req.revision,
+            **kwargs,
+        )
+        return result
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderRevisionConflictError:
+        raise HTTPException(status_code=409, detail={"code": "revision_conflict", "message": "Provider settings changed; reload and retry."})
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.delete("/settings/ai-providers/{provider_id}", dependencies=[Depends(_csrf_dependency)])
+async def delete_ai_provider(provider_id: int, req: DeleteProviderRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    try:
+        await delete_provider(
+            database, _ai_tables,
+            user_id=current_user["id"],
+            provider_id=provider_id,
+            revision=req.revision,
+        )
+        return Response(status_code=204)
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderRevisionConflictError:
+        raise HTTPException(status_code=409, detail={"code": "revision_conflict", "message": "Provider settings changed; reload and retry."})
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.post("/settings/ai-providers/{provider_id}/test", dependencies=[Depends(_csrf_dependency)])
+async def test_ai_provider(provider_id: int, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    try:
+        result = await test_provider_connection(
+            database, _ai_tables, kek,
+            user_id=current_user["id"],
+            provider_id=provider_id,
+        )
+        return result
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.post("/settings/ai-providers/{provider_id}/reveal", dependencies=[Depends(_csrf_dependency)])
+async def reveal_ai_provider_key(provider_id: int, req: RevealProviderKeyRequest, current_user: dict = Depends(_require_user)):
+    kek = _require_kek()
+    if not verify_password(req.current_password, current_user["password_hash"]):
+        raise HTTPException(status_code=403, detail={"code": "invalid_password", "message": "Invalid password."})
+    try:
+        api_key = await reveal_api_key(
+            database, _ai_tables, kek,
+            user_id=current_user["id"],
+            provider_id=provider_id,
+        )
+        return Response(
+            content=json.dumps({"api_key": api_key}),
+            status_code=200,
+            media_type="application/json",
+            headers={"Cache-Control": "no-store, private", "Pragma": "no-cache"},
+        )
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.put("/settings/ai-providers/{provider_id}/enabled", dependencies=[Depends(_csrf_dependency)])
+async def toggle_ai_provider_enabled(provider_id: int, req: ToggleProviderEnabledRequest, current_user: dict = Depends(_require_user)):
+    try:
+        result = await toggle_provider_enabled(
+            database, _ai_tables,
+            user_id=current_user["id"],
+            provider_id=provider_id,
+            enabled=req.enabled,
+        )
+        return result
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    except ProviderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
 
 
 # ============================================================
@@ -2597,9 +2935,6 @@ async def analyze_list_structure(url: str, debug: bool = False, current_user: di
     start_time = time.time()
     log_with_time(f"[Analyze List] Starting analysis for: {url}")
 
-    # Resolve MiniMax token: user default > global fallback
-    api_key = await resolve_minimax_token(database, user_ai_tokens, current_user["id"])
-
     fetch_start = time.time()
     page = await fetch_page(url)
     fetch_duration = time.time() - fetch_start
@@ -2614,12 +2949,23 @@ async def analyze_list_structure(url: str, debug: bool = False, current_user: di
         dw.save("01", "raw_html.html", html)
 
     ai_start = time.time()
-    rules = await analyze_structure(html, mode="list", api_key=api_key, debug_writer=dw)
+    try:
+        rules = await analyze_with_providers(
+            html, "list",
+            user_id=current_user["id"],
+            db=database,
+            tables=_ai_tables,
+            kek_backend=_kek_backend,
+            url=url,
+            debug_writer=dw,
+        )
+    except NoProviderAvailableError:
+        return {"rules": None, "error": "No AI provider available. Configure a provider in AI Service settings."}
     ai_duration = time.time() - ai_start
-    log_with_time(f"[Analyze List] analyze_structure completed: {ai_duration:.2f}s")
+    log_with_time(f"[Analyze List] analyze completed: {ai_duration:.2f}s")
 
     if not rules:
-        return {"rules": None, "error": "AI analysis failed. Check backend logs for details (possibly API quota exceeded)."}
+        return {"rules": None, "error": "AI analysis failed. Check backend logs for details."}
 
     response = {"rules": rules, "preview_html": html[:500], "error": None}
     if debug:
@@ -2635,9 +2981,6 @@ async def analyze_content_structure(url: str, debug: bool = False, current_user:
     start_time = time.time()
     log_with_time(f"[Analyze Content] Starting analysis for: {url}")
 
-    # Resolve MiniMax token: user default > global fallback
-    api_key = await resolve_minimax_token(database, user_ai_tokens, current_user["id"])
-
     fetch_start = time.time()
     page = await fetch_page(url)
     fetch_duration = time.time() - fetch_start
@@ -2652,11 +2995,22 @@ async def analyze_content_structure(url: str, debug: bool = False, current_user:
         dw.save("01", "raw_html.html", html)
 
     ai_start = time.time()
-    rules = await analyze_structure(html, mode="content", api_key=api_key, debug_writer=dw)
+    try:
+        rules = await analyze_with_providers(
+            html, "content",
+            user_id=current_user["id"],
+            db=database,
+            tables=_ai_tables,
+            kek_backend=_kek_backend,
+            url=url,
+            debug_writer=dw,
+        )
+    except NoProviderAvailableError:
+        raise HTTPException(status_code=503, detail="No AI provider available. Configure a provider in AI Service settings.")
     ai_duration = time.time() - ai_start
-    log_with_time(f"[Analyze Content] analyze_structure completed: {ai_duration:.2f}s")
+    log_with_time(f"[Analyze Content] analyze completed: {ai_duration:.2f}s")
 
-    response = {"rules": rules}
+    response: dict = {"rules": rules}
     if debug:
         response["debug_dir"] = dw.debug_dir
 
@@ -2669,13 +3023,13 @@ async def preview_crawl(req: PreviewRequest, current_user: dict = Depends(_requi
     """乾跑預覽爬蟲，支援 list / content / both 模式"""
     from core.crawler import test_crawl_logic
 
-    dw = create_debug_writer(req.debug, "preview", req.url.replace("https://", "").replace("http://", "").split("/")[0][:30])
+    dw = create_debug_writer(req.debug or False, "preview", req.url.replace("https://", "").replace("http://", "").split("/")[0][:30])
 
     results = await test_crawl_logic(
         req.url,
         req.list_rules,
         req.content_rules,
-        mode=req.mode,
+        mode=req.mode or "both",
         target_url=req.target_url,
         debug_writer=dw,
         scrape_method=req.scrape_method or "scrapling",
@@ -2702,6 +3056,7 @@ async def create_site(
         consecutive_failure_count=0,
         refresh_frequency=site.refresh_frequency,
         scrape_method=site.scrape_method or "scrapling",
+        owner_user_id=current_user["id"],
     )
     site_id = await database.execute(query)
     # 背景觸發爬蟲（初始抓取視為手動重爬），with attempt recording
@@ -2714,6 +3069,7 @@ async def create_site(
         content_rules=rules.content_rules,
         force_update=True,
         scrape_method=site.scrape_method or "scrapling",
+        owner_user_id=current_user["id"],
     )
     return {"id": site_id, "status": "created and crawling started"}
 
@@ -2733,6 +3089,10 @@ async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict 
     site = await database.fetch_one(query)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+
+    is_admin = "admin" in current_user.get("roles", [])
+    if not check_site_owner_or_admin(site, current_user["id"], is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to modify this site")
 
     values = {k: v for k, v in update_data.model_dump().items() if v is not None}
     if not values:
@@ -2758,6 +3118,7 @@ async def duplicate_site(site_id: int, current_user: dict = Depends(_require_use
         refresh_frequency=site['refresh_frequency'],
         consecutive_failure_count=0,
         scrape_method=site['scrape_method'] or "scrapling",
+        owner_user_id=current_user["id"],
     )
     new_id = await database.execute(new_query)
     return {"id": new_id, "status": "duplicated"}
@@ -2772,6 +3133,14 @@ async def list_sites(current_user: dict = Depends(_require_user)):
 @app.delete("/sites/{site_id}", dependencies=[Depends(_csrf_dependency)])
 async def delete_site(site_id: int, current_user: dict = Depends(_require_user)):
     """刪除指定網站及其所有文章與相關事件"""
+    site = await database.fetch_one(sites.select().where(sites.c.id == site_id))
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    is_admin = "admin" in current_user.get("roles", [])
+    if not check_site_owner_or_admin(site, current_user["id"], is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to modify this site")
+
     # 刪除相關 crawl attempts 和 RSS query events
     await database.execute(crawl_attempts.delete().where(crawl_attempts.c.site_id == site_id))
     await database.execute(rss_query_events.delete().where(rss_query_events.c.site_id == site_id))
@@ -2782,10 +3151,7 @@ async def delete_site(site_id: int, current_user: dict = Depends(_require_user))
 
     # 刪除該網站
     query = sites.delete().where(sites.c.id == site_id)
-    result = await database.execute(query)
-
-    if result == 0:
-        raise HTTPException(status_code=404, detail="Site not found")
+    await database.execute(query)
 
     return {"status": "deleted", "site_id": site_id}
 
@@ -2890,10 +3256,11 @@ async def trigger_crawl(site_id: int, background_tasks: BackgroundTasks, debug: 
         force_update=True,
         scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
         debug_writer=dw,
+        owner_user_id=current_user["id"],
     )
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] Background task added")
 
-    response = {"status": "crawl started"}
+    response: dict = {"status": "crawl started"}
     if debug:
         response["debug_dir"] = dw.debug_dir
     return response

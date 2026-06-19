@@ -96,7 +96,7 @@ const settingsPageScript = `
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="#crawler-section" data-bs-toggle="tab">
-                  <i class="ri-spider-line"></i>
+                  <i class="ri-robot-line"></i>
                   <span>Crawler Defaults</span>
                 </a>
               </li>
@@ -181,7 +181,7 @@ const settingsPageScript = `
           <div class="card">
             <div class="card-header">
               <div class="d-flex align-items-center">
-                <i class="ri-spider-line me-2"></i>
+                <i class="ri-robot-line me-2"></i>
                 <h5 class="card-title mb-0">Crawler & Auto-Repair Defaults</h5>
               </div>
             </div>
@@ -190,49 +190,30 @@ const settingsPageScript = `
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label required">Default Refresh Frequency (minutes)</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="60"
-                      min="5"
-                      required
-                    />
+                    <input type="number" class="form-control" value="60" min="5" required />
                     <div class="form-text">Global default interval for scheduled crawls.</div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 5)</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label required">Auto-Repair Global Threshold</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="3"
-                      min="1"
-                      required
-                    />
-                    <div class="form-text">Consecutive structural failures before AI auto-repair (can be overridden per-site).</div>
+                    <input type="number" class="form-control" value="3" min="1" required />
+                    <div class="form-text">
+                      Consecutive structural failures before AI auto-repair (can be overridden
+                      per-site).
+                    </div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label required">Max Concurrent Crawls</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="3"
-                      min="1"
-                      required
-                    />
-                    <div class="form-text">System-wide semaphore limit for parallel browser sessions.</div>
+                    <input type="number" class="form-control" value="3" min="1" required />
+                    <div class="form-text">
+                      System-wide semaphore limit for parallel browser sessions.
+                    </div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label required">Default Crawl Timeout (seconds)</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="30"
-                      min="10"
-                      required
-                    />
+                    <input type="number" class="form-control" value="30" min="10" required />
                     <div class="form-text">Networkidle and page load timeout for crawler.</div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 10)</div>
                   </div>
@@ -261,25 +242,15 @@ const settingsPageScript = `
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label required">Article Retention (Days)</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="30"
-                      min="1"
-                      required
-                    />
-                    <div class="form-text">How long to keep fetched articles before auto-cleanup.</div>
+                    <input type="number" class="form-control" value="30" min="1" required />
+                    <div class="form-text">
+                      How long to keep fetched articles before auto-cleanup.
+                    </div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label required">System Logs Retention (Days)</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      value="14"
-                      min="1"
-                      required
-                    />
+                    <input type="number" class="form-control" value="14" min="1" required />
                     <div class="form-text">How long to retain system events and crawler logs.</div>
                     <div class="invalid-feedback">Please enter a valid number (minimum 1)</div>
                   </div>

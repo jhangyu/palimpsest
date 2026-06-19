@@ -75,13 +75,13 @@ def decrypt_token(ciphertext_b64: str, password: str, user_id: int, salt: str) -
 
 
 def mask_token(plaintext: str) -> str:
-    """Mask a token showing only the last 4 characters.
+    """Mask a token showing the first 8 and last 8 characters.
 
-    Example: 'sk-abc123xyz9876' -> '***********9876'
+    Example: 'sk-abc123xyz9876abcdef' -> 'sk-abc12************ef9876ab'
     """
-    if len(plaintext) <= 4:
+    if len(plaintext) <= 16:
         return "****"
-    return "*" * (len(plaintext) - 4) + plaintext[-4:]
+    return plaintext[:8] + "*" * (len(plaintext) - 16) + plaintext[-8:]
 
 
 def get_token_last4(plaintext: str) -> str:

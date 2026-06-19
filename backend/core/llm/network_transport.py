@@ -83,7 +83,7 @@ class VerifiedIPTransport(httpx.AsyncBaseTransport):
             method=request.method,
             url=request.url.copy_with(host=pinned_ip),
             headers=headers,
-            content=request.stream,
+            stream=request.stream,
             extensions=extensions,
         )
         return await self._transport.handle_async_request(pinned_request)

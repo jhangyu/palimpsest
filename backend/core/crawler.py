@@ -99,7 +99,7 @@ def compute_visible_word_count(content: str) -> int:
 
 
 
-async def get_page_content(url: str, wait_for_selector: str = None, browser=None, fast_mode=False) -> str:
+async def get_page_content(url: str, wait_for_selector: str | None = None, browser=None, fast_mode=False) -> str:
     """連線到遠端 Chrome (Browserless) 取得渲染後的 HTML
 
     Args:
@@ -216,7 +216,7 @@ async def get_page_content_on_page(page, url, wait_for_selector=None, fast_mode=
     return await page.content()
 
 
-async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rules: dict, db, debug_writer=None, force_update: bool = False, scrape_method: str = "scrapling"):
+async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rules: dict, db, debug_writer=None, force_update: bool = False, scrape_method: str = "scrapling", owner_user_id=None, ai_tables=None, kek_backend=None):
     """
     爬取網站邏輯，包含自動修復機制 (Scrapling 兩階段流程)
 
@@ -271,8 +271,19 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             await db.execute("UPDATE sites SET consecutive_failure_count = :count WHERE id = :id", values={"count": new_count, "id": site_id})
 
             if new_count >= FAILURE_THRESHOLD:
-                from core.ai import analyze_structure
-                new_list_rules = await analyze_structure(page.html_content or "", mode="list")
+                if owner_user_id is not None and ai_tables is not None and kek_backend is not None:
+                    from core.ai import analyze_with_providers
+                    try:
+                        new_list_rules = await analyze_with_providers(
+                            page.html_content or "", "list",
+                            user_id=owner_user_id, db=db,
+                            tables=ai_tables, kek_backend=kek_backend,
+                        )
+                    except Exception:
+                        new_list_rules = {}
+                else:
+                    log_with_time(f"[Crawl] Skipping auto-repair for site {site_id}: no owner context available")
+                    new_list_rules = {}
                 if new_list_rules and "item" in new_list_rules:
                     await db.execute("UPDATE sites SET list_rules = :rules, consecutive_failure_count = 0 WHERE id = :id",
                                      values={"rules": json.dumps(new_list_rules), "id": site_id})
@@ -423,7 +434,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         return result
 
 
-async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode: str = "both", target_url: str = None, debug_writer=None, scrape_method: str = "scrapling") -> list:
+async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode: str = "both", target_url: str | None = None, debug_writer=None, scrape_method: str = "scrapling") -> list:
     """乾跑預覽爬蟲，支援 list / content / both 模式"""
     import time
 
@@ -467,7 +478,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
                 debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
 
             pub_date = datetime.now().isoformat()
-            content_text, parsed_date, image_url, author = parse_article(a_page, content_rules, a_url)
+            content_text, parsed_date, _, _ = parse_article(a_page, content_rules, a_url)
             if parsed_date:
                 pub_date = parsed_date
 

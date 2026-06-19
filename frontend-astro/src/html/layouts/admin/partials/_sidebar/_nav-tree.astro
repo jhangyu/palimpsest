@@ -95,6 +95,11 @@ const isActiveParent = (path: string) => currentPath.startsWith(path)
             <span>Security</span>
           </a>
         </li>
+        <li class={`nav-item ${isActive('users/ai-service') ? 'active' : ''}`}>
+          <a class="nav-link" href={getPathPrefix('/users/ai-service')}>
+            <span>AI Service</span>
+          </a>
+        </li>
       </ul>
     </li>
 

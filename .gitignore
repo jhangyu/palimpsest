@@ -40,6 +40,9 @@ Thumbs.db
 /scripts/
 /tests/
 
+# Dev secrets (KEK keyring)
+.dev-secrets/
+
 # Local tool/runtime artifacts
 .claw/
 .clawd-todos.json
