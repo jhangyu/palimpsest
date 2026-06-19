@@ -7,6 +7,9 @@ import httpx
 from datetime import datetime
 from hashlib import md5
 
+from sqlalchemy import select
+
+from core.db import sites, articles
 from core.scraper import fetch_page
 from core.parser import parse_listing, parse_article, normalize_selector
 
@@ -283,11 +286,17 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         # 自動修復邏輯
         if len(articles_found) == 0:
             log_with_time(f"[Crawl] Warning: No items found for site {site_id}. Rules might be broken.")
-            query = "SELECT consecutive_failure_count FROM sites WHERE id = :id"
-            row = await db.fetch_one(query=query, values={"id": site_id})
+            row = await db.fetch_one(
+                select(sites.c.consecutive_failure_count)
+                .where(sites.c.id == site_id)
+            )
             current_count = row[0] if row else 0
             new_count = current_count + 1
-            await db.execute("UPDATE sites SET consecutive_failure_count = :count WHERE id = :id", values={"count": new_count, "id": site_id})
+            await db.execute(
+                sites.update()
+                .where(sites.c.id == site_id)
+                .values(consecutive_failure_count=new_count)
+            )
 
             if new_count >= FAILURE_THRESHOLD:
                 if owner_user_id is not None and ai_tables is not None and kek_backend is not None:
@@ -304,8 +313,11 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                     log_with_time(f"[Crawl] Skipping auto-repair for site {site_id}: no owner context available")
                     new_list_rules = {}
                 if new_list_rules and "item" in new_list_rules:
-                    await db.execute("UPDATE sites SET list_rules = :rules, consecutive_failure_count = 0 WHERE id = :id",
-                                     values={"rules": json.dumps(new_list_rules), "id": site_id})
+                    await db.execute(
+                        sites.update()
+                        .where(sites.c.id == site_id)
+                        .values(list_rules=json.dumps(new_list_rules), consecutive_failure_count=0)
+                    )
                     list_rules = new_list_rules
                     articles_found = parse_listing(page, list_rules, url)
                     result["articles_found"] = len(articles_found)
@@ -313,7 +325,11 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             if len(articles_found) == 0:
                 return result
         else:
-            await db.execute("UPDATE sites SET consecutive_failure_count = 0 WHERE id = :id", values={"id": site_id})
+            await db.execute(
+                sites.update()
+                .where(sites.c.id == site_id)
+                .values(consecutive_failure_count=0)
+            )
 
         # 過濾文章（排程模式：只抓不存在的）
         # PERF-005: Batch existence check — one query instead of N individual queries
@@ -447,7 +463,10 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                         result["articles_updated"] += 1
                     else:
                         # 排程模式：檢查 published_at 是否改變
-                        existing = await db.fetch_one("SELECT id, published_at, created_at FROM articles WHERE url = :url", values={"url": a_url})
+                        existing = await db.fetch_one(
+                            select(articles.c.id, articles.c.published_at, articles.c.created_at)
+                            .where(articles.c.url == a_url)
+                        )
                         if existing:
                             old_pub_date = existing['published_at']
                             if old_pub_date == pub_date:
@@ -455,33 +474,38 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                                 log_with_time(f"[Crawl] Skipped (no change): {title[:30]}...")
                                 return
                             # 時間改變了，更新內容, preserve created_at
-                            await db.execute("""
-                                UPDATE articles SET title = :title, content = :content,
-                                    image_url = :image_url, published_at = :pub_date,
-                                    updated_at = :updated_at, word_count = :word_count,
-                                    author = :author
-                                WHERE url = :url
-                            """, values={
-                                "title": title, "content": content_text,
-                                "image_url": image_url, "pub_date": pub_date,
-                                "url": a_url, "updated_at": now_utc, "word_count": wc,
-                                "author": author,
-                            })
+                            await db.execute(
+                                articles.update()
+                                .where(articles.c.url == a_url)
+                                .values(
+                                    title=title,
+                                    content=content_text,
+                                    image_url=image_url,
+                                    published_at=pub_date,
+                                    updated_at=now_utc,
+                                    word_count=wc,
+                                    author=author,
+                                )
+                            )
                             log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "updated"})
                             result["articles_updated"] += 1
                         else:
                             # 不存在，直接插入
-                            await db.execute("""
-                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
-                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
-                            """, values={
-                                "sid": site_id, "title": title, "url": a_url,
-                                "content": content_text, "image_url": image_url,
-                                "pub_date": pub_date, "created_at": now_utc,
-                                "updated_at": now_utc, "word_count": wc,
-                                "author": author,
-                            })
+                            await db.execute(
+                                articles.insert().values(
+                                    site_id=site_id,
+                                    title=title,
+                                    url=a_url,
+                                    content=content_text,
+                                    image_url=image_url,
+                                    published_at=pub_date,
+                                    created_at=now_utc,
+                                    updated_at=now_utc,
+                                    word_count=wc,
+                                    author=author,
+                                )
+                            )
                             log_with_time(f"[Crawl] Saved: {title[:30]}...")
                             crawl_results.append({"url": a_url, "title": title, "status": "saved"})
                             result["articles_saved"] += 1
