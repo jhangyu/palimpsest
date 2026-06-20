@@ -22,14 +22,14 @@ test.skip('login page renders form', async ({ page }) => {
   await expect(page.locator('input[type="password"]')).toBeVisible()
 })
 
-test.skip('login success redirects to dashboard', async ({ page }) => {
+test.skip('login success redirects to dashboard', async () => {
   /**
    * Submitting valid credentials on the login page should redirect
    * the user to /dashboard (or equivalent landing page).
    */
 })
 
-test.skip('login wrong password shows error', async ({ page }) => {
+test.skip('login wrong password shows error', async () => {
   /**
    * Submitting incorrect credentials should display an inline error message
    * without exposing whether the email or password was wrong.
@@ -49,7 +49,7 @@ test.skip('unauthenticated user is redirected to login', async ({ page }) => {
   await expect(page).toHaveURL(/\/login/)
 })
 
-test.skip('authenticated user is not redirected from protected route', async ({ page }) => {
+test.skip('authenticated user is not redirected from protected route', async () => {
   /**
    * After login, navigating to a protected route should NOT redirect away;
    * the page should load normally.
@@ -62,7 +62,7 @@ test.skip('authenticated user is not redirected from protected route', async ({ 
 // Logout
 // ---------------------------------------------------------------------------
 
-test.skip('logout clears session and redirects to login', async ({ page }) => {
+test.skip('logout clears session and redirects to login', async () => {
   /**
    * Clicking the logout button (or calling the logout API) should clear the
    * session cookie and redirect the user to the login page.  A subsequent
@@ -70,7 +70,7 @@ test.skip('logout clears session and redirects to login', async ({ page }) => {
    */
 })
 
-test.skip('after logout protected api returns 401', async ({ page }) => {
+test.skip('after logout protected api returns 401', async () => {
   /**
    * After logout, a direct fetch to GET /auth/me (via page.evaluate or
    * request fixture) should return 401.
@@ -81,7 +81,7 @@ test.skip('after logout protected api returns 401', async ({ page }) => {
 // Registration gate
 // ---------------------------------------------------------------------------
 
-test.skip('register page not accessible when public registration disabled', async ({ page }) => {
+test.skip('register page not accessible when public registration disabled', async () => {
   /**
    * When AUTH_ALLOW_PUBLIC_REGISTRATION is false (default), visiting
    * /authentication/modern/register should return 404 or redirect to login.
@@ -92,14 +92,14 @@ test.skip('register page not accessible when public registration disabled', asyn
 // Admin-only sidebar items
 // ---------------------------------------------------------------------------
 
-test.skip('admin sees Users and Roles in sidebar', async ({ page }) => {
+test.skip('admin sees Users and Roles in sidebar', async () => {
   /**
    * After logging in as an admin, the sidebar should contain links to
    * "Users" and "Roles & Permissions".
    */
 })
 
-test.skip('regular user does not see Users in sidebar', async ({ page }) => {
+test.skip('regular user does not see Users in sidebar', async () => {
   /**
    * After logging in as a regular user, the sidebar should NOT show
    * "Users" or "Roles & Permissions" items.

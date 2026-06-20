@@ -125,7 +125,7 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 </AuthenticationLayout>
 
 <script>
-  import { initRegisterPage, showFormError } from '@/scripts/auth'
+  import { initRegisterPage } from '@/scripts/auth'
 
   // Override the default register handler to also handle 403 (registration disabled)
   const form = document.querySelector<HTMLFormElement>('#register-form')
