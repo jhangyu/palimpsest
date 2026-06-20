@@ -370,56 +370,60 @@ async function optimizeCSS(files, options = { verbose: false }) {
     const preset = await import('cssnano-preset-advanced')
 
     // Custom plugin to merge duplicate :root selectors
-    const mergeRootSelectorsPlugin = postcss.default.plugin('merge-root-selectors', () => {
-      return (root) => {
-        const rootRules = []
-        const rootRuleIndices = []
+    const mergeRootSelectorsPlugin = () => {
+      return {
+        postcssPlugin: 'merge-root-selectors',
+        Once(root) {
+          const rootRules = []
+          const rootRuleIndices = []
 
-        // Find all :root rules
-        root.walkRules(/:root/, (rule, index) => {
-          rootRules.push(rule)
-          rootRuleIndices.push(index)
-        })
-
-        // If we have multiple :root rules
-        if (rootRules.length > 1) {
-          log(`Found ${rootRules.length} duplicate :root selectors to merge`, 'info', 'CSS')
-
-          // Store all declarations from all :root rules
-          const allDeclarations = []
-
-          // Collect all declarations from all :root rules
-          rootRules.forEach((rule) => {
-            rule.walkDecls((decl) => {
-              allDeclarations.push(decl.clone())
-            })
+          // Find all :root rules
+          root.walkRules(/:root/, (rule, index) => {
+            rootRules.push(rule)
+            rootRuleIndices.push(index)
           })
 
-          // Remove all but the first :root rule
-          for (let i = rootRules.length - 1; i >= 1; i--) {
-            rootRules[i].remove()
-          }
+          // If we have multiple :root rules
+          if (rootRules.length > 1) {
+            log(`Found ${rootRules.length} duplicate :root selectors to merge`, 'info', 'CSS')
 
-          // Add all collected declarations to the first :root rule
-          allDeclarations.forEach((decl) => {
-            // Check if this property already exists in the target rule
-            let exists = false
-            rootRules[0].walkDecls((existingDecl) => {
-              if (existingDecl.prop === decl.prop) {
-                // Update existing declaration with the latest value
-                existingDecl.value = decl.value
-                exists = true
+            // Store all declarations from all :root rules
+            const allDeclarations = []
+
+            // Collect all declarations from all :root rules
+            rootRules.forEach((rule) => {
+              rule.walkDecls((decl) => {
+                allDeclarations.push(decl.clone())
+              })
+            })
+
+            // Remove all but the first :root rule
+            for (let i = rootRules.length - 1; i >= 1; i--) {
+              rootRules[i].remove()
+            }
+
+            // Add all collected declarations to the first :root rule
+            allDeclarations.forEach((decl) => {
+              // Check if this property already exists in the target rule
+              let exists = false
+              rootRules[0].walkDecls((existingDecl) => {
+                if (existingDecl.prop === decl.prop) {
+                  // Update existing declaration with the latest value
+                  existingDecl.value = decl.value
+                  exists = true
+                }
+              })
+
+              // If the property doesn't exist yet, append it
+              if (!exists) {
+                rootRules[0].append(decl)
               }
             })
-
-            // If the property doesn't exist yet, append it
-            if (!exists) {
-              rootRules[0].append(decl)
-            }
-          })
+          }
         }
       }
-    })
+    }
+    mergeRootSelectorsPlugin.postcss = true
 
     // Configure cssnano with advanced preset
     const processor = postcss.default([

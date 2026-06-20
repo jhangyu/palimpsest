@@ -1,6 +1,6 @@
 ---
 // Footer component for the sidebar
-import { getPathPrefix, getAssetPrefix } from '../../../../../utils/path.js'
+import { getPathPrefix } from '../../../../../utils/path.js'
 ---
 
 <!-- Sticky Footer -->
@@ -8,14 +8,13 @@ import { getPathPrefix, getAssetPrefix } from '../../../../../utils/path.js'
   <div class="user-profile p-1">
     <div class="d-flex align-items-center" data-bs-toggle="dropdown">
       <div class="avatar position-relative">
-        <img
-          src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-          alt="User"
-          class="rounded-circle"
-          width="36"
-          height="36"
+        <div
+          class="d-flex align-items-center justify-content-center rounded-circle bg-secondary-subtle"
+          style="width:36px;height:36px;"
           data-session="user-avatar"
-        />
+        >
+          <i class="ri-user-line text-secondary"></i>
+        </div>
         <span class="online-indicator"></span>
       </div>
       <div class="user-info ms-3">
@@ -29,14 +28,13 @@ import { getPathPrefix, getAssetPrefix } from '../../../../../utils/path.js'
       <li class="border-0 border-bottom border-dashed pb-2">
         <div class="d-flex align-items-center">
           <div class="avatar position-relative">
-            <img
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-              alt="User"
-              class="rounded-circle"
-              width="40"
-              height="40"
+            <div
+              class="d-flex align-items-center justify-content-center rounded-circle bg-secondary-subtle"
+              style="width:40px;height:40px;"
               data-session="user-avatar"
-            />
+            >
+              <i class="ri-user-line text-secondary"></i>
+            </div>
             <span class="online-indicator"></span>
           </div>
           <div class="ms-3">
@@ -55,10 +53,7 @@ import { getPathPrefix, getAssetPrefix } from '../../../../../utils/path.js'
         </a>
       </li>
       <li>
-        <a
-          class="dropdown-item d-flex align-items-center gap-2"
-          href={getPathPrefix('/users/notifications')}
-        >
+        <a class="dropdown-item d-flex align-items-center gap-2" href={getPathPrefix('/settings')}>
           <i class="ri-notification-line"></i>
           <span>Notifications</span>
         </a>

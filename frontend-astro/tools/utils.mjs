@@ -34,7 +34,6 @@ export function runCommand(command, args = [], options = {}) {
     }
     const child = spawn(command, args, {
       stdio: 'inherit',
-      shell: true,
       env: envWithBin,
       ...options
     })

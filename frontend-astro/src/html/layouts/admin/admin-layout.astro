@@ -1,5 +1,5 @@
 ---
-import { ViewTransitions } from 'astro:transitions'
+import { ClientRouter } from 'astro:transitions'
 import Head from './partials/_head.astro'
 import TopNav from './partials/_topbar.astro'
 import Sidebar from './partials/_sidebar.astro'
@@ -41,7 +41,7 @@ const componentStatus = {
 <html lang="en" dir={isRtl ? 'rtl' : 'ltr'}>
   <head>
     <Head {...pageSeo} {pageCss} {...componentStatus} isRtl={isRtl} />
-    <ViewTransitions />
+    <ClientRouter />
   </head>
   <body>
     <div class="wrapper">

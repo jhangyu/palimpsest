@@ -838,6 +838,16 @@ window.PreviewManager = class PreviewManager {
     })
   }
 
+  static updateIframeTheme(iframe, theme) {
+    if (iframe && iframe.contentWindow) {
+      try {
+        iframe.contentWindow.postMessage({ type: 'setTheme', theme: theme }, '*')
+      } catch (e) {
+        console.error('Error updating iframe theme:', e)
+      }
+    }
+  }
+
   static updateAllIframeThemes(sourcePreviewBox, theme) {
     // Update all theme toggles in the document
     document.querySelectorAll('.theme-toggle').forEach((toggle) => {

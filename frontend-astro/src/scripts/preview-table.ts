@@ -3,14 +3,18 @@ import { escapeHtml } from '@/scripts/utils'
 
 /**
  * Render preview results into the container as a Bootstrap table.
- * @param container  Target DOM element
- * @param results    Array of preview items from the crawl API
- * @param mode       'list' | 'content' | 'both'
+ * @param container     Target DOM element
+ * @param results       Array of preview items from the crawl API
+ * @param mode          'list' | 'content' | 'both'
+ * @param filteredUrls  Optional set of URLs that were filtered out
+ * @param filterSummary Optional summary from backend filter engine
  */
 export function renderPreview(
   container: HTMLElement,
   results: PreviewItem[],
-  mode: string
+  mode: string,
+  filteredUrls?: Set<string>,
+  filterSummary?: { passed: number; filtered_out: number }
 ): void {
   container.innerHTML = ''
 
@@ -21,6 +25,19 @@ export function renderPreview(
         No results found. Please check your rules.
       </div>`
     return
+  }
+
+  // Filter summary banner
+  const filteredCount =
+    filterSummary?.filtered_out ?? filteredUrls?.size ?? 0
+  if (filteredCount > 0) {
+    const banner = document.createElement('div')
+    banner.className =
+      'alert alert-warning d-flex align-items-center gap-2 py-2 px-3 mb-3'
+    banner.innerHTML = `
+      <i class="ri-filter-line"></i>
+      <span><strong>${filteredCount}</strong> article${filteredCount !== 1 ? 's' : ''} hidden by filter rules</span>`
+    container.appendChild(banner)
   }
 
   const isListMode = mode === 'list'
@@ -45,9 +62,25 @@ export function renderPreview(
   for (const item of results) {
     const tr = document.createElement('tr')
 
+    const isFiltered = filteredUrls
+      ? filteredUrls.has(item.url ?? '')
+      : Boolean(item.filtered)
+
+    if (isFiltered) {
+      tr.classList.add('opacity-50')
+      tr.style.textDecoration = 'line-through'
+    }
+
     // Title cell
     const tdTitle = document.createElement('td')
-    tdTitle.textContent = item.title || ''
+    if (isFiltered) {
+      const badge = document.createElement('span')
+      badge.className = 'badge bg-secondary me-1'
+      badge.textContent = 'Filtered'
+      tdTitle.appendChild(badge)
+    }
+    const titleText = document.createTextNode(item.title || '')
+    tdTitle.appendChild(titleText)
     tr.appendChild(tdTitle)
 
     // URL or Time cell

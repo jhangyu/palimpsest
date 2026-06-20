@@ -1,5 +1,5 @@
 ---
-import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
+import { getPathPrefix } from '../../../../utils/path.js'
 ---
 
 <!-- Top Navigation -->
@@ -26,20 +26,19 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 
     <!-- Right section -->
     <div class="d-flex align-items-center gap-4">
+      <!-- GitHub Repository Link -->
+      <a
+        href="https://github.com/jhangyu/palimpsest"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn p-0 border-0 shadow-none"
+      >
+        <i class="ri-github-fill fs-5"></i>
+      </a>
       <!-- Theme Toggle Button -->
       <button class="btn p-0 border-0 shadow-none" id="theme-toggle">
         <i class="ri-sun-line fs-5"></i>
       </button>
-      <!-- GitHub Repository Link -->
-      <a
-        href="https://github.com/asterodigital/bootstrap-admin-template"
-        class="btn p-0 border-0 shadow-none"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="GitHub Repository"
-      >
-        <i class="ri-github-line fs-5"></i>
-      </a>
       <!-- Notifications Dropdown -->
       <div class="notifications-dropdown">
         <button
@@ -49,9 +48,8 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
         >
           <i class="ri-notification-3-line fs-5"></i>
           <span
-            class="badge topbar-badge bg-danger fw-medium position-absolute rounded-pill start-100 translate-middle"
+            class="badge topbar-badge bg-danger fw-medium position-absolute rounded-pill start-100 translate-middle d-none"
           >
-            3
           </span>
         </button>
 
@@ -62,7 +60,6 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
           >
             <h6 class="mb-0">Notifications</h6>
             <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-primary-subtle text-primary rounded-pill">3 New</span>
               <button
                 class="btn btn-icon btn-sm btn-text"
                 data-toggle="tooltip"
@@ -78,105 +75,15 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 
           <!-- Notifications List -->
           <div class="notifications-list" data-simplebar>
-            <!-- Message Notification -->
-            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <div class="avatar avatar-sm">
-                    <img
-                      src={getAssetPrefix('/assets/img/avatars/avatar1.jpg')}
-                      alt="User"
-                      class="rounded-circle"
-                    />
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <h6 class="mb-1 fs-14">New message from Sarah</h6>
-                  <p class="text-muted mb-1 fs-12">Hey, check out the new dashboard...</p>
-                  <small class="text-muted">5 mins ago</small>
-                </div>
-                <div class="notification-actions">
-                  <button class="btn notification-close shadow-none">
-                    <i class="ri-close-line"></i>
-                  </button>
-                  <div class="notification-indicator"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- System Update Notification (Read) -->
-            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <div class="avatar avatar-sm bg-info-subtle">
-                    <i class="ri-refresh-line text-info"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <h6 class="mb-1 fs-14">System update completed</h6>
-                  <p class="text-muted mb-1 fs-12">Your system is now up to date</p>
-                  <small class="text-muted">1 hour ago</small>
-                </div>
-                <div class="notification-actions">
-                  <button class="btn notification-close shadow-none">
-                    <i class="ri-close-line"></i>
-                  </button>
-                  <div class="notification-indicator bg-secondary-subtle"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Order Notification -->
-            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <div class="avatar avatar-sm bg-primary-subtle">
-                    <i class="ri-shopping-cart-line text-primary"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <h6 class="mb-1 fs-14">New order received</h6>
-                  <p class="text-muted mb-1 fs-12">Order #123 has been placed</p>
-                  <small class="text-muted">2 hours ago</small>
-                </div>
-                <div class="notification-actions">
-                  <button class="btn notification-close shadow-none">
-                    <i class="ri-close-line"></i>
-                  </button>
-                  <div class="notification-indicator"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Security Alert Notification -->
-            <div class="dropdown-item notification-item px-3 py-2 border-bottom">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <div class="avatar avatar-sm bg-danger-subtle">
-                    <i class="ri-shield-keyhole-line text-danger"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <h6 class="mb-1 fs-14">Security alert</h6>
-                  <p class="text-muted mb-1 fs-12">Unusual login attempt detected</p>
-                  <small class="text-muted">3 hours ago</small>
-                </div>
-                <div class="notification-actions">
-                  <button class="btn notification-close shadow-none">
-                    <i class="ri-close-line"></i>
-                  </button>
-                  <div class="notification-indicator"></div>
-                </div>
-              </div>
+            <div class="text-center text-muted py-3">
+              <i class="ri-notification-off-line fs-4"></i>
+              <p class="small mb-0 mt-1">No new notifications</p>
             </div>
           </div>
 
           <!-- Footer -->
           <div class="notifications-footer p-2 text-center border-top">
-            <a
-              href={getPathPrefix('/users/notifications')}
-              class="btn btn-primary btn-sm rounded-pill w-100"
-            >
+            <a href={getPathPrefix('/settings')} class="btn btn-primary btn-sm rounded-pill w-100">
               View All Notifications
             </a>
           </div>
@@ -192,12 +99,13 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
           aria-controls="userProfileOffcanvas"
         >
           <div class="avatar position-relative">
-            <img
+            <div
               data-session="user-avatar"
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-              alt="User"
-              class="rounded-circle"
-            />
+              class="rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle"
+              style="width:2rem;height:2rem;"
+            >
+              <i class="ri-user-line text-primary"></i>
+            </div>
             <span class="online-indicator"></span>
           </div>
         </button>
@@ -219,12 +127,13 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
       <div class="user-profile-cover"></div>
       <div class="user-profile-avatar">
         <div class="avatar-wrapper">
-          <img
+          <div
             data-session="user-avatar"
-            src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-            alt="User"
-            class="rounded-circle"
-          />
+            class="rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle"
+            style="width:4rem;height:4rem;"
+          >
+            <i class="ri-user-line text-primary fs-3"></i>
+          </div>
           <span class="status-badge online"></span>
         </div>
       </div>
@@ -263,10 +172,9 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+          <a class="nav-link" href={getPathPrefix('/settings')}>
             <i class="ri-notification-4-line"></i>
             <span>Notifications</span>
-            <span class="badge text-bg-danger ms-2">3</span>
           </a>
         </li>
       </ul>
@@ -289,3 +197,8 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
     </div>
   </div>
 </div>
+
+<script>
+  import { initNotificationDropdown } from '@/scripts/notification-service'
+  document.addEventListener('astro:page-load', () => initNotificationDropdown())
+</script>

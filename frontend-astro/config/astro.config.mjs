@@ -71,10 +71,13 @@ export default defineConfig({
     },
     build: {
       target: 'es2020',
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-echarts': ['echarts/core', 'echarts/charts', 'echarts/components', 'echarts/renderers']
+          manualChunks(id) {
+            if (id.includes('node_modules/echarts') || id.includes('node_modules/zrender')) {
+              return 'vendor-echarts'
+            }
           }
         }
       }

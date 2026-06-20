@@ -15,7 +15,7 @@ let currentPort = startPort
 const DIST_DIR = join(__dirname, '../dist')
 
 // Custom middleware to handle URLs without .html extension
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   if (req.path.endsWith('/')) {
     // Check if index.html exists in the directory
     const indexPath = join(DIST_DIR, req.path, 'index.html')
@@ -36,7 +36,7 @@ app.use((req, res, next) => {
 app.use(express.static(DIST_DIR))
 
 // Handle all routes by serving index.html for non-existent paths
-app.get('*', (req, res) => {
+app.get('*', (_req, res) => {
   res.sendFile(join(DIST_DIR, 'index.html'))
 })
 

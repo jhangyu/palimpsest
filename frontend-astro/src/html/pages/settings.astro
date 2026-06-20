@@ -13,8 +13,6 @@ const settingsPageHeader = {
   ]
 }
 
-const address = `123 Business Avenue Corporate Plaza, Suite 100 New York, NY 10001, United States`
-
 // Client-side JavaScript for form validation, tab navigation, and AI tokens
 const settingsPageScript = `
 <script>
@@ -58,6 +56,66 @@ const settingsPageScript = `
 
       });
     });
+
+    // Notification preferences
+    const notifSection = document.getElementById('notifications-section');
+    if (notifSection) {
+      // Load saved preferences
+      fetch('/api/users/me', { credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const prefs = data.preferences?.notifications || {};
+          const types = ['fail_crawl', 'ai_reanalyze', 'fail_access'];
+          types.forEach(t => {
+            const el = document.querySelector('[data-notification-type="' + t + '"]');
+            if (el) el.checked = prefs[t] !== false; // default to true
+          });
+        })
+        .catch(() => {});
+
+      // Save button
+      const saveBtn = document.getElementById('btn-save-notifications');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const types = ['fail_crawl', 'ai_reanalyze', 'fail_access'];
+          const notifications = {};
+          types.forEach(t => {
+            const el = document.querySelector('[data-notification-type="' + t + '"]');
+            notifications[t] = el ? el.checked : true;
+          });
+
+          // Get CSRF token
+          const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+          const headers = { 'Content-Type': 'application/json' };
+          if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.getAttribute('content');
+
+          // First GET current preferences, then merge and PUT
+          fetch('/api/users/me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              const existingPrefs = (data && data.preferences) ? data.preferences : {};
+              const mergedPrefs = Object.assign({}, existingPrefs, { notifications });
+
+              return fetch('/api/users/me/preferences', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers,
+                body: JSON.stringify({ preferences: mergedPrefs })
+              });
+            })
+            .then(r => {
+              if (r && r.ok) {
+                saveBtn.innerHTML = '<i class="ri-check-line me-1"></i> Saved';
+                setTimeout(() => {
+                  saveBtn.innerHTML = '<i class="ri-save-3-line me-1"></i> Save Changes';
+                }, 2000);
+              }
+            })
+            .catch(() => {});
+        });
+      }
+    }
   }
 
   document.addEventListener('astro:page-load', setupSettingsPage);
@@ -104,6 +162,12 @@ const settingsPageScript = `
                 <a class="nav-link" href="#maintenance-section" data-bs-toggle="tab">
                   <i class="ri-database-2-line"></i>
                   <span>Maintenance</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#notifications-section" data-bs-toggle="tab">
+                  <i class="ri-notification-4-line"></i>
+                  <span>Notifications</span>
                 </a>
               </li>
             </ul>
@@ -158,7 +222,7 @@ const settingsPageScript = `
                       type="email"
                       class="form-control"
                       placeholder="admin@yourdomain.com"
-                      value="admin@example.com"
+                      value=""
                       autocomplete="email"
                       required
                     />
@@ -259,6 +323,95 @@ const settingsPageScript = `
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-end py-3">
               <button type="submit" class="btn btn-primary" form="maintenance-form">
+                <i class="ri-save-3-line me-1"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications Panel -->
+        <div class="tab-pane fade" id="notifications-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="d-flex align-items-center">
+                <i class="ri-notification-4-line me-2"></i>
+                <h5 class="card-title mb-0">Web Notification Preferences</h5>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-3">Select which events trigger browser notifications.</p>
+              <div class="list-group">
+                <div
+                  class="list-group-item d-flex justify-content-between align-items-center border-0"
+                >
+                  <div>
+                    <div class="d-flex align-items-center mb-2">
+                      <i class="ri-error-warning-line me-2 text-primary"></i>
+                      <span class="fw-medium">Fail Crawl</span>
+                    </div>
+                    <div class="text-muted">
+                      Notify when a scheduled crawl fails to extract articles.
+                    </div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="notif-fail-crawl"
+                      data-notification-type="fail_crawl"
+                      checked
+                      title="Toggle fail crawl notifications"
+                    />
+                  </div>
+                </div>
+                <div
+                  class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+                >
+                  <div>
+                    <div class="d-flex align-items-center mb-2">
+                      <i class="ri-brain-line me-2 text-primary"></i>
+                      <span class="fw-medium">AI Re-analyze</span>
+                    </div>
+                    <div class="text-muted">
+                      Notify when AI auto-repair is triggered for a feed.
+                    </div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="notif-ai-reanalyze"
+                      data-notification-type="ai_reanalyze"
+                      checked
+                      title="Toggle AI re-analyze notifications"
+                    />
+                  </div>
+                </div>
+                <div
+                  class="list-group-item d-flex justify-content-between align-items-center border-0 p-3"
+                >
+                  <div>
+                    <div class="d-flex align-items-center mb-2">
+                      <i class="ri-wifi-off-line me-2 text-primary"></i>
+                      <span class="fw-medium">Fail Access</span>
+                    </div>
+                    <div class="text-muted">Notify when a feed source becomes unreachable.</div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="notif-fail-access"
+                      data-notification-type="fail_access"
+                      checked
+                      title="Toggle fail access notifications"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-end py-3">
+              <button type="button" class="btn btn-primary" id="btn-save-notifications">
                 <i class="ri-save-3-line me-1"></i> Save Changes
               </button>
             </div>

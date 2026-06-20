@@ -73,17 +73,6 @@ const isActiveParent = (path: string) => currentPath.startsWith(path)
         <i class="ri-arrow-right-s-line"></i>
       </a>
       <ul class="submenu">
-        <!-- admin-only: user management actions -->
-        <li class={`nav-item ${isActive('users/add') ? 'active' : ''}`} data-requires-role="admin">
-          <a class="nav-link" href={getPathPrefix('/users/add')}>
-            <span>Add User</span>
-          </a>
-        </li>
-        <li class={`nav-item ${isActive('users/list') ? 'active' : ''}`} data-requires-role="admin">
-          <a class="nav-link" href={getPathPrefix('/users/list')}>
-            <span>List Users</span>
-          </a>
-        </li>
         <!-- available to all authenticated users -->
         <li class={`nav-item ${isActive('users/profile') ? 'active' : ''}`}>
           <a class="nav-link" href={getPathPrefix('/users/profile')}>
@@ -114,6 +103,14 @@ const isActiveParent = (path: string) => currentPath.startsWith(path)
         <li class={`nav-item ${isActive('settings') ? 'active' : ''}`}>
           <a class="nav-link" href={getPathPrefix('/settings')}>
             <span>General</span>
+          </a>
+        </li>
+        <li
+          class={`nav-item ${isActive('settings/users') ? 'active' : ''}`}
+          data-requires-role="admin"
+        >
+          <a class="nav-link" href={getPathPrefix('/settings/users')}>
+            <span>User Management</span>
           </a>
         </li>
         <li

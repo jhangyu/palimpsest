@@ -124,5 +124,14 @@ export default [
     rules: {
       'no-console': 'off'
     }
+  },
+
+  // Disable base ESLint rules that conflict with @typescript-eslint equivalents
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      'no-unused-vars': 'off',
+      'no-redeclare': 'off'
+    }
   }
 ]

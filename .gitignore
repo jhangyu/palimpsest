@@ -55,3 +55,6 @@ backend/debug/
 frontend-astro.bak/
 frontend-astro/test-results/
 .codebase-memory/
+
+# Original template for layout reference
+template_reference/

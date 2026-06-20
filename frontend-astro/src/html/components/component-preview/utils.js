@@ -25,7 +25,7 @@ export function getJS(filename, isDev) {
  * @returns {string} Generated preview ID
  */
 export function generatePreviewId() {
-  return `preview-${Math.random().toString(36).substr(2, 9)}`
+  return `preview-${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**

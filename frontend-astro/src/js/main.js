@@ -12,7 +12,7 @@ window.bootstrap = bootstrap
 window.SimpleBar = SimpleBar
 
 // Create the theme module
-const AsteroAdmin = (function () {
+const PalimpsestAdmin = (function () {
   let initialized = false
 
   // Initialize Bootstrap components
@@ -63,7 +63,7 @@ const AsteroAdmin = (function () {
 
 // Auto-initialize on first load and after View Transitions navigation
 if (typeof document !== 'undefined') {
-  document.addEventListener('astro:page-load', AsteroAdmin.init)
+  document.addEventListener('astro:page-load', PalimpsestAdmin.init)
 }
 
-export default AsteroAdmin
+export default PalimpsestAdmin

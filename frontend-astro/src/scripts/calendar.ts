@@ -1,4 +1,4 @@
-/* global document, localStorage, HTMLElement, Event */
+/* global HTMLElement, Event */
 
 interface CalendarEvent {
   id: string
@@ -141,7 +141,6 @@ export function initCalendar() {
 
   let bsModal: { show: () => void, hide: () => void } | null = null
   if (modal && typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).bootstrap) {
-    // eslint-disable-next-line no-unused-vars
     const Bootstrap = (window as unknown as Record<string, unknown>).bootstrap as Record<string, new (el: HTMLElement) => { show: () => void, hide: () => void }>
     bsModal = new Bootstrap.Modal(modal)
   }
