@@ -1,12 +1,9 @@
 ---
-import ComponentPreviewScripts from '../../../components/component-preview/_scripts_component_preview.astro'
-
 interface Props {
-  enableComponentPreview?: boolean
   pageScript?: string
 }
 
-const { enableComponentPreview = false, pageScript } = Astro.props
+const { pageScript } = Astro.props
 
 function getJS(filename: string) {
   const isDev = import.meta.env.DEV
@@ -45,12 +42,3 @@ function getJS(filename: string) {
 <script src={getJS('main')} type="module" is:inline></script>
 
 <!-- Page Script -->{pageScript && <Fragment set:html={pageScript} />}
-
-<!-- Component JS -->
-{
-  enableComponentPreview && (
-    <>
-      <ComponentPreviewScripts />
-    </>
-  )
-}

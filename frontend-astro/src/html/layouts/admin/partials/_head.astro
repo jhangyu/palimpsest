@@ -3,14 +3,12 @@
 // - Add a favicon
 // - ogimage
 import { getAssetPrefix } from '../../../../utils/path.js'
-import ComponentPreviewCSS from '../../../components/component-preview/_css_component-preview.astro'
 
 interface Props {
   title?: string
   description?: string
   author?: string
   ogImage?: string
-  enableComponentPreview?: boolean
   pageCss?: string
   isRtl?: boolean
 }
@@ -20,7 +18,6 @@ const {
   description = 'Admin dashboard for managing your application', // Default description
   author = 'Palimpsest',
   ogImage = '/src/assets/img/og-image.png',
-  enableComponentPreview = false,
   pageCss,
   isRtl = false
 } = Astro.props
@@ -93,15 +90,6 @@ function getRtlCSS() {
 
 <!-- Page CSS -->
 {pageCss && <Fragment set:html={pageCss} />}
-
-<!-- Component CSS -->
-{
-  enableComponentPreview && (
-    <>
-      <ComponentPreviewCSS />
-    </>
-  )
-}
 
 <style>
   /* You can also set custom colors inline in head */

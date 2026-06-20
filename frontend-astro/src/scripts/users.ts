@@ -7,8 +7,7 @@
  *   initUserListPage()  — admin user list with pagination and actions
  *   initAddUserPage()   — admin create user form
  *   initEditUserPage()  — admin edit user form (reads ?id= from URL)
- *   initRolesListPage() — read-only roles table
- */
+ * */
 
 import { api, type UserProfile, type AdminUser } from '@/scripts/api'
 import { getCurrentUser, isAdmin } from '@/scripts/session'
@@ -801,58 +800,4 @@ export async function initEditUserPage(): Promise<void> {
       setButtonLoading(btn, false)
     }
   })
-}
-
-// ---------------------------------------------------------------------------
-// Roles List Page
-// ---------------------------------------------------------------------------
-
-export async function initRolesListPage(): Promise<void> {
-  const container = document.getElementById('roles-list-container')
-  if (!container || container.dataset.inited) return
-  container.dataset.inited = 'true'
-
-  container.innerHTML = `
-    <div class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>`
-
-  try {
-    const roles = await api.listRoles()
-    if (roles.length === 0) {
-      container.innerHTML = `<p class="text-muted text-center py-4">No roles found.</p>`
-      return
-    }
-
-    const cards = roles.map((role) => `
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card h-100">
-          <div class="card-header pb-2">
-            <h5 class="fw-semibold text-capitalize mb-2">${escapeHtml(role.name)}</h5>
-            <p class="text-muted small mb-0">Total users with this role: ${role.user_count}</p>
-            ${role.description ? `<p class="text-muted small mb-0 mt-1">${escapeHtml(role.description)}</p>` : ''}
-          </div>
-          <div class="card-body p-2 d-flex flex-column">
-            <div class="d-flex align-items-center text-muted small">
-              <i class="ri-group-line me-1"></i>
-              ${role.user_count} user${role.user_count !== 1 ? 's' : ''}
-            </div>
-          </div>
-          <div class="card-footer">
-            <span class="badge bg-secondary-subtle text-secondary">Read-only in v1</span>
-          </div>
-        </div>
-      </div>`
-    ).join('')
-
-    container.innerHTML = `<div class="row g-4">${cards}</div>`
-  } catch (err) {
-    container.innerHTML = `
-      <div class="alert alert-danger">
-        <i class="ri-error-warning-line me-2"></i>
-        ${escapeHtml(err instanceof Error ? err.message : 'Failed to load roles.')}
-      </div>`
-  }
 }
