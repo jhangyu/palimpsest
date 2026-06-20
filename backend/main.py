@@ -12,7 +12,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-import sqlalchemy
 from sqlalchemy import func, select, text, update
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,11 +37,262 @@ from core.db import (
     articles, schema_versions, ai_tables,
 )
 from routers._deps import log_with_time
-from routers.database import _run_schema_migration, APP_VERSION, MIGRATIONS
 from routers.sites import _record_crawl_attempt, _background_tasks
 
-# --- Scheduler ---
-scheduler = create_scheduler(DATABASE_URL)
+# ---------------------------------------------------------------------------
+# _run_all_migrations  (async, uses existing async engine via run_sync)
+# ---------------------------------------------------------------------------
+
+
+def _run_schema_migration_on_conn(connection) -> None:
+    """Adapter: runs _run_schema_migration DDL on an existing sync connection.
+
+    _run_schema_migration() expects an engine and opens its own connection.
+    This wrapper provides the same DDL logic but on a pre-existing connection,
+    for use with async engine's conn.run_sync().
+    """
+    from sqlalchemy import text as sa_text
+    from datetime import datetime, timezone as _tz
+
+    # Add new columns to articles if they don't exist
+    for col, col_type in [("created_at", "VARCHAR"), ("updated_at", "VARCHAR"), ("word_count", "INTEGER")]:
+        try:
+            connection.execute(sa_text(f"ALTER TABLE articles ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+        except Exception as e:
+            log_with_time(f"[Migration] Column articles.{col} migration note: {e}")
+
+    # DD-10: Migrate articles timestamp columns from VARCHAR to TIMESTAMPTZ
+    for col in ("published_at", "created_at", "updated_at"):
+        try:
+            connection.execute(sa_text(
+                f"ALTER TABLE articles ALTER COLUMN {col} TYPE TIMESTAMPTZ "
+                f"USING {col}::timestamptz"
+            ))
+        except Exception as e:
+            # Column may already be TIMESTAMPTZ — safe to ignore
+            err_str = str(e).lower()
+            if "already" not in err_str and "same type" not in err_str:
+                log_with_time(f"[Migration] articles.{col} TIMESTAMPTZ migration note: {e}")
+
+    # --- Auth tables (CREATE TABLE IF NOT EXISTS) ---
+    auth_table_stmts = [
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR NOT NULL UNIQUE,
+            email_normalized VARCHAR NOT NULL UNIQUE,
+            pending_email VARCHAR,
+            pending_email_normalized VARCHAR,
+            username VARCHAR NOT NULL UNIQUE,
+            username_normalized VARCHAR NOT NULL UNIQUE,
+            full_name VARCHAR,
+            password_hash TEXT NOT NULL,
+            status VARCHAR NOT NULL DEFAULT 'active',
+            email_verified_at TIMESTAMPTZ,
+            avatar_mime_type VARCHAR,
+            avatar_bytes BYTEA,
+            avatar_size_bytes INTEGER,
+            avatar_hash VARCHAR,
+            avatar_source VARCHAR NOT NULL DEFAULT 'none',
+            avatar_updated_at TIMESTAMPTZ,
+            preferences JSON NOT NULL DEFAULT '{}',
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            last_login_at TIMESTAMPTZ
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS roles (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR NOT NULL UNIQUE,
+            description TEXT,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_roles (
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+            PRIMARY KEY (user_id, role_id)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            token_hash VARCHAR NOT NULL UNIQUE,
+            user_agent TEXT,
+            ip_address VARCHAR,
+            created_at TIMESTAMPTZ NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            revoked_at TIMESTAMPTZ
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            token_hash VARCHAR NOT NULL UNIQUE,
+            created_at TIMESTAMPTZ NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used_at TIMESTAMPTZ
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_verification_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            token_hash VARCHAR NOT NULL UNIQUE,
+            email VARCHAR NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used_at TIMESTAMPTZ
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS auth_rate_limits (
+            id SERIAL PRIMARY KEY,
+            scope VARCHAR NOT NULL,
+            subject_hash VARCHAR NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            window_started_at TIMESTAMPTZ NOT NULL,
+            locked_until TIMESTAMPTZ,
+            updated_at TIMESTAMPTZ NOT NULL,
+            UNIQUE(scope, subject_hash)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS schema_versions (
+            id SERIAL PRIMARY KEY,
+            version VARCHAR NOT NULL UNIQUE,
+            description VARCHAR NOT NULL,
+            applied_at TIMESTAMPTZ NOT NULL
+        )
+        """,
+    ]
+
+    for stmt in auth_table_stmts:
+        try:
+            connection.execute(sa_text(stmt))
+        except Exception as e:
+            log_with_time(f"[Migration] Auth table creation note: {e}")
+
+    # Create indexes if not exist
+    index_stmts = [
+        # Existing indexes
+        "CREATE INDEX IF NOT EXISTS idx_articles_site_id ON articles(site_id)",
+        "CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at)",
+        "CREATE INDEX IF NOT EXISTS idx_rss_query_events_requested_at ON rss_query_events(requested_at)",
+        "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_started_at ON crawl_attempts(started_at)",
+        "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_site_started ON crawl_attempts(site_id, started_at)",
+        # Auth indexes
+        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at, revoked_at)",
+        "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, expires_at, used_at)",
+        "CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user ON email_verification_tokens(user_id, expires_at, used_at)",
+        "CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_scope_locked ON auth_rate_limits(scope, locked_until)",
+    ]
+
+    for stmt in index_stmts:
+        try:
+            connection.execute(sa_text(stmt))
+        except Exception as e:
+            log_with_time(f"[Migration] Index creation note: {e}")
+
+    # Partial unique indexes (PostgreSQL-specific)
+    partial_idx_stmts = [
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pending_email_normalized ON users(pending_email_normalized) WHERE pending_email_normalized IS NOT NULL",
+    ]
+    for stmt in partial_idx_stmts:
+        try:
+            connection.execute(sa_text(stmt))
+        except Exception as e:
+            log_with_time(f"[Migration] Partial unique index note: {e}")
+
+    # Seed roles if not exist
+    try:
+        now_ts = datetime.now(_tz.utc)
+        connection.execute(sa_text(
+            "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
+        ), {"name": "admin", "desc": "Administrator role with full access", "ts": now_ts})
+        connection.execute(sa_text(
+            "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
+        ), {"name": "user", "desc": "Standard user role", "ts": now_ts})
+    except Exception as e:
+        log_with_time(f"[Migration] Role seeding note: {e}")
+
+    log_with_time("[Migration] Schema migration completed.")
+
+
+async def _run_all_migrations() -> None:
+    """Run all DDL migrations using the existing async engine.
+
+    Uses conn.run_sync() to run sync DDL functions within the async engine's
+    connection, eliminating the need for a separate sync PostgreSQL driver.
+    """
+    async with engine.begin() as conn:
+        # Create tables if not exist
+        await conn.run_sync(metadata.create_all)
+
+        # Run schema migration (ALTER TABLE statements, auth tables, indexes, role seeding)
+        await conn.run_sync(_run_schema_migration_on_conn)
+
+        # AI provider schema expansion
+        for stmt_text in SCHEMA_EXPANSION_STATEMENTS:
+            try:
+                await conn.execute(text(stmt_text))
+            except Exception as e:
+                log_with_time(f"[Migration] AI provider schema expansion note: {e}")
+        log_with_time("[Migration] AI provider schema expansion completed.")
+
+        # Crawl repair tables
+        from core.crawl_repair_models import migrate_crawl_repair_tables
+        await conn.run_sync(migrate_crawl_repair_tables)
+        log_with_time("[Migration] Crawl repair schema expansion completed.")
+
+        # Filter rules column
+        try:
+            await conn.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
+        except Exception as e:
+            log_with_time(f"[Migration] filter_rules column note: {e}")
+        log_with_time("[Migration] Filter rules schema migration completed.")
+
+    log_with_time("[Migration] All migrations completed.")
+
+
+# ---------------------------------------------------------------------------
+# _run_startup_backfills  (non-critical; runs as background task)
+# ---------------------------------------------------------------------------
+
+async def _run_startup_backfills(kek_backend) -> None:
+    """Non-critical backfills — deferred to background so server is ready immediately.
+
+    Equivalent to _backfill_articles: runs after yield, does not block readiness.
+    All operations are idempotent (ON CONFLICT DO NOTHING / upsert semantics).
+    """
+    if kek_backend is not None:
+        async with async_session_factory() as session:
+            try:
+                await backfill_existing_user_secret_keys(session, users, ai_tables.user_secret_keys, kek_backend)
+                log_with_time("[Backfill] User secret key backfill completed.")
+            except Exception as e:
+                log_with_time(f"[Backfill] User secret key backfill note: {e}")
+            try:
+                result = await backfill_site_owners(session)
+                log_with_time(f"[Backfill] Site owner backfill: {result.status.value}")
+            except Exception as e:
+                log_with_time(f"[Backfill] Site owner backfill note: {e}")
+
+    async with async_session_factory() as session:
+        try:
+            from core.crawl_repair_models import backfill_repair_states
+            from core.time_provider import taipei_week_window, SystemClock
+            _clock = SystemClock()
+            _week = taipei_week_window(_clock.now_utc())
+            result = await backfill_repair_states(session, current_week_start=_week.start_utc)
+            log_with_time(f"[Backfill] Crawl repair state backfill: scanned={result['sites_scanned']}, inserted={result['rows_inserted']}")
+        except Exception as e:
+            log_with_time(f"[Backfill] Crawl repair state backfill note: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -173,44 +423,8 @@ async def _cleanup_job():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables if not exist (uses sync engine for DDL)
-    sync_url = DATABASE_URL.replace("+asyncpg", "").replace("postgresql://", "postgresql://")
-    sync_engine = sqlalchemy.create_engine(sync_url)
-
-    await asyncio.to_thread(metadata.create_all, sync_engine)
-
-    # Run idempotent migration for existing DBs
-    await asyncio.to_thread(_run_schema_migration, sync_engine)
-
-    # --- AI Provider schema expansion ---
-    with sync_engine.connect() as conn:
-        for stmt in SCHEMA_EXPANSION_STATEMENTS:
-            try:
-                conn.execute(text(stmt))
-            except Exception as e:
-                log_with_time(f"[Migration] AI provider schema expansion note: {e}")
-        conn.commit()
-    log_with_time("[Migration] AI provider schema expansion completed.")
-    sync_engine.dispose()
-
-    # --- Crawl repair schema expansion ---
-    sync_engine2 = sqlalchemy.create_engine(sync_url)
-    with sync_engine2.connect() as conn:
-        from core.crawl_repair_models import migrate_crawl_repair_tables
-        migrate_crawl_repair_tables(conn)
-    log_with_time("[Migration] Crawl repair schema expansion completed.")
-    sync_engine2.dispose()
-
-    # --- Filter rules schema migration ---
-    sync_engine3 = sqlalchemy.create_engine(sync_url)
-    with sync_engine3.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
-            conn.commit()
-        except Exception as e:
-            log_with_time(f"[Migration] filter_rules column note: {e}")
-    log_with_time("[Migration] Filter rules schema migration completed.")
-    sync_engine3.dispose()
+    # Run all DDL migrations using the existing async engine (no sync driver needed).
+    await _run_all_migrations()
 
     # --- LLM Provider Profiles feature flag ---
     _llm_profiles_enabled = os.getenv("LLM_PROVIDER_PROFILES_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -224,61 +438,62 @@ async def lifespan(app: FastAPI):
             app.state.kek_backend = _kek_backend
             log_with_time(f"[Startup] KEK backend initialized from {kek_path} (version={kek_version})")
         except Exception as e:
-            # Check if any providers exist that require vault
-            provider_count = None
-            try:
-                async with async_session_factory() as session:
-                    result = await session.execute(
-                        text("SELECT COUNT(*) as cnt FROM user_ai_providers")
-                    )
-                    provider_count = result.mappings().first()
-                has_providers = provider_count and provider_count["cnt"] > 0
-            except Exception as db_exc:
-                raise RuntimeError(
-                    f"[FATAL] KEK unavailable ({e}) and provider count check failed ({db_exc}). "
-                    "Cannot determine safe startup state. Refusing to start."
-                ) from db_exc
+            # Try fallback path before auto-generating
+            fallback_kek_path = os.path.join(os.getcwd(), "data", "kek")
+            if fallback_kek_path != kek_path:
+                try:
+                    _kek_backend = FileKeyEncryptionBackend(fallback_kek_path, kek_version)
+                    app.state.kek_backend = _kek_backend
+                    kek_path = fallback_kek_path
+                    log_with_time(f"[Startup] KEK backend initialized from fallback {fallback_kek_path} (version={kek_version})")
+                except Exception:
+                    pass  # Fall through to existing logic
 
-            if has_providers:
-                cnt = provider_count["cnt"] if provider_count else "unknown"
-                raise RuntimeError(
-                    f"[FATAL] KEK backend unavailable ({e}) but {cnt} "
-                    "provider(s) exist. Cannot start without KEK. "
-                    "Set LLM_PROVIDER_PROFILES_ENABLED=false for environment-only mode, "
-                    "or provide a valid KEK keyring at LLM_KEK_PATH."
-                )
-            else:
-                log_with_time(f"[Startup] KEK backend unavailable ({e}); no providers configured, continuing in environment-only mode")
-                app.state.kek_backend = None
+            if app.state.kek_backend is None:
+                # Check if any providers exist that require vault
+                provider_count = None
+                try:
+                    async with async_session_factory() as session:
+                        result = await session.execute(
+                            text("SELECT COUNT(*) as cnt FROM user_ai_providers")
+                        )
+                        provider_count = result.mappings().first()
+                    has_providers = provider_count and provider_count["cnt"] > 0
+                except Exception as db_exc:
+                    raise RuntimeError(
+                        f"[FATAL] KEK unavailable ({e}) and provider count check failed ({db_exc}). "
+                        "Cannot determine safe startup state. Refusing to start."
+                    ) from db_exc
+
+                if has_providers:
+                    cnt = provider_count["cnt"] if provider_count else "unknown"
+                    raise RuntimeError(
+                        f"[FATAL] KEK backend unavailable ({e}) but {cnt} "
+                        "provider(s) exist. Cannot start without KEK. "
+                        "Set LLM_PROVIDER_PROFILES_ENABLED=false for environment-only mode, "
+                        "or provide a valid KEK keyring at LLM_KEK_PATH."
+                    )
+                else:
+                    # First-time setup: auto-generate KEK
+                    log_with_time(f"[Startup] KEK not found; auto-generating keyring...")
+                    _generated = False
+                    for candidate_path in [kek_path, os.path.join(os.getcwd(), "data", "kek")]:
+                        try:
+                            FileKeyEncryptionBackend.generate_keyring(candidate_path, kek_version)
+                            _kek_backend = FileKeyEncryptionBackend(candidate_path, kek_version)
+                            app.state.kek_backend = _kek_backend
+                            kek_path = candidate_path
+                            log_with_time(f"[Startup] KEK keyring auto-generated at {candidate_path}")
+                            _generated = True
+                            break
+                        except Exception as gen_exc:
+                            log_with_time(f"[Startup] Cannot generate KEK at {candidate_path}: {gen_exc}")
+                    if not _generated:
+                        log_with_time("[Startup] KEK auto-generation failed; continuing without encryption")
+                        app.state.kek_backend = None
     else:
         log_with_time("[Startup] LLM provider profiles disabled (LLM_PROVIDER_PROFILES_ENABLED=false); using environment fallback only")
         app.state.kek_backend = None
-
-    # --- Backfill user secret keys and site owners ---
-    if app.state.kek_backend is not None:
-        async with async_session_factory() as session:
-            try:
-                await backfill_existing_user_secret_keys(session, users, ai_tables.user_secret_keys, app.state.kek_backend)
-                log_with_time("[Startup] User secret key backfill completed.")
-            except Exception as e:
-                log_with_time(f"[Startup] User secret key backfill note: {e}")
-            try:
-                result = await backfill_site_owners(session)
-                log_with_time(f"[Startup] Site owner backfill: {result.status.value}")
-            except Exception as e:
-                log_with_time(f"[Startup] Site owner backfill note: {e}")
-
-    # --- Backfill crawl repair states ---
-    async with async_session_factory() as session:
-        try:
-            from core.crawl_repair_models import backfill_repair_states
-            from core.time_provider import taipei_week_window, SystemClock
-            _clock = SystemClock()
-            _week = taipei_week_window(_clock.now_utc())
-            result = await backfill_repair_states(session, current_week_start=_week.start_utc)
-            log_with_time(f"[Startup] Crawl repair state backfill: scanned={result['sites_scanned']}, inserted={result['rows_inserted']}")
-        except Exception as e:
-            log_with_time(f"[Startup] Crawl repair state backfill note: {e}")
 
     # Seed initial schema version if not exists
     async with async_session_factory() as session:
@@ -309,16 +524,24 @@ async def lifespan(app: FastAPI):
 
     # Start scheduler only if this worker acquires the advisory lock (prevents thundering herd)
     # Use a persistent connection for the advisory lock (session-level in PostgreSQL)
+    # Scheduler is created lazily here — no module-level engine is wasted when lock is not acquired.
     lock_conn = await engine.connect()
     _scheduler_lock_acquired = await acquire_scheduler_lock(lock_conn)
+    _scheduler = None
     if _scheduler_lock_acquired:
-        setup_jobs(scheduler, scheduled_crawl_job, _cleanup_job)
-        scheduler.start()
+        _scheduler = create_scheduler(DATABASE_URL)
+        setup_jobs(_scheduler, scheduled_crawl_job, _cleanup_job)
+        _scheduler.start()
         print("[Startup] Database connected, scheduler started (lock acquired).")
     else:
         print("[Startup] Database connected, scheduler skipped (another worker holds lock).")
 
-    # Schedule backfill as background task so server starts immediately
+    # Schedule non-critical backfills as background task (secret keys, site owners, repair states)
+    _bt2 = asyncio.create_task(_run_startup_backfills(app.state.kek_backend))
+    _background_tasks.add(_bt2)
+    _bt2.add_done_callback(_background_tasks.discard)
+
+    # Schedule article backfill as background task so server starts immediately
     _bt = asyncio.create_task(_backfill_articles())
     _background_tasks.add(_bt)
     _bt.add_done_callback(_background_tasks.discard)
@@ -331,8 +554,8 @@ async def lifespan(app: FastAPI):
     if _background_tasks:
         await asyncio.wait(_background_tasks, timeout=5.0)
 
-    if _scheduler_lock_acquired:
-        scheduler.shutdown()
+    if _scheduler_lock_acquired and _scheduler is not None:
+        _scheduler.shutdown()
         await release_scheduler_lock(lock_conn)
     await lock_conn.close()
     await engine.dispose()
@@ -350,9 +573,15 @@ app = FastAPI(lifespan=lifespan)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     traceback.print_exc()
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in _allowed_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"error": "internal_server_error", "detail": str(exc)},
+        headers=headers,
     )
 
 
@@ -450,7 +679,6 @@ async def serve_frontend(full_path: str):
     candidates = []
 
     if safe_path:
-        # Validate path components before constructing candidates
         path_parts = safe_path.split("/")
         for part in path_parts:
             if part == ".." or part.startswith("."):
@@ -459,8 +687,21 @@ async def serve_frontend(full_path: str):
         requested = FRONTEND_DIR / safe_path
         if requested.is_file():
             candidates.append(requested)
+        # Astro format:'file' outputs page.html — try .html suffix
+        html_suffixed = requested.parent / (requested.name + ".html")
+        if html_suffixed.is_file():
+            candidates.append(html_suffixed)
         if (requested / "index.html").is_file():
             candidates.append(requested / "index.html")
+        # Try under pages/ subdirectory (bare paths without /pages prefix)
+        pages_requested = FRONTEND_DIR / "pages" / safe_path
+        if pages_requested.is_file():
+            candidates.append(pages_requested)
+        pages_html = pages_requested.parent / (pages_requested.name + ".html")
+        if pages_html.is_file():
+            candidates.append(pages_html)
+        if (pages_requested / "index.html").is_file():
+            candidates.append(pages_requested / "index.html")
 
         first_segment = safe_path.split("/", 1)[0]
         if first_segment and (FRONTEND_DIR / first_segment / "index.html").is_file():

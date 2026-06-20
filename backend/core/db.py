@@ -37,6 +37,7 @@ sites = sqlalchemy.Table(
     sqlalchemy.Column("consecutive_failure_count", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("refresh_frequency", sqlalchemy.Integer, default=60), # In minutes
     sqlalchemy.Column("scrape_method", sqlalchemy.String, default="scrapling"),
+    sqlalchemy.Column("owner_user_id", sqlalchemy.Integer, nullable=True),
 )
 
 articles = sqlalchemy.Table(

@@ -139,6 +139,25 @@ class FileKeyEncryptionBackend:
         return self._decode_key(payload)
 
     @staticmethod
+    def generate_keyring(keyring_dir: str | Path, version: str = "v1") -> Path:
+        """Create a new keyring directory and generate a random 32-byte KEK.
+
+        Creates ``{keyring_dir}`` with mode 0o700, then writes a base64-encoded
+        32-byte random key to ``{keyring_dir}/{version}.key`` with mode 0o600.
+        Returns the path of the key file created.
+        """
+        dir_path = Path(keyring_dir)
+        dir_path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        key_path = dir_path / f"{version}.key"
+        if key_path.exists():
+            return key_path
+        raw_key = os.urandom(32)
+        encoded = base64.b64encode(raw_key)
+        key_path.write_bytes(encoded)
+        key_path.chmod(0o600)
+        return key_path
+
+    @staticmethod
     def _validate_version(version: str) -> str:
         if not version or not all(char.isalnum() or char in "._-" for char in version):
             raise KeyBackendConfigurationError("invalid KEK version")
