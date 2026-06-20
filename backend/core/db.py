@@ -32,6 +32,7 @@ sites = sqlalchemy.Table(
     sqlalchemy.Column("name", sqlalchemy.String),
     sqlalchemy.Column("list_rules", sqlalchemy.JSON),
     sqlalchemy.Column("content_rules", sqlalchemy.JSON),
+    sqlalchemy.Column("filter_rules", sqlalchemy.JSON, nullable=True),
     # NEW: For self-healing mechanism
     sqlalchemy.Column("consecutive_failure_count", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("refresh_frequency", sqlalchemy.Integer, default=60), # In minutes
@@ -177,6 +178,10 @@ schema_versions = sqlalchemy.Table(
 
 # --- AI Provider Tables ---
 ai_tables = define_ai_provider_tables(metadata)
+
+# --- Crawl Repair Tables ---
+from core.crawl_repair_models import define_crawl_repair_tables
+crawl_repair_tables = define_crawl_repair_tables(metadata)
 
 # ---------------------------------------------------------------------------
 # FastAPI Depends functions (DI layer)

@@ -45,6 +45,7 @@ class SiteCreate(BaseModel):
     name: str
     refresh_frequency: Optional[int] = 60
     scrape_method: Optional[str] = "scrapling"
+    filter_rules: Optional[dict] = None
 
     @field_validator('url')
     @classmethod
@@ -59,6 +60,7 @@ class SiteUpdate(BaseModel):
     refresh_frequency: Optional[int] = None
     list_rules: Optional[dict] = None
     content_rules: Optional[dict] = None
+    filter_rules: Optional[dict] = None
     scrape_method: Optional[str] = None
 
 class RulesInput(BaseModel):
@@ -69,6 +71,7 @@ class PreviewRequest(BaseModel):
     url: str
     list_rules: dict
     content_rules: dict
+    filter_rules: Optional[dict] = None
     mode: Optional[str] = "both"  # "list", "content", or "both"
     target_url: Optional[str] = None  # 用於 content 模式下的單篇文章測試
     debug: Optional[bool] = False
@@ -77,7 +80,7 @@ class PreviewRequest(BaseModel):
 
 # --- Shared helper for _record_crawl_attempt ---
 
-async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, debug_writer=None, owner_user_id=None, db=None, kek_backend=None):
+async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, filter_rules: dict | None = None, debug_writer=None, owner_user_id=None, db=None, kek_backend=None):
     """Wrapper that records a crawl attempt around crawl_site_logic."""
     if db is None:
         from core.db import async_session_factory
@@ -88,6 +91,7 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
                 url=url,
                 list_rules=list_rules,
                 content_rules=content_rules,
+                filter_rules=filter_rules,
                 force_update=force_update,
                 scrape_method=scrape_method,
                 debug_writer=debug_writer,
@@ -120,6 +124,7 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
         url=url,
         list_rules=list_rules,
         content_rules=content_rules,
+        filter_rules=filter_rules,
         db=db,
         debug_writer=debug_writer,
         force_update=force_update,
@@ -244,13 +249,17 @@ async def preview_crawl(req: PreviewRequest, current_user: dict = Depends(requir
         req.url,
         req.list_rules,
         req.content_rules,
+        filter_rules=req.filter_rules,
         mode=req.mode or "both",
         target_url=req.target_url,
         debug_writer=dw,
         scrape_method=req.scrape_method or "scrapling",
     )
 
-    response = {"status": "success", "data": results}
+    if isinstance(results, dict) and 'articles' in results:
+        response = {"status": "success", "data": results['articles'], "filter_summary": results.get('filter_summary')}
+    else:
+        response = {"status": "success", "data": results}
     if req.debug:
         response["debug_dir"] = dw.debug_dir
     return response
@@ -270,6 +279,7 @@ async def create_site(
         name=site.name,
         list_rules=rules.list_rules,
         content_rules=rules.content_rules,
+        filter_rules=site.filter_rules,
         consecutive_failure_count=0,
         refresh_frequency=site.refresh_frequency,
         scrape_method=site.scrape_method or "scrapling",
@@ -286,6 +296,7 @@ async def create_site(
         url=site.url,
         list_rules=rules.list_rules,
         content_rules=rules.content_rules,
+        filter_rules=site.filter_rules,
         force_update=True,
         scrape_method=site.scrape_method or "scrapling",
         owner_user_id=current_user["id"],
@@ -318,7 +329,7 @@ async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict 
     if not check_site_owner_or_admin(site, current_user["id"], is_admin):
         raise HTTPException(status_code=403, detail="Not authorized to modify this site")
 
-    values = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    values = update_data.model_dump(exclude_unset=True)
     if not values:
         return {"status": "no change"}
 
@@ -344,6 +355,7 @@ async def duplicate_site(site_id: int, current_user: dict = Depends(require_user
         name=f"[Copy] {site['name']}",
         list_rules=site['list_rules'],
         content_rules=site['content_rules'],
+        filter_rules=site.get('filter_rules'),
         refresh_frequency=site['refresh_frequency'],
         consecutive_failure_count=0,
         scrape_method=site['scrape_method'] or "scrapling",
@@ -478,6 +490,11 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
 
     list_rules = site['list_rules'] if isinstance(site['list_rules'], dict) else json.loads(site['list_rules'])
     content_rules = site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules'])
+    _raw_filter = site.get('filter_rules')
+    filter_rules = (
+        _raw_filter if isinstance(_raw_filter, dict) else json.loads(_raw_filter)
+        if isinstance(_raw_filter, str) else None
+    )
 
     dw = create_debug_writer(debug, "crawl", site['name'][:30])
 
@@ -491,6 +508,7 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
         url=site['url'],
         list_rules=list_rules,
         content_rules=content_rules,
+        filter_rules=filter_rules,
         force_update=True,
         scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
         debug_writer=dw,

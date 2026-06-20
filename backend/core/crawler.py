@@ -12,6 +12,7 @@ from sqlalchemy import select, text
 from core.db import sites, articles
 from core.scraper import fetch_page
 from core.parser import parse_listing, parse_article, normalize_selector
+from core.filter_engine import apply_filter
 
 
 def log_with_time(msg):
@@ -238,7 +239,7 @@ async def get_page_content_on_page(page, url, wait_for_selector=None, fast_mode=
     return await page.content()
 
 
-async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rules: dict, db, debug_writer=None, force_update: bool = False, scrape_method: str = "scrapling", owner_user_id=None, ai_tables=None, kek_backend=None):
+async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rules: dict, db, debug_writer=None, force_update: bool = False, scrape_method: str = "scrapling", owner_user_id=None, ai_tables=None, kek_backend=None, filter_rules: dict | None = None):
     """
     爬取網站邏輯，包含自動修復機制 (Scrapling 兩階段流程)
 
@@ -260,6 +261,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         "articles_saved": 0,
         "articles_updated": 0,
         "articles_failed": 0,
+        "articles_filtered": 0,
         "content_fetch_failed": 0,
         "parse_failed": 0,
         "error_message": None,
@@ -350,6 +352,21 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 existing_url_set = set()
             articles_to_crawl = [a for a in articles_found if a['url'] not in existing_url_set]
 
+        # Stage 1 Filter: apply title-based filter before content fetch
+        if filter_rules and articles_to_crawl:
+            try:
+                before_count = len(articles_to_crawl)
+                articles_to_crawl, _ = apply_filter(
+                    articles_to_crawl, filter_rules,
+                    available_fields=['title']
+                )
+                stage1_filtered = before_count - len(articles_to_crawl)
+                result["articles_filtered"] += stage1_filtered
+                if stage1_filtered > 0:
+                    log_with_time(f"[Crawl] Stage 1 filter removed {stage1_filtered} articles (title-only)")
+            except Exception as e:
+                log_with_time(f"[Crawl] filter_rules error at Stage 1, skipping: {e}")
+
         log_with_time(f"[Crawl] Found {len(articles_to_crawl)} articles to crawl for site {site_id} (force_update={force_update})")
 
         if debug_writer is not None:
@@ -435,6 +452,21 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
                 if parsed_date:
                     pub_date = parsed_date
+
+                # Stage 2 Filter: apply full filter (title + content) before DB write
+                if filter_rules:
+                    try:
+                        article_data = {"title": title, "content": content_text}
+                        _, stage2_filtered = apply_filter(
+                            [article_data], filter_rules,
+                            available_fields=['title', 'content']
+                        )
+                        if stage2_filtered:
+                            result["articles_filtered"] += 1
+                            log_with_time(f"[Crawl] Stage 2 filter excluded: {title[:30]}...")
+                            return
+                    except Exception as e:
+                        log_with_time(f"[Crawl] filter_rules error at Stage 2, skipping: {e}")
 
                 # Compute word count
                 wc = _compute_wc(content_text)
@@ -553,8 +585,13 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         return result
 
 
-async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode: str = "both", target_url: str | None = None, debug_writer=None, scrape_method: str = "scrapling") -> list:
-    """乾跑預覽爬蟲，支援 list / content / both 模式"""
+async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filter_rules: dict | None = None, mode: str = "both", target_url: str | None = None, debug_writer=None, scrape_method: str = "scrapling") -> dict:
+    """乾跑預覽爬蟲，支援 list / content / both 模式
+
+    Returns a dict with keys:
+        articles: list of article dicts (each with 'filtered: bool')
+        filter_summary: {passed: int, filtered_out: int}
+    """
     import time
 
     start_total = time.time()
@@ -562,12 +599,13 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
 
     try:
         new_articles = []
+        stage1_filtered_count = 0
 
         # --- LIST MODE ---
         if mode in ("list", "both"):
             page = await fetch_page(url, method=scrape_method)
             if page is None:
-                return [{"error": "Failed to fetch list page"}]
+                return {"articles": [{"error": "Failed to fetch list page"}], "filter_summary": None}
 
             if debug_writer is not None:
                 debug_writer.save("01", "list_raw_html.html", page.html_content or "")
@@ -578,6 +616,20 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
                 debug_writer.save("02", "list_items.json", json.dumps(new_articles, ensure_ascii=False, indent=2))
 
             log_with_time(f"[Preview] Found {len(new_articles)} articles in list")
+
+            # Stage 1 Filter: apply title-based filter before content fetch
+            if filter_rules and new_articles:
+                try:
+                    passed_s1, filtered_s1 = apply_filter(
+                        new_articles, filter_rules,
+                        available_fields=['title']
+                    )
+                    stage1_filtered_count = len(filtered_s1)
+                    new_articles = passed_s1
+                    if stage1_filtered_count > 0:
+                        log_with_time(f"[Preview] Stage 1 filter removed {stage1_filtered_count} articles")
+                except Exception as e:
+                    log_with_time(f"[Preview] filter_rules error at Stage 1, skipping: {e}")
 
         # --- CONTENT MODE ---
         if mode == "content" and target_url:
@@ -591,7 +643,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
 
             a_page = await fetch_page(a_url, method=scrape_method)
             if a_page is None:
-                return {"title": title, "url": a_url, "content": "Failed to fetch page", "published_at": ""}
+                return {"title": title, "url": a_url, "content": "Failed to fetch page", "published_at": "", "filtered": False}
 
             if debug_writer is not None:
                 debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
@@ -621,23 +673,51 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, mode
             if debug_writer is not None:
                 debug_writer.save(f"03_article_cleaned_{uhash}", "cleaned.html", content_text[:5000])
 
+            # Stage 2 Filter: full filter check with content available
+            is_filtered = False
+            if filter_rules:
+                try:
+                    article_data = {"title": title, "content": content_text}
+                    _, stage2_filtered = apply_filter(
+                        [article_data], filter_rules,
+                        available_fields=['title', 'content']
+                    )
+                    if stage2_filtered:
+                        is_filtered = True
+                        log_with_time(f"[Preview] Stage 2 filter excluded: {title[:30]}...")
+                except Exception as e:
+                    log_with_time(f"[Preview] filter_rules error at Stage 2, skipping: {e}")
+
             log_with_time(f"[Preview] Article {a_url[:30]} parsed in {time.time() - a_start:.2f}s")
             return {
                 "title": title,
                 "url": a_url,
                 "content": content_text,
-                "published_at": pub_date
+                "published_at": pub_date,
+                "filtered": is_filtered,
             }
 
-        results = await asyncio.gather(*[fetch_article_details(a) for a in new_articles])
+        results = list(await asyncio.gather(*[fetch_article_details(a) for a in new_articles]))
+
+        # Compute filter summary
+        stage2_filtered_count = sum(1 for r in results if r.get('filtered', False))
+        total_filtered = stage1_filtered_count + stage2_filtered_count
+        total_passed = len(results) - stage2_filtered_count
+        filter_summary = {
+            "passed": total_passed,
+            "filtered_out": total_filtered,
+        } if filter_rules else None
 
         if debug_writer is not None:
-            debug_writer.save("04", "preview_results.json", json.dumps(list(results), ensure_ascii=False, indent=2))
+            debug_writer.save("04", "preview_results.json", json.dumps(results, ensure_ascii=False, indent=2))
 
         log_with_time(f"[Preview] Total preview time: {time.time() - start_total:.2f}s")
-        return list(results)
+        return {
+            "articles": results,
+            "filter_summary": filter_summary,
+        }
 
     except Exception as e:
         import traceback
         log_with_time(f"[Preview] ERROR: {str(e)}\n{traceback.format_exc()}")
-        return [{"error": f"Preview crawl failed: {str(e)}"}]
+        return {"articles": [{"error": f"Preview crawl failed: {str(e)}"}], "filter_summary": None}

@@ -128,12 +128,19 @@ async def scheduled_crawl_job():
     async def crawl_with_limit(site):
         async with semaphore:
             try:
+                _raw_filter = site.get('filter_rules')
+                filter_rules = (
+                    _raw_filter if isinstance(_raw_filter, dict)
+                    else json.loads(_raw_filter) if isinstance(_raw_filter, str)
+                    else None
+                )
                 await _record_crawl_attempt(
                     site_id=site['id'],
                     trigger_type="scheduled",
                     url=site['url'],
                     list_rules=site['list_rules'] if isinstance(site['list_rules'], dict) else json.loads(site['list_rules']),
                     content_rules=site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules']),
+                    filter_rules=filter_rules,
                     force_update=False,
                     scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
                     owner_user_id=site.get("owner_user_id"),
@@ -143,6 +150,21 @@ async def scheduled_crawl_job():
                 print(f"[Scheduler] Error crawling site {site['id']}: {e}")
 
     await asyncio.gather(*[crawl_with_limit(s) for s in all_sites])
+
+
+# ---------------------------------------------------------------------------
+# _cleanup_job
+# ---------------------------------------------------------------------------
+
+async def _cleanup_job():
+    try:
+        async with async_session_factory() as session:
+            s_count = await cleanup_expired_sessions(session, auth_sessions)
+            t_count = await cleanup_expired_tokens(session, password_reset_tokens, email_verification_tokens)
+            if s_count or t_count:
+                log_with_time(f"[Cleanup] Removed {s_count} expired sessions, {t_count} expired tokens")
+    except Exception as e:
+        log_with_time(f"[Cleanup] Error: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +192,25 @@ async def lifespan(app: FastAPI):
         conn.commit()
     log_with_time("[Migration] AI provider schema expansion completed.")
     sync_engine.dispose()
+
+    # --- Crawl repair schema expansion ---
+    sync_engine2 = sqlalchemy.create_engine(sync_url)
+    with sync_engine2.connect() as conn:
+        from core.crawl_repair_models import migrate_crawl_repair_tables
+        migrate_crawl_repair_tables(conn)
+    log_with_time("[Migration] Crawl repair schema expansion completed.")
+    sync_engine2.dispose()
+
+    # --- Filter rules schema migration ---
+    sync_engine3 = sqlalchemy.create_engine(sync_url)
+    with sync_engine3.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
+            conn.commit()
+        except Exception as e:
+            log_with_time(f"[Migration] filter_rules column note: {e}")
+    log_with_time("[Migration] Filter rules schema migration completed.")
+    sync_engine3.dispose()
 
     # --- LLM Provider Profiles feature flag ---
     _llm_profiles_enabled = os.getenv("LLM_PROVIDER_PROFILES_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -227,6 +268,18 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 log_with_time(f"[Startup] Site owner backfill note: {e}")
 
+    # --- Backfill crawl repair states ---
+    async with async_session_factory() as session:
+        try:
+            from core.crawl_repair_models import backfill_repair_states
+            from core.time_provider import taipei_week_window, SystemClock
+            _clock = SystemClock()
+            _week = taipei_week_window(_clock.now_utc())
+            result = await backfill_repair_states(session, current_week_start=_week.start_utc)
+            log_with_time(f"[Startup] Crawl repair state backfill: scanned={result['sites_scanned']}, inserted={result['rows_inserted']}")
+        except Exception as e:
+            log_with_time(f"[Startup] Crawl repair state backfill note: {e}")
+
     # Seed initial schema version if not exists
     async with async_session_factory() as session:
         try:
@@ -253,17 +306,6 @@ async def lifespan(app: FastAPI):
         )).mappings().first()
     if user_count and user_count["cnt"] == 0:
         log_with_time("[Startup] First-run setup required: no users found. POST /auth/first-run-setup to create admin.")
-
-    # Add session/token cleanup job (daily)
-    async def _cleanup_job():
-        try:
-            async with async_session_factory() as session:
-                s_count = await cleanup_expired_sessions(session, auth_sessions)
-                t_count = await cleanup_expired_tokens(session, password_reset_tokens, email_verification_tokens)
-                if s_count or t_count:
-                    log_with_time(f"[Cleanup] Removed {s_count} expired sessions, {t_count} expired tokens")
-        except Exception as e:
-            log_with_time(f"[Cleanup] Error: {e}")
 
     # Start scheduler only if this worker acquires the advisory lock (prevents thundering herd)
     # Use a persistent connection for the advisory lock (session-level in PostgreSQL)
@@ -359,6 +401,7 @@ from routers.ai_providers import router as ai_providers_router
 from routers.database import router as database_router
 from routers.sites import router as sites_router
 from routers.analytics import router as analytics_router
+from routers.notifications import router as notifications_router
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -367,6 +410,7 @@ app.include_router(ai_providers_router)
 app.include_router(database_router)
 app.include_router(sites_router)
 app.include_router(analytics_router)
+app.include_router(notifications_router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------
