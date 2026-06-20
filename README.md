@@ -5,11 +5,12 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 ## Features
 
 ### Feed Engine
-- Multi-method crawling: Playwright (headless Chromium) via Browserless Chrome or local browser, with browser reuse and `asyncio.gather` + `Semaphore(3)` parallel fetching
+- Multi-method crawling: Scrapling as the default fetcher with Playwright (headless Chromium) fallback via Browserless Chrome or local browser, browser reuse, and `asyncio.gather` + `Semaphore(3)` parallel fetching
 - AI-powered selector inference: list page and article page structure analysis using configurable multi-provider LLMs
 - Smart HTML extraction: Vue.js template detection, gallery decoding, HTML sanitization with configurable tag whitelists
-- Self-healing: automatic re-analysis when a feed fails consecutively
+- Crawl auto-repair: automatic failure counting, AI re-analysis, candidate validation, and atomic rule promotion when a feed fails consecutively
 - Background scheduler: APScheduler with per-site refresh intervals and random jitter to prevent thundering herd
+- Article filter engine: recursive tri-state rule evaluation with blacklist/whitelist modes, field targeting (title, content, or both), and regex support
 - Debug output system: per-stage intermediate artifacts for crawler and AI analysis troubleshooting
 
 ### AI Provider Layer
@@ -37,7 +38,12 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 - ECharts integration with dark mode support, stacked bar charts
 - TanStack Table for sortable/paginated data tables
 - PWA-ready, dark mode (light default) with FOUC prevention
-- 129 Astro pages, 0 lint errors
+- 41 Astro pages, 0 lint errors
+
+### Notifications
+- Real-time notification panel surfacing crawl failures and AI re-analyze events
+- Per-event error classification: network/access failures vs. content extraction failures
+- Deduplication and chronological ordering across failure and repair attempt streams
 
 ### Analytics
 - Real analytics data: `rss_query_events` and `crawl_attempts` tracking
@@ -62,64 +68,90 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 
 ```text
 .
-├── backend/                          # FastAPI application
-│   ├── main.py                       # App entry point, 57+ API routes, lifespan, scheduler
-│   └── core/                         # Business logic modules
-│       ├── ai.py                     # AI structure analysis, template extraction, gallery decoding
-│       ├── ai_providers.py           # Provider CRUD repository/service layer
-│       ├── ai_provider_migrations.py # AI provider schema and migration helpers
-│       ├── ai_tokens.py              # Legacy AI token vault (password-based encryption)
-│       ├── auth.py                   # Argon2id hashing, sessions, CSRF, rate limits, dependencies
-│       ├── crawler.py                # Playwright crawler, parallel fetching, word count helper
-│       ├── crawl_utils.py            # Shared crawl utilities (normalize, extract, parse)
-│       ├── crypto.py                 # AES-GCM authenticated encryption, token mask/reveal
-│       ├── debug.py                  # Debug writer with per-stage artifact output
-│       ├── email.py                  # Email sender (SMTP or dev-mode log output)
-│       ├── ownership.py              # Feed ownership authorization helpers
-│       ├── sanitizer.py              # HTML sanitizer with configurable tag whitelists
-│       ├── security_models.py        # Pydantic models for all auth/user/admin/token schemas
-│       ├── vue_parser.py             # Vue.js template JSON extraction
-│       └── llm/                      # LLM abstraction layer
-│           ├── base.py               # LLMProvider Protocol, BaseHTTPProvider
-│           ├── service.py            # Resolver + ordered fallback engine
-│           ├── result_parser.py      # Prompt builder and result parser
-│           ├── models.py             # Shared LLM data models
-│           ├── endpoints.py          # Endpoint URL normalization per protocol
-│           ├── registry.py           # Protocol-to-adapter registry
-│           ├── key_backends.py       # Versioned file/Docker Secret KEK backend
-│           ├── vault.py              # DEK envelope encryption, KEK rotation primitives
-│           ├── network_policy.py     # SSRF validation and verified-IP allowlist
-│           ├── network_transport.py  # Verified-IP HTTP transport with DNS pinning
-│           ├── openai_provider.py    # OpenAI-compatible adapter
-│           ├── anthropic_provider.py # Anthropic-compatible adapter
-│           └── gemini_provider.py    # Gemini-compatible adapter
-├── frontend-astro/                   # Astro dashboard
-│   ├── config/astro.config.mjs       # Astro configuration (Vite proxy, allowedHosts)
-│   ├── tools/dev.mjs                 # Dev server driver (Astro + CSS watch)
-│   ├── tools/css.mjs                 # CSS pipeline (SCSS -> PostCSS -> LightningCSS)
-│   ├── src/html/pages/               # Astro page templates (129 pages)
-│   ├── src/html/layouts/             # Layout components (admin layout, sidebar, head)
-│   ├── src/scripts/                  # TypeScript business logic (17 modules)
-│   ├── src/js/                       # Rollup IIFE bundles (dark mode, sidebar)
-│   ├── src/scss/                     # SCSS sources (gentelella + custom)
-│   └── tests/smoke.spec.ts           # Playwright E2E smoke test
-├── tests/                            # Backend test suite (270 passed, 79 skipped)
-│   ├── conftest.py                   # Pytest fixtures (test DB, auth fixtures)
-│   ├── test_auth.py                  # Auth unit/integration tests (31)
-│   ├── test_ai_tokens.py             # AI token vault tests (14)
-│   ├── test_csrf_cors.py             # CSRF/CORS tests (9)
-│   ├── test_auth_rate_limits.py      # Rate limit tests (7)
-│   ├── test_user_profile.py          # User profile tests (14)
-│   ├── test_user_preferences.py      # Preferences tests (4)
-│   ├── test_llm_*.py                 # LLM adapter, vault, fallback, registry tests
-│   └── test_*_migration*.py          # Migration and site ownership tests
-├── docs/                             # AI development notes and task logs
-├── Dockerfile                        # Multi-stage: frontend build + Python runtime
-├── docker-compose.yml                # Production deployment (app image jhangyu/palimpsest:0.02)
-├── docker-compose-dev.yml            # Development compose variant
-├── entrypoint.sh                     # Container startup: wait for DB/Chrome, validate KEK, launch uvicorn
-├── restart.sh                        # Local dev startup helper (backend + Astro dev server)
-└── .env.example                      # Environment variable template
+├── backend/                              # FastAPI application
+│   ├── main.py                           # App entry point, lifespan, scheduler, router wiring
+│   ├── scheduler.py                      # APScheduler setup and per-site job management
+│   ├── core/                             # Business logic modules
+│   │   ├── ai.py                         # AI structure analysis, template extraction, gallery decoding
+│   │   ├── ai_provider_migrations.py     # AI provider schema and migration helpers
+│   │   ├── ai_providers.py               # Provider CRUD repository/service layer
+│   │   ├── auth.py                       # Argon2id hashing, sessions, CSRF, rate limits, dependencies
+│   │   ├── crawl_outcomes.py             # Typed outcome models and pure-function crawl classifier
+│   │   ├── crawl_repair_models.py        # Schema declarations and Pydantic models for auto-repair
+│   │   ├── crawl_repair_repository.py    # Transactional, concurrent-safe auto-repair state storage
+│   │   ├── crawl_repair_service.py       # RepairOrchestrator: failure counting, AI re-analyze, rule promotion
+│   │   ├── crawl_repair_startup.py       # Lifecycle hooks for wiring auto-repair into app startup
+│   │   ├── crawl_utils.py                # Shared crawl utilities (normalize, extract, parse)
+│   │   ├── crawler.py                    # Playwright crawler, parallel fetching, word count helper
+│   │   ├── crypto.py                     # AES-GCM authenticated encryption, token mask/reveal
+│   │   ├── db.py                         # SQLAlchemy 2.0 async engine, table definitions, metadata
+│   │   ├── debug.py                      # Debug writer with per-stage artifact output
+│   │   ├── email.py                      # Email sender (SMTP or dev-mode log output)
+│   │   ├── filter_engine.py              # Recursive tri-state article filter (blacklist/whitelist, regex)
+│   │   ├── logging_utils.py              # Unified logging utilities
+│   │   ├── ownership.py                  # Feed ownership authorization helpers
+│   │   ├── parser.py                     # Pure parsing layer — Scrapling-based article and listing parsers
+│   │   ├── sanitizer.py                  # HTML sanitizer with configurable tag whitelists
+│   │   ├── scraper.py                    # Scrapling fetcher abstraction with Playwright fallback
+│   │   ├── security_models.py            # Pydantic models for all auth/user/admin schemas
+│   │   ├── time_provider.py              # Deterministic clock abstraction for crawl auto-repair
+│   │   ├── vue_parser.py                 # Vue.js template JSON extraction
+│   │   └── llm/                          # LLM abstraction layer
+│   │       ├── base.py                   # LLMProvider Protocol, BaseHTTPProvider
+│   │       ├── service.py                # Resolver + ordered fallback engine
+│   │       ├── result_parser.py          # Prompt builder and result parser
+│   │       ├── models.py                 # Shared LLM data models
+│   │       ├── endpoints.py              # Endpoint URL normalization per protocol
+│   │       ├── registry.py               # Protocol-to-adapter registry
+│   │       ├── key_backends.py           # Versioned file/Docker Secret KEK backend
+│   │       ├── vault.py                  # DEK envelope encryption, KEK rotation primitives
+│   │       ├── network_policy.py         # SSRF validation and verified-IP allowlist
+│   │       ├── network_transport.py      # Verified-IP HTTP transport with DNS pinning
+│   │       ├── openai_provider.py        # OpenAI-compatible adapter
+│   │       ├── anthropic_provider.py     # Anthropic-compatible adapter
+│   │       └── gemini_provider.py        # Gemini-compatible adapter
+│   ├── routers/                          # FastAPI router modules
+│   │   ├── _deps.py                      # Shared dependencies and logging helper
+│   │   ├── admin.py                      # Admin user and role management endpoints
+│   │   ├── ai_providers.py               # AI provider CRUD, test, reveal, discover-models endpoints
+│   │   ├── analytics.py                  # Analytics overview and article list endpoints
+│   │   ├── auth.py                       # Auth endpoints (login, logout, register, password reset)
+│   │   ├── database.py                   # Database status, migration, export, import endpoints
+│   │   ├── notifications.py              # Crawl failure and repair event notification endpoints
+│   │   ├── sites.py                      # Feed/site CRUD, crawl, analyze, RSS endpoints
+│   │   └── users.py                      # User profile, avatar, password, preferences endpoints
+│   └── services/                         # Standalone service modules
+│       ├── analytics_service.py          # Analytics aggregation and query logic
+│       └── export_service.py             # Database export (JSON / ZIP) logic
+├── frontend-astro/                       # Astro dashboard
+│   ├── config/astro.config.mjs           # Astro configuration (Vite proxy, allowedHosts)
+│   ├── tools/dev.mjs                     # Dev server driver (Astro + CSS watch)
+│   ├── tools/css.mjs                     # CSS pipeline (SCSS -> PostCSS -> LightningCSS)
+│   ├── src/html/pages/                   # Astro page templates (41 pages)
+│   ├── src/html/layouts/                 # Layout components (admin layout, sidebar, head)
+│   ├── src/scripts/                      # TypeScript business logic (22 modules)
+│   ├── src/js/                           # Rollup IIFE bundles (dark mode, sidebar)
+│   ├── src/scss/                         # SCSS sources (gentelella + custom)
+│   └── tests/smoke.spec.ts               # Playwright E2E smoke test
+├── tests/                                # Backend test suite
+│   ├── conftest.py                       # Pytest fixtures (test DB, auth fixtures)
+│   ├── test_auth.py                      # Auth unit/integration tests
+│   ├── test_csrf_cors.py                 # CSRF/CORS tests
+│   ├── test_auth_rate_limits.py          # Rate limit tests
+│   ├── test_user_profile.py              # User profile tests
+│   ├── test_user_preferences.py          # Preferences tests
+│   ├── test_crawl_repair_*.py            # Crawl auto-repair tests (models, repository, service, integration)
+│   ├── test_crawl_outcomes.py            # Crawl outcome classifier tests
+│   ├── test_time_provider.py             # Time provider tests
+│   ├── test_llm_*.py                     # LLM adapter, vault, fallback, registry tests
+│   └── test_*_migration*.py              # Migration and site ownership tests
+├── docs/                                 # AI development notes and task logs
+├── Dockerfile                            # Multi-stage: frontend build + Python runtime
+├── docker-compose.yml                    # Production deployment (app image jhangyu/palimpsest:0.1.0)
+├── docker-compose-dev.yml                # Development compose variant
+├── entrypoint.sh                         # Container startup: wait for DB/Chrome, validate KEK, launch uvicorn
+├── restart.sh                            # Local dev startup helper (backend + Astro dev server)
+└── .env.example                          # Environment variable template
 ```
 
 Ignored directories (not in version control):
@@ -150,7 +182,7 @@ Ignored directories (not in version control):
 Pull the published image:
 
 ```bash
-docker pull jhangyu/palimpsest:0.02
+docker pull jhangyu/palimpsest:0.1.0
 ```
 
 ### 1. Prepare the KEK keyring
@@ -249,12 +281,6 @@ Used when no user provider is configured or profiles are disabled.
 | `LLM_FALLBACK_THINKING` | `false` | Enable thinking/reasoning |
 | `LLM_FALLBACK_EFFORT` | `low` | Reasoning effort level |
 
-### Legacy
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `MINIMAX_API_KEY` | (empty) | Deprecated; use `LLM_FALLBACK_*` instead. Will be removed in next major release. |
-
 ### Auth & Security
 
 | Variable | Default | Description |
@@ -303,7 +329,7 @@ Required in production for password reset and invitation emails.
 | `PUT` | `/users/me` | User | Update full name |
 | `PUT` | `/users/me/email` | User | Set pending email (sends verification) |
 | `PUT` | `/users/me/username` | User | Change username |
-| `PUT` | `/users/me/password` | User | Change password (re-encrypts AI tokens, rotates sessions) |
+| `PUT` | `/users/me/password` | User | Change password (rotates sessions) |
 | `PUT` | `/users/me/preferences` | User | Update preferences JSON |
 | `PUT` | `/users/me/avatar` | User | Upload avatar (max 512 KB, JPEG/PNG/WebP) |
 | `DELETE` | `/users/me/avatar` | User | Delete avatar |
@@ -351,6 +377,12 @@ Required in production for password reset and invitation emails.
 | `GET` | `/analytics/overview?days=30` | User | Aggregated analytics (summary, charts, latest articles) |
 | `GET` | `/articles/list?filter=all&page=1` | User | Paginated article list with time filtering and search |
 
+### Notification Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/api/notifications?limit=20&types=...` | User | Recent crawl failure and AI re-analyze events |
+
 ### Settings Endpoints
 
 #### AI Provider Management
@@ -367,18 +399,6 @@ Required in production for password reset and invitation emails.
 | `POST` | `/settings/ai-providers/{id}/reveal` | User | Reveal API key (password-gated) |
 | `POST` | `/settings/ai-providers/actions/discover-models` | User | Discover available models |
 | `GET` | `/settings/ai-providers/runtime-status` | User | Get runtime/environment status |
-
-#### Legacy AI Tokens
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/settings/ai-tokens` | User | List AI tokens (masked) |
-| `POST` | `/settings/ai-tokens` | User | Create AI token |
-| `PUT` | `/settings/ai-tokens/{id}` | User | Update AI token |
-| `DELETE` | `/settings/ai-tokens/{id}` | User | Delete AI token |
-| `POST` | `/settings/ai-tokens/{id}/test` | User | Test token connectivity |
-| `POST` | `/settings/ai-tokens/{id}/reveal` | User | Reveal plaintext token |
-| `PUT` | `/settings/ai-tokens/{id}/default` | User | Set as default for provider |
 
 #### Database Management (Admin Only)
 
@@ -459,11 +479,10 @@ python -m pytest tests/ -v
 
 # Run specific test suites
 python -m pytest tests/test_auth.py -v
+python -m pytest tests/test_crawl_repair_service.py -v
 python -m pytest tests/test_llm_provider_crud.py -v
 python -m pytest tests/test_llm_fallback.py -v
 ```
-
-Current status: **270 passed, 79 skipped**.
 
 ### Integration Smoke Tests
 
@@ -486,9 +505,11 @@ npx playwright test
 ## Architecture Decisions
 
 - **PostgreSQL-only**: SQLite support has been removed. `DATABASE_URL` must point to PostgreSQL.
-- **Browser strategy**: Service mode (Browserless Chrome at `ws://chrome:3000`) in Docker; local mode (`CHROME_MODE=local`) for dev. Browser connections are reused within a crawl run.
+- **SQLAlchemy 2.0 async**: All database access uses the SQLAlchemy 2.0 `AsyncSession` API and Core expressions. Raw SQL has been eliminated from the application layer.
+- **Browser strategy**: Service mode (Browserless Chrome at `ws://chrome:3000`) in Docker; local mode (`CHROME_MODE=local`) for dev. Scrapling is the default fetcher; Playwright is used as a fallback. Browser connections are reused within a crawl run.
 - **Parallel crawling**: `asyncio.gather` + `Semaphore(3)` limits concurrent page fetches.
-- **Scheduler**: APScheduler `AsyncIOScheduler` runs every hour with `jitter=300` (random 0-300 second stagger). Per-site `refresh_frequency` controls interval; currently one global schedule drives all sites.
+- **Crawl auto-repair**: When a site accumulates consecutive failures, `RepairOrchestrator` triggers an AI re-analysis cycle. Candidate rules undergo evidence-based validation before atomic promotion. Old rules are preserved on any failure path. AI calls are never held inside a DB transaction. A weekly budget cap prevents runaway repair attempts.
+- **Scheduler**: APScheduler `AsyncIOScheduler` runs every hour with `jitter=300` (random 0-300 second stagger). Per-site `refresh_frequency` controls interval.
 - **Reverse proxy**: Nginx Proxy Manager -> Astro (port 5174) -> Vite proxy -> Backend (port 8088). In production, `API_BASE = ""` (relative path). In dev, API calls go directly to `localhost:8088`.
 - **Frontend JS**: Two independent pipelines: `src/js/` (Rollup IIFE for layout utilities) and `src/scripts/` (Astro Vite for business logic). They must not import from each other. Cross-pipeline communication uses `CustomEvent`.
 - **CSS pipeline**: SCSS -> sass-embedded + PostCSS + LightningCSS, independent of Vite. Dev mode auto-watches via `tools/dev.mjs`.
