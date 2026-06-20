@@ -323,7 +323,8 @@ async function throwOnError(res: Response): Promise<void> {
     // 401 → redirect to login
     if (res.status === 401) {
       const currentPath = window.location.pathname
-      const loginPath = '/authentication/modern/login'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const loginPath = `${pagesPrefix}/authentication/modern/login`
       if (currentPath !== loginPath) {
         window.location.href = loginPath
       }

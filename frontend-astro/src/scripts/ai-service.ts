@@ -96,7 +96,8 @@ async function extractErrorBody(res: Response): Promise<{ message: string; code?
 async function throwOnError(res: Response): Promise<void> {
   if (!res.ok) {
     if (res.status === 401) {
-      window.location.href = '/authentication/modern/login'
+      const pagesPrefix = import.meta.env.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/authentication/modern/login`
       throw new Error('Unauthorized')
     }
     const { message } = await extractErrorBody(res)
@@ -108,7 +109,8 @@ async function throwOnError(res: Response): Promise<void> {
 async function throwOnErrorWithCode(res: Response): Promise<void> {
   if (!res.ok) {
     if (res.status === 401) {
-      window.location.href = '/authentication/modern/login'
+      const pagesPrefix = import.meta.env.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/authentication/modern/login`
       throw new Error('Unauthorized')
     }
     const { message, code } = await extractErrorBody(res)
