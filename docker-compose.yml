@@ -3,10 +3,8 @@
 # =============================================================================
 # Before first run:
 #   1. Adjust volume paths below to match your environment
-#   2. Generate the KEK keyring:
-#        mkdir -p ./secrets/llm_kek
-#        python -c "import os; open('./secrets/llm_kek/v1.key','wb').write(os.urandom(32))"
-#   3. Set LLM_FALLBACK_API_KEY and other secrets (or use provider profiles)
+#   2. Set LLM_FALLBACK_API_KEY and other secrets (or use provider profiles)
+#   KEK keyring is auto-generated on first startup at /app/data/kek
 # =============================================================================
 
 services:
@@ -49,7 +47,7 @@ services:
   # Palimpsest Application
   # ---------------------------------------------------------------------------
   app:
-    image: jhangyu/palimpsest:0.1.0
+    image: jhangyu/palimpsest:latest
     container_name: palimpsest-app
     environment:
       # --- Database ---
@@ -70,7 +68,7 @@ services:
       PALIMPSEST_LOG_DIR: /app/log
 
       # --- LLM Provider Profiles (envelope encryption) ---
-      LLM_KEK_PATH: /run/secrets/llm_kek
+      LLM_KEK_PATH: /app/data/kek
       LLM_KEK_VERSION: v1
       LLM_PROVIDER_PROFILES_ENABLED: "true"
 
@@ -109,10 +107,8 @@ services:
 
     volumes:
       # Adjust base path to your environment
-      - ./data:/app/data
-      - ./log:/app/log
-      # KEK keyring — generate before first run (see top of file)
-      - ./secrets/llm_kek:/run/secrets/llm_kek:ro
+      - /Users/jhangyu/docker/palimpsest/data:/app/data
+      - /Users/jhangyu/docker/palimpsest/log:/app/log
     ports:
       - "8088:8088"
     depends_on:

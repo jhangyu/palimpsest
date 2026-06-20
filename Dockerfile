@@ -20,7 +20,7 @@ RUN npm run build
 FROM python:3.11-slim-bookworm AS runtime
 
 LABEL org.opencontainers.image.title="Palimpsest" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="0.1.1" \
       org.opencontainers.image.description="AI-powered full-text RSS content management system" \
       org.opencontainers.image.source="https://github.com/jhangyu/palimpsest" \
       org.opencontainers.image.licenses="MIT"
@@ -28,7 +28,9 @@ LABEL org.opencontainers.image.title="Palimpsest" \
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PALIMPSEST_FRONTEND_DIR=/app/frontend
+    PALIMPSEST_FRONTEND_DIR=/app/frontend \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PYTHONPATH=/app/backend/playwright_stub
 
 WORKDIR /app
 
@@ -39,7 +41,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies before copying app code — maximises cache reuse
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
+    && { pip uninstall -y pip setuptools wheel 2>/dev/null || true; }
 
 # Copy application code and built frontend assets
 COPY backend /app/backend

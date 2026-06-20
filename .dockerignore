@@ -19,3 +19,5 @@ docs
 !README.md
 backend/debug
 dashboard_sample.webp
+**/AGENTS.md
+**/tests
