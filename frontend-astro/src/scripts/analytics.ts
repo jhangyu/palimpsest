@@ -3,7 +3,7 @@
  * info-boxes, charts, and the latest-articles table.
  */
 import { api } from './api'
-import type { AnalyticsOverview } from './api'
+import type { AnalyticsOverview, FeedEventItem, FailedCrawlItem } from './api'
 import { updateChart } from './charts'
 
 // --- Formatting helpers ---
@@ -72,6 +72,7 @@ export async function initAnalytics() {
     populateSummary(data)
     populateCharts(data)
     populateLatestArticles(data)
+    populateFeedEvents(data)
   } catch (err) {
     showEl('analyticsLoadingState', false)
     showEl('analyticsErrorState', true)
@@ -177,6 +178,77 @@ function populateLatestArticles(data: AnalyticsOverview) {
       <td><a href="${escapeAttr(safeUrl(a.ori_url))}" target="_blank" rel="noopener" title="${escapeAttr(a.ori_url)}">${escapeHtml(truncateUrl(a.ori_url))}</a></td>
     </tr>
   `).join('')
+}
+
+function populateFeedEvents(data: AnalyticsOverview) {
+  // Feed event tables
+  const categories: Array<{key: keyof typeof data.feed_events, tbodyId: string}> = [
+    { key: 'new_articles', tbodyId: 'newArticlesTableBody' },
+    { key: 'failed_crawls', tbodyId: 'failedCrawlsTableBody' },
+    { key: 'ai_repairs', tbodyId: 'aiRepairsTableBody' },
+    { key: 'fetch_failures', tbodyId: 'fetchFailuresTableBody' }
+  ]
+
+  for (const cat of categories) {
+    const tbody = document.getElementById(cat.tbodyId)
+    if (!tbody) continue
+
+    const items = data.feed_events[cat.key]
+    if (!items || items.length === 0) {
+      const cols = cat.key === 'failed_crawls' ? 5 : 4
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="text-muted text-center">No data this week</td></tr>`
+      continue
+    }
+
+    if (cat.key === 'failed_crawls') {
+      const crawlItems = items as FailedCrawlItem[]
+      tbody.innerHTML = crawlItems.map(item => `
+        <tr>
+          <td>${item.rank}</td>
+          <td>${escapeHtml(item.feed_name)}</td>
+          <td>${fmtNumber(item.task_failures)}</td>
+          <td>${fmtNumber(item.article_failures)}</td>
+          <td>
+            <div class="d-flex align-items-center">
+              <div class="progress flex-grow-1 me-2" style="height: 8px">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: ${item.percentage}%" role="progressbar"></div>
+              </div>
+              <small class="text-muted" style="min-width: 40px">${item.percentage.toFixed(1)}%</small>
+            </div>
+          </td>
+        </tr>
+      `).join('')
+    } else {
+      const eventItems = items as FeedEventItem[]
+      tbody.innerHTML = eventItems.map(item => `
+        <tr>
+          <td>${item.rank}</td>
+          <td>${escapeHtml(item.feed_name)}</td>
+          <td>${fmtNumber(item.count)}</td>
+          <td>
+            <div class="d-flex align-items-center">
+              <div class="progress flex-grow-1 me-2" style="height: 8px">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: ${item.percentage}%" role="progressbar"></div>
+              </div>
+              <small class="text-muted" style="min-width: 40px">${item.percentage.toFixed(1)}%</small>
+            </div>
+          </td>
+        </tr>
+      `).join('')
+    }
+  }
+
+  // Event summary cards
+  const summaryMap: Array<{key: keyof typeof data.event_summary, id: string}> = [
+    { key: 'new_articles', id: 'eventSummaryNewArticles' },
+    { key: 'failed_crawls', id: 'eventSummaryFailedCrawls' },
+    { key: 'ai_repairs', id: 'eventSummaryAiRepairs' },
+    { key: 'fetch_failures', id: 'eventSummaryFetchFailures' }
+  ]
+
+  for (const item of summaryMap) {
+    setText(item.id, fmtNumber(data.event_summary[item.key]))
+  }
 }
 
 function escapeHtml(s: string): string {

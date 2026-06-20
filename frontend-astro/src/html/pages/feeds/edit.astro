@@ -152,30 +152,30 @@ const headerProps = {
             <!-- Toggle Rules JSON -->
             <div class="d-flex justify-content-end mb-3">
               <button id="btn-toggle-rules" class="btn btn-sm btn-outline-secondary" type="button">
-                <i class="ri-code-line me-1"></i> Show Rules
+                <i class="ri-code-line me-1"></i> Hide Rules
               </button>
             </div>
 
-            <!-- Rules JSON Panel (hidden by default) -->
-            <div id="rules-panel" class="d-none mb-3">
+            <!-- Rules JSON Panel -->
+            <div id="rules-panel" class="mb-3">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label for="textarea-list-rules" class="form-label">List Rules JSON</label>
-                  <textarea
-                    id="textarea-list-rules"
-                    class="form-control font-monospace"
-                    rows="10"
-                    spellcheck="false"></textarea>
+                  <label for="cm-list-rules" class="form-label">List Rules JSON</label>
+                  <div id="cm-list-rules" class="border rounded" style="min-height:200px"></div>
                 </div>
                 <div class="col-md-6">
-                  <label for="textarea-content-rules" class="form-label">Content Rules JSON</label>
-                  <textarea
-                    id="textarea-content-rules"
-                    class="form-control font-monospace"
-                    rows="10"
-                    spellcheck="false"></textarea>
+                  <label for="cm-content-rules" class="form-label">Content Rules JSON</label>
+                  <div id="cm-content-rules" class="border rounded" style="min-height:200px"></div>
                 </div>
               </div>
+            </div>
+
+            <hr />
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0">3. Article Filter (White/Black List)</label>
+              </div>
+              <div id="filter-builder-root"></div>
             </div>
 
             <!-- Footer: Save / Crawl / Debug -->
@@ -220,14 +220,126 @@ const headerProps = {
     <div id="preview-section" class="card mb-4 d-none">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Live Crawl Preview</h5>
-        <button id="btn-test-both" class="btn btn-sm btn-primary" type="button">
-          <i class="ri-play-circle-line me-1"></i> Test Both List &amp; Content Crawl
-        </button>
+        <div class="d-flex gap-2">
+          <button
+            id="btn-filter-preview"
+            class="btn btn-sm btn-outline-secondary"
+            type="button"
+            title="Toggle filter effect visibility in preview"
+          >
+            <i class="ri-filter-line me-1"></i>Preview Filter
+          </button>
+          <button id="btn-test-both" class="btn btn-sm btn-primary" type="button">
+            <i class="ri-play-circle-line me-1"></i> Test Both List &amp; Content Crawl
+          </button>
+        </div>
       </div>
       <div class="card-body" id="preview-body"></div>
     </div>
   </div>
 </AdminLayout>
+
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+/>
+
+<style is:global>
+  .filter-group {
+    border-left: 3px solid var(--bs-primary);
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .filter-group[data-operator='or'] {
+    border-left-color: var(--bs-warning);
+  }
+  .filter-group .filter-group {
+    margin-top: 0.5rem;
+  }
+
+  /* Selected feed row — dark mode fix */
+  [data-bs-theme='dark'] .table .table-active {
+    --bs-table-active-bg: var(--bs-tertiary-bg);
+  }
+
+  /* CodeMirror JSON editor — theme-aware base */
+  #cm-list-rules .CodeMirror,
+  #cm-content-rules .CodeMirror {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+  }
+  #cm-list-rules .CodeMirror-gutters,
+  #cm-content-rules .CodeMirror-gutters {
+    background-color: var(--bs-tertiary-bg);
+    border-right-color: var(--bs-border-color);
+  }
+  #cm-list-rules .CodeMirror-linenumber,
+  #cm-content-rules .CodeMirror-linenumber {
+    color: var(--bs-secondary-color);
+  }
+  #cm-list-rules .CodeMirror-cursor,
+  #cm-content-rules .CodeMirror-cursor {
+    border-left-color: var(--bs-body-color);
+  }
+  #cm-list-rules .CodeMirror-selected,
+  #cm-content-rules .CodeMirror-selected {
+    background-color: var(--bs-primary-bg-subtle);
+  }
+
+  /* JSON token colors — light mode */
+  #cm-list-rules .cm-string,
+  #cm-content-rules .cm-string {
+    color: #0a3069;
+  }
+  #cm-list-rules .cm-string.cm-property,
+  #cm-content-rules .cm-string.cm-property {
+    color: #0550ae;
+  }
+  #cm-list-rules .cm-number,
+  #cm-content-rules .cm-number {
+    color: #0550ae;
+  }
+  #cm-list-rules .cm-atom,
+  #cm-content-rules .cm-atom {
+    color: #cf222e;
+  }
+  #cm-list-rules .CodeMirror-matchingbracket,
+  #cm-content-rules .CodeMirror-matchingbracket {
+    color: #1a7f37;
+    font-weight: bold;
+  }
+
+  /* JSON token colors — dark mode */
+  [data-bs-theme='dark'] #cm-list-rules .cm-string,
+  [data-bs-theme='dark'] #cm-content-rules .cm-string {
+    color: #a5d6ff;
+  }
+  [data-bs-theme='dark'] #cm-list-rules .cm-string.cm-property,
+  [data-bs-theme='dark'] #cm-content-rules .cm-string.cm-property {
+    color: #79c0ff;
+  }
+  [data-bs-theme='dark'] #cm-list-rules .cm-number,
+  [data-bs-theme='dark'] #cm-content-rules .cm-number {
+    color: #79c0ff;
+  }
+  [data-bs-theme='dark'] #cm-list-rules .cm-atom,
+  [data-bs-theme='dark'] #cm-content-rules .cm-atom {
+    color: #ff7b72;
+  }
+  [data-bs-theme='dark'] #cm-list-rules .CodeMirror-matchingbracket,
+  [data-bs-theme='dark'] #cm-content-rules .CodeMirror-matchingbracket {
+    color: #7ee787;
+    font-weight: bold;
+  }
+</style>
+
+<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
+></script>
+<script
+  is:inline
+  src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"
+></script>
 
 <script>
   import { initFeedEdit } from '@/scripts/feed-edit'

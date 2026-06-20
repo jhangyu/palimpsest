@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Site } from './api'
+import type { Site, FilterConfig } from './api'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
 import {
   renderPreview,
@@ -8,6 +8,21 @@ import {
   clearPreview,
   showDebugBanner
 } from './preview-table'
+import {
+  initFilterBuilder,
+  getFilterConfig,
+  createDefaultFilterConfig
+} from './filter-builder'
+
+// ---------------------------------------------------------------------------
+// CodeMirror minimal interface (loaded as global script, not typed package)
+// ---------------------------------------------------------------------------
+interface CodeMirrorEditor {
+  getValue(): string
+  setValue(value: string): void
+  refresh(): void
+  on(event: string, handler: () => void): void
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -18,6 +33,7 @@ interface EditData {
   refresh_frequency: number
   list_rules: string
   content_rules: string
+  filter_rules: string
   sample_url: string
 }
 
@@ -25,7 +41,7 @@ let sites: Site[] = []
 let selectedSite: Site | null = null
 let editData: EditData = emptyEditData()
 let debugMode = false
-let rulesExpanded = false
+let rulesExpanded = true
 let crawlingId: number | null = null
 let saving = false
 
@@ -36,6 +52,7 @@ function emptyEditData(): EditData {
     refresh_frequency: 60,
     list_rules: '',
     content_rules: '',
+    filter_rules: '',
     sample_url: ''
   }
 }
@@ -52,8 +69,10 @@ let inputUrl: HTMLInputElement
 let inputName: HTMLInputElement
 let inputFreq: HTMLInputElement
 let inputSampleUrl: HTMLInputElement
-let textareaListRules: HTMLTextAreaElement
-let textareaContentRules: HTMLTextAreaElement
+let cmListRulesEl: HTMLElement
+let cmContentRulesEl: HTMLElement
+let cmListRules: CodeMirrorEditor | null = null
+let cmContentRules: CodeMirrorEditor | null = null
 let rulesPanel: HTMLElement
 let toggleRulesBtn: HTMLButtonElement
 let saveBtn: HTMLButtonElement
@@ -67,6 +86,8 @@ let testContentBtn: HTMLButtonElement
 let previewSection: HTMLElement
 let previewBody: HTMLElement
 let testBothBtn: HTMLButtonElement
+let filterBuilderRoot: HTMLElement
+let filterPreviewBtn: HTMLButtonElement
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,8 +130,8 @@ export function initFeedEdit(): void {
   inputName = $('#input-name') as HTMLInputElement
   inputFreq = $('#input-freq') as HTMLInputElement
   inputSampleUrl = $('#input-sample-url') as HTMLInputElement
-  textareaListRules = $('#textarea-list-rules') as HTMLTextAreaElement
-  textareaContentRules = $('#textarea-content-rules') as HTMLTextAreaElement
+  cmListRulesEl = $('#cm-list-rules')
+  cmContentRulesEl = $('#cm-content-rules')
   rulesPanel = $('#rules-panel')
   toggleRulesBtn = $('#btn-toggle-rules') as HTMLButtonElement
   saveBtn = $('#btn-save') as HTMLButtonElement
@@ -124,6 +145,8 @@ export function initFeedEdit(): void {
   previewSection = $('#preview-section')
   previewBody = $('#preview-body')
   testBothBtn = $('#btn-test-both') as HTMLButtonElement
+  filterBuilderRoot = $('#filter-builder-root')
+  filterPreviewBtn = $('#btn-filter-preview') as HTMLButtonElement
 
   // Bind events
   refreshBtn.addEventListener('click', fetchSites)
@@ -140,12 +163,25 @@ export function initFeedEdit(): void {
   inputSampleUrl.addEventListener('input', () => {
     editData.sample_url = inputSampleUrl.value
   })
-  textareaListRules.addEventListener('input', () => {
-    editData.list_rules = textareaListRules.value
-  })
-  textareaContentRules.addEventListener('input', () => {
-    editData.content_rules = textareaContentRules.value
-  })
+  const CM = (window as unknown as Record<string, unknown>).CodeMirror as
+    | ((el: HTMLElement, opts: Record<string, unknown>) => CodeMirrorEditor)
+    | undefined
+  if (CM) {
+    const cmOpts = {
+      mode: { name: 'javascript', json: true },
+      theme: 'default',
+      lineNumbers: true,
+      lineWrapping: true,
+      tabSize: 2,
+      indentWithTabs: false,
+      matchBrackets: true,
+      readOnly: false
+    }
+    cmListRules = CM(cmListRulesEl, { ...cmOpts, value: '' })
+    cmContentRules = CM(cmContentRulesEl, { ...cmOpts, value: '' })
+    cmListRules.on('change', () => { editData.list_rules = cmListRules!.getValue() })
+    cmContentRules.on('change', () => { editData.content_rules = cmContentRules!.getValue() })
+  }
 
   toggleRulesBtn.addEventListener('click', handleToggleRules)
   saveBtn.addEventListener('click', handleSave)
@@ -163,6 +199,14 @@ export function initFeedEdit(): void {
     handleTest('content', editData.sample_url)
   )
   testBothBtn.addEventListener('click', () => handleTest('both'))
+
+  filterPreviewBtn.addEventListener('click', () => {
+    filterPreviewBtn.classList.toggle('active')
+    const isActive = filterPreviewBtn.classList.contains('active')
+    filterPreviewBtn.className = isActive
+      ? 'btn btn-sm btn-secondary active'
+      : 'btn btn-sm btn-outline-secondary'
+  })
 
   // Initial data load
   fetchSites().then(() => {
@@ -260,12 +304,14 @@ async function handleEdit(id: number): Promise<void> {
   try {
     const site = await api.getSite(id)
     selectedSite = site
+    const filterConfig = site.filter_rules ?? null
     editData = {
       name: site.name,
       url: site.url,
       refresh_frequency: site.refresh_frequency || 60,
       list_rules: JSON.stringify(site.list_rules, null, 2),
       content_rules: JSON.stringify(site.content_rules, null, 2),
+      filter_rules: filterConfig ? JSON.stringify(filterConfig) : '',
       sample_url: ''
     }
 
@@ -274,8 +320,14 @@ async function handleEdit(id: number): Promise<void> {
     inputName.value = editData.name
     inputFreq.value = String(editData.refresh_frequency)
     inputSampleUrl.value = ''
-    textareaListRules.value = editData.list_rules
-    textareaContentRules.value = editData.content_rules
+    if (cmListRules) cmListRules.setValue(editData.list_rules)
+    if (cmContentRules) cmContentRules.setValue(editData.content_rules)
+    setTimeout(() => { cmListRules?.refresh(); cmContentRules?.refresh() }, 0)
+
+    // Initialize filter builder (always visible)
+    initFilterBuilder(filterBuilderRoot, filterConfig ?? createDefaultFilterConfig())
+    filterPreviewBtn.classList.remove('active')
+    filterPreviewBtn.className = 'btn btn-sm btn-outline-secondary'
 
     editorTitle.textContent = `Editing: ${site.name}`
     editorSection.classList.remove('d-none')
@@ -379,13 +431,16 @@ async function handleSave(): Promise<void> {
   saveBtn.innerHTML =
     '<span class="spinner-border spinner-border-sm" role="status"></span> Updating...'
 
+  const filterConfig: FilterConfig | null = getFilterConfig()
+
   try {
     await api.updateSite(selectedSite.id, {
       name: editData.name,
       url: editData.url,
       refresh_frequency: editData.refresh_frequency,
       list_rules: listRules as Record<string, unknown>,
-      content_rules: contentRules as Record<string, unknown>
+      content_rules: contentRules as Record<string, unknown>,
+      filter_rules: filterConfig
     })
     alert('Site updated successfully!')
     await fetchSites()
@@ -424,10 +479,10 @@ async function handleAnalyze(mode: 'list' | 'content'): Promise<void> {
 
     if (mode === 'list') {
       editData.list_rules = rulesJson
-      textareaListRules.value = rulesJson
+      if (cmListRules) cmListRules.setValue(rulesJson)
     } else {
       editData.content_rules = rulesJson
-      textareaContentRules.value = rulesJson
+      if (cmContentRules) cmContentRules.setValue(rulesJson)
     }
 
     if (debugMode && data.debug_dir) {
@@ -462,11 +517,14 @@ async function handleTest(
   showLoading(previewBody, mode)
   previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
+  const previewFilterConfig = filterPreviewBtn.classList.contains('active') ? getFilterConfig() : null
+
   try {
     const payload = {
       url: targetUrl,
       list_rules: parseSafeJson(editData.list_rules),
       content_rules: parseSafeJson(editData.content_rules),
+      filter_rules: previewFilterConfig,
       mode,
       target_url: customUrl || undefined
     }
@@ -477,7 +535,14 @@ async function handleTest(
       if (first && 'error' in first && typeof first.error === 'string') {
         showError(previewBody, first.error)
       } else {
-        renderPreview(previewBody, res.data, mode)
+        // Build set of filtered article URLs for visual indicators
+        const filteredUrls = new Set<string>(
+          res.data
+            .filter((item) => item.filtered)
+            .map((item) => item.url ?? '')
+            .filter(Boolean)
+        )
+        renderPreview(previewBody, res.data, mode, filteredUrls.size > 0 ? filteredUrls : undefined, res.filter_summary)
         if (debugMode && res.debug_dir) {
           showDebugBanner(previewBody, res.debug_dir)
         }
@@ -494,6 +559,7 @@ function handleToggleRules(): void {
     rulesPanel.classList.remove('d-none')
     toggleRulesBtn.innerHTML =
       '<i class="ri-code-line me-1"></i> Hide Rules'
+    setTimeout(() => { cmListRules?.refresh(); cmContentRules?.refresh() }, 10)
   } else {
     rulesPanel.classList.add('d-none')
     toggleRulesBtn.innerHTML =

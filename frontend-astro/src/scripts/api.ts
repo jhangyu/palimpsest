@@ -40,6 +40,29 @@ export interface ResetPasswordRequest {
   password: string
 }
 
+// --- Filter Types ---
+
+export interface FilterRule {
+  id: string
+  type: 'rule'
+  field: 'title' | 'content' | 'title_content'
+  match: 'contains' | 'not_contains' | 'equals' | 'starts_with' | 'ends_with' | 'regex'
+  value: string
+}
+
+export interface FilterGroup {
+  id: string
+  type: 'group'
+  operator: 'and' | 'or'
+  children: (FilterRule | FilterGroup)[]
+}
+
+export interface FilterConfig {
+  mode: 'blacklist' | 'whitelist'
+  match_whole_word: boolean
+  root: FilterGroup
+}
+
 // --- Site Types ---
 
 export interface Site {
@@ -49,6 +72,7 @@ export interface Site {
   refresh_frequency: number
   list_rules: Record<string, unknown>
   content_rules: Record<string, unknown>
+  filter_rules?: FilterConfig | null
   scrape_method?: string
   consecutive_failure_count?: number
 }
@@ -64,12 +88,17 @@ export interface PreviewItem {
   url?: string
   published_at?: string
   content?: string
+  filtered?: boolean
 }
 
 export interface PreviewResult {
   status: string
   data: PreviewItem[]
   debug_dir?: string
+  filter_summary?: {
+    passed: number
+    filtered_out: number
+  }
 }
 
 export interface CreateSitePayload {
@@ -94,6 +123,7 @@ export interface PreviewCrawlPayload {
   url: string
   list_rules: Record<string, unknown>
   content_rules: Record<string, unknown>
+  filter_rules?: FilterConfig | null
   mode?: string
   target_url?: string
   scrape_method?: string
@@ -201,6 +231,37 @@ export interface LatestArticle {
   ori_url: string
 }
 
+export interface FeedEventItem {
+  rank: number
+  feed_name: string
+  site_id: number
+  count: number
+  percentage: number
+}
+
+export interface FailedCrawlItem {
+  rank: number
+  feed_name: string
+  site_id: number
+  task_failures: number
+  article_failures: number
+  percentage: number
+}
+
+export interface FeedEvents {
+  new_articles: FeedEventItem[]
+  failed_crawls: FailedCrawlItem[]
+  ai_repairs: FeedEventItem[]
+  fetch_failures: FeedEventItem[]
+}
+
+export interface EventSummary {
+  new_articles: number
+  failed_crawls: number
+  ai_repairs: number
+  fetch_failures: number
+}
+
 export interface AnalyticsOverview {
   summary: AnalyticsSummary
   articles_counts_overview: ChartData
@@ -209,6 +270,8 @@ export interface AnalyticsOverview {
   article_growth: ChartData
   daily_rss_query: ChartData
   latest_articles: LatestArticle[]
+  feed_events: FeedEvents
+  event_summary: EventSummary
 }
 
 // --- CSRF Helper ---

@@ -17,6 +17,7 @@ from core.auth import normalize_email, normalize_username
 from core.db import (
     metadata, sites, articles, crawl_attempts, rss_query_events,
     users, roles, user_roles, schema_versions,
+    crawl_repair_tables,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,12 +29,12 @@ _MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024          # 50 MB
 _MAX_IMPORT_UNCOMPRESSED_SIZE = 500 * 1024 * 1024  # 500 MB
 
 # Tables safe to export (never export auth/security tables)
-_EXPORTABLE_TABLES = {"sites", "articles", "crawl_attempts", "rss_query_events", "users", "roles", "user_roles"}
+_EXPORTABLE_TABLES = {"sites", "articles", "crawl_attempts", "rss_query_events", "users", "roles", "user_roles", "site_crawl_repair_states", "crawl_repair_attempts"}
 _AUDIT_TABLES = {"crawl_attempts", "rss_query_events"}
 # System tables excluded from status row counts
 _SYSTEM_TABLES = {"schema_versions", "alembic_version"}
 # FK import order: parents before children
-_IMPORT_ORDER = ["roles", "users", "user_roles", "sites", "articles", "crawl_attempts", "rss_query_events"]
+_IMPORT_ORDER = ["roles", "users", "user_roles", "sites", "articles", "crawl_attempts", "site_crawl_repair_states", "crawl_repair_attempts", "rss_query_events"]
 
 # Table object lookup for exportable tables
 _TABLE_MAP = {
@@ -44,6 +45,8 @@ _TABLE_MAP = {
     "users": users,
     "roles": roles,
     "user_roles": user_roles,
+    "site_crawl_repair_states": crawl_repair_tables.site_crawl_repair_states,
+    "crawl_repair_attempts": crawl_repair_tables.crawl_repair_attempts,
 }
 
 # Columns to exclude per-table during export (sensitive or derived fields)
@@ -56,6 +59,7 @@ _EXPORT_EXCLUDED_COLUMNS = {
         "pending_email_normalized",
         "password_hash",
     },
+    "crawl_repair_attempts": {"provider_trace_id"},
 }
 
 # ---------------------------------------------------------------------------

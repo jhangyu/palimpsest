@@ -54,7 +54,7 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
 
     date_labels = _get_date_range(days)
     date_set = set(date_labels)
-    window_start_date = date_labels[0]  # YYYY-MM-DD, earliest in window
+    window_start_date = _date_cls.fromisoformat(date_labels[0])
     this_week_start, today, last_week_start, last_week_end = _get_week_boundaries()
 
     # ── 1. Total + weekly counts (single SQL query, no full-table load) ──────────
@@ -71,10 +71,10 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
             "FROM articles"
         ),
         {
-            "tw_start": this_week_start.isoformat(),
-            "today": today.isoformat(),
-            "lw_start": last_week_start.isoformat(),
-            "lw_end": last_week_end.isoformat(),
+            "tw_start": this_week_start,
+            "today": today,
+            "lw_start": last_week_start,
+            "lw_end": last_week_end,
         },
     )).mappings().first()
     total_article_scrap = counts_row["total"] if counts_row else 0
@@ -213,7 +213,7 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
             "WHERE requested_at IS NOT NULL AND requested_at >= :start "
             "GROUP BY 1"
         ),
-        {"start": window_start_date},
+        {"start": window_start_date.isoformat()},
     )).mappings().all()
     daily_rss_counts: dict[str, int] = {
         row["date"]: row["count"] for row in rss_sql_rows if row["date"] in date_set
@@ -235,7 +235,7 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
             "WHERE started_at IS NOT NULL AND started_at >= :start "
             "GROUP BY 1"
         ),
-        {"start": window_start_date},
+        {"start": window_start_date.isoformat()},
     )).mappings().all()
     daily_scrap_success: dict[str, int] = {}
     daily_scrap_fail: dict[str, int] = {}
@@ -302,6 +302,144 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
         for row in latest_rows
     ]
 
+    # ── 9. Per-feed event statistics (this week) ─────────────────────────────────
+    tw_start_str = this_week_start.isoformat()
+    today_str = today.isoformat()
+    tw_start_ts = datetime(this_week_start.year, this_week_start.month, this_week_start.day, tzinfo=TAIPEI_TZ)
+    today_end_ts = datetime(today.year, today.month, today.day, tzinfo=TAIPEI_TZ) + timedelta(days=1)
+
+    # 9a. new_articles: SUM(articles_saved) per site
+    na_rows = (await db.execute(
+        text(
+            "SELECT ca.site_id, COALESCE(s.name, 'Feed #' || ca.site_id::text) AS feed_name, "
+            "SUM(COALESCE(ca.articles_saved, 0)) AS count "
+            "FROM crawl_attempts ca "
+            "LEFT JOIN sites s ON s.id = ca.site_id "
+            "WHERE ca.started_at IS NOT NULL "
+            "  AND substr(ca.started_at, 1, 10) >= :tw_start "
+            "  AND substr(ca.started_at, 1, 10) <= :today "
+            "GROUP BY ca.site_id, s.name "
+            "HAVING SUM(COALESCE(ca.articles_saved, 0)) > 0 "
+            "ORDER BY count DESC"
+        ),
+        {"tw_start": tw_start_str, "today": today_str},
+    )).mappings().all()
+
+    na_total = sum(int(r["count"] or 0) for r in na_rows)
+    new_articles_by_feed = [
+        {
+            "rank": i + 1,
+            "feed_name": r["feed_name"],
+            "site_id": r["site_id"],
+            "count": int(r["count"] or 0),
+            "percentage": round(int(r["count"] or 0) / na_total * 100, 1) if na_total > 0 else 0.0,
+        }
+        for i, r in enumerate(na_rows)
+    ]
+
+    # 9b. failed_crawls: task_failures + article_failures per site
+    fc_rows = (await db.execute(
+        text(
+            "SELECT ca.site_id, COALESCE(s.name, 'Feed #' || ca.site_id::text) AS feed_name, "
+            "COUNT(*) FILTER (WHERE ca.status = 'fail') AS task_failures, "
+            "SUM(COALESCE(ca.articles_failed, 0)) AS article_failures "
+            "FROM crawl_attempts ca "
+            "LEFT JOIN sites s ON s.id = ca.site_id "
+            "WHERE ca.started_at IS NOT NULL "
+            "  AND substr(ca.started_at, 1, 10) >= :tw_start "
+            "  AND substr(ca.started_at, 1, 10) <= :today "
+            "GROUP BY ca.site_id, s.name "
+            "HAVING COUNT(*) FILTER (WHERE ca.status = 'fail') > 0 OR SUM(COALESCE(ca.articles_failed, 0)) > 0 "
+            "ORDER BY (COUNT(*) FILTER (WHERE ca.status = 'fail') + SUM(COALESCE(ca.articles_failed, 0))) DESC"
+        ),
+        {"tw_start": tw_start_str, "today": today_str},
+    )).mappings().all()
+
+    fc_total = sum(int(r["task_failures"] or 0) + int(r["article_failures"] or 0) for r in fc_rows)
+    failed_crawls_by_feed = [
+        {
+            "rank": i + 1,
+            "feed_name": r["feed_name"],
+            "site_id": r["site_id"],
+            "task_failures": int(r["task_failures"] or 0),
+            "article_failures": int(r["article_failures"] or 0),
+            "percentage": round(
+                (int(r["task_failures"] or 0) + int(r["article_failures"] or 0)) / fc_total * 100, 1
+            ) if fc_total > 0 else 0.0,
+        }
+        for i, r in enumerate(fc_rows)
+    ]
+
+    # 9c. ai_repairs: COUNT(*) per site from crawl_repair_attempts (TIMESTAMPTZ)
+    ar_rows = (await db.execute(
+        text(
+            "SELECT cra.site_id, COALESCE(s.name, 'Feed #' || cra.site_id::text) AS feed_name, "
+            "COUNT(*) AS count "
+            "FROM crawl_repair_attempts cra "
+            "LEFT JOIN sites s ON s.id = cra.site_id "
+            "WHERE cra.started_at >= :tw_start_ts "
+            "  AND cra.started_at < :today_end_ts "
+            "GROUP BY cra.site_id, s.name "
+            "ORDER BY count DESC"
+        ),
+        {"tw_start_ts": tw_start_ts, "today_end_ts": today_end_ts},
+    )).mappings().all()
+
+    ar_total = sum(int(r["count"] or 0) for r in ar_rows)
+    ai_repairs_by_feed = [
+        {
+            "rank": i + 1,
+            "feed_name": r["feed_name"],
+            "site_id": r["site_id"],
+            "count": int(r["count"] or 0),
+            "percentage": round(int(r["count"] or 0) / ar_total * 100, 1) if ar_total > 0 else 0.0,
+        }
+        for i, r in enumerate(ar_rows)
+    ]
+
+    # 9d. fetch_failures: SUM(content_fetch_failed) per site
+    ff_rows = (await db.execute(
+        text(
+            "SELECT ca.site_id, COALESCE(s.name, 'Feed #' || ca.site_id::text) AS feed_name, "
+            "SUM(COALESCE(ca.content_fetch_failed, 0)) AS count "
+            "FROM crawl_attempts ca "
+            "LEFT JOIN sites s ON s.id = ca.site_id "
+            "WHERE ca.started_at IS NOT NULL "
+            "  AND substr(ca.started_at, 1, 10) >= :tw_start "
+            "  AND substr(ca.started_at, 1, 10) <= :today "
+            "GROUP BY ca.site_id, s.name "
+            "HAVING SUM(COALESCE(ca.content_fetch_failed, 0)) > 0 "
+            "ORDER BY count DESC"
+        ),
+        {"tw_start": tw_start_str, "today": today_str},
+    )).mappings().all()
+
+    ff_total = sum(int(r["count"] or 0) for r in ff_rows)
+    fetch_failures_by_feed = [
+        {
+            "rank": i + 1,
+            "feed_name": r["feed_name"],
+            "site_id": r["site_id"],
+            "count": int(r["count"] or 0),
+            "percentage": round(int(r["count"] or 0) / ff_total * 100, 1) if ff_total > 0 else 0.0,
+        }
+        for i, r in enumerate(ff_rows)
+    ]
+
+    feed_events = {
+        "new_articles": new_articles_by_feed,
+        "failed_crawls": failed_crawls_by_feed,
+        "ai_repairs": ai_repairs_by_feed,
+        "fetch_failures": fetch_failures_by_feed,
+    }
+
+    event_summary = {
+        "new_articles": na_total,
+        "failed_crawls": fc_total,
+        "ai_repairs": ar_total,
+        "fetch_failures": ff_total,
+    }
+
     return {
         "summary": summary,
         "articles_counts_overview": articles_counts_overview,
@@ -310,6 +448,8 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
         "article_growth": article_growth,
         # DPERF-016: removed duplicate daily_rss_query (same as traffic_metrics.rss_query)
         "latest_articles": latest_articles,
+        "feed_events": feed_events,
+        "event_summary": event_summary,
     }
 
 

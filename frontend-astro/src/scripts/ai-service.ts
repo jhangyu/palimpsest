@@ -553,6 +553,18 @@ function buildProviderModalHtml(
                 </div>
               </div>
             </form>
+            ${isEdit ? `
+  <hr class="my-3" />
+  <div id="prov-test-section">
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn btn-outline-primary btn-sm" id="prov-test-btn">
+        <span id="prov-test-spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status"></span>
+        <i class="ri-play-line me-1" id="prov-test-icon"></i>Test Connection
+      </button>
+    </div>
+    <div id="prov-test-result" class="mt-2 d-none"></div>
+  </div>
+` : ''}
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -774,6 +786,42 @@ function openProviderModal(
     }
   })
 
+  // Test connection (edit mode only)
+  if (isEdit && provider) {
+    const testBtn = modalEl.querySelector('#prov-test-btn') as HTMLButtonElement | null
+    const testSpinner = modalEl.querySelector('#prov-test-spinner') as HTMLElement | null
+    const testIcon = modalEl.querySelector('#prov-test-icon') as HTMLElement | null
+    const testResult = modalEl.querySelector('#prov-test-result') as HTMLElement | null
+
+    if (testBtn && testSpinner && testIcon && testResult) {
+      testBtn.addEventListener('click', async () => {
+        testBtn.disabled = true
+        testSpinner.classList.remove('d-none')
+        testIcon.classList.add('d-none')
+        testResult.classList.add('d-none')
+
+        try {
+          const result = await testProvider(provider.id)
+          if (result.health_status === 'ok') {
+            testResult.className = 'mt-2 alert alert-success py-2 px-3 d-flex align-items-center'
+            testResult.innerHTML = '<i class="ri-check-line me-2"></i>Connection successful'
+          } else {
+            const reason = result.last_failure_code || 'Unknown error'
+            testResult.className = 'mt-2 alert alert-danger py-2 px-3 d-flex align-items-center'
+            testResult.innerHTML = `<i class="ri-error-warning-line me-2"></i>Connection failed: ${escapeHtml(reason)}`
+          }
+        } catch (err) {
+          testResult.className = 'mt-2 alert alert-danger py-2 px-3 d-flex align-items-center'
+          testResult.innerHTML = `<i class="ri-error-warning-line me-2"></i>${escapeHtml(err instanceof Error ? err.message : 'Test failed')}`
+        } finally {
+          testBtn.disabled = false
+          testSpinner.classList.add('d-none')
+          testIcon.classList.remove('d-none')
+        }
+      })
+    }
+  }
+
   // Clear sensitive fields on close
   modalEl.addEventListener('hidden.bs.modal', () => {
     if (apiKeyInput) apiKeyInput.value = ''
@@ -912,6 +960,93 @@ function openRevealKeyModal(provider: AIProvider): void {
 }
 
 // ---------------------------------------------------------------------------
+// Test Connection Result Modal
+// ---------------------------------------------------------------------------
+
+function openTestResultModal(provider: AIProvider): void {
+  removeExistingModals()
+
+  const html = `
+    <div class="modal fade" id="ai-provider-test-modal" tabindex="-1" aria-labelledby="prov-test-title" aria-modal="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="prov-test-title">
+              <i class="ri-play-line me-2"></i>Test Connection — ${escapeHtml(provider.label)}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="prov-test-modal-loading" class="text-center py-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Testing...</span>
+              </div>
+              <p class="text-muted mt-2 mb-0">Testing connection to ${escapeHtml(provider.label)}...</p>
+            </div>
+            <div id="prov-test-modal-result" class="d-none"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  const wrapper = injectModal(html)
+  const modalEl = wrapper.querySelector('#ai-provider-test-modal') as HTMLElement
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bsModal = new (window as any).bootstrap.Modal(modalEl)
+
+  const loadingEl = modalEl.querySelector('#prov-test-modal-loading') as HTMLElement
+  const resultEl = modalEl.querySelector('#prov-test-modal-result') as HTMLElement
+
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    removeExistingModals()
+  })
+
+  bsModal.show()
+
+  // Auto-run test
+  testProvider(provider.id)
+    .then((result) => {
+      loadingEl.classList.add('d-none')
+      resultEl.classList.remove('d-none')
+      if (result.health_status === 'ok') {
+        resultEl.innerHTML = `
+          <div class="alert alert-success d-flex align-items-center mb-0" role="alert">
+            <i class="ri-check-line fs-4 me-3"></i>
+            <div>
+              <strong>Connection Successful</strong>
+              <div class="small text-muted mt-1">Provider "${escapeHtml(provider.label)}" is working correctly.</div>
+            </div>
+          </div>`
+      } else {
+        const reason = result.last_failure_code || 'Unknown error'
+        resultEl.innerHTML = `
+          <div class="alert alert-danger d-flex align-items-center mb-0" role="alert">
+            <i class="ri-error-warning-line fs-4 me-3"></i>
+            <div>
+              <strong>Connection Failed</strong>
+              <div class="small mt-1">${escapeHtml(reason)}</div>
+            </div>
+          </div>`
+      }
+    })
+    .catch((err) => {
+      loadingEl.classList.add('d-none')
+      resultEl.classList.remove('d-none')
+      resultEl.innerHTML = `
+        <div class="alert alert-danger d-flex align-items-center mb-0" role="alert">
+          <i class="ri-error-warning-line fs-4 me-3"></i>
+          <div>
+            <strong>Connection Failed</strong>
+            <div class="small mt-1">${escapeHtml(err instanceof Error ? err.message : 'Test failed')}</div>
+          </div>
+        </div>`
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Runtime Status rendering
 // ---------------------------------------------------------------------------
 
@@ -1035,20 +1170,7 @@ export async function initAIServicePage(): Promise<void> {
     if (action === 'edit') {
       openProviderModal('edit', loadProviders, provider)
     } else if (action === 'test') {
-      target.classList.add('disabled')
-      try {
-        const result = await testProvider(provider.id)
-        if (result.health_status === 'ok') {
-          showToast(`${provider.label}: Connection successful`, 'success')
-        } else {
-          const reason = result.last_failure_code || 'Unknown error'
-          showToast(`${provider.label}: ${reason}`, 'danger')
-        }
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : 'Test failed.', 'danger')
-      } finally {
-        target.classList.remove('disabled')
-      }
+      openTestResultModal(provider)
     } else if (action === 'reveal') {
       openRevealKeyModal(provider)
     } else if (action === 'delete') {
