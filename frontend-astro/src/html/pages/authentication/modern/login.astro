@@ -27,7 +27,7 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
           <!-- Login success hint from reset flow -->
           <div
             id="reset-success-alert"
-            class="alert alert-success d-flex align-items-center gap-2 mb-3"
+            class="alert alert-success align-items-center gap-2 mb-3"
             role="alert"
             hidden
           >
@@ -38,12 +38,28 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
           <!-- Login success hint from first-run setup -->
           <div
             id="setup-success-alert"
-            class="alert alert-success d-flex align-items-center gap-2 mb-3"
+            class="alert alert-success align-items-center gap-2 mb-3"
             role="alert"
             hidden
           >
             <i class="ri-shield-check-line flex-shrink-0"></i>
             <span>Admin account created. Please sign in.</span>
+          </div>
+
+          <!-- First-run setup banner (shown when no users exist) -->
+          <div
+            id="first-run-banner"
+            class="alert alert-info align-items-center gap-2 mb-3"
+            role="alert"
+            hidden
+          >
+            <i class="ri-information-line flex-shrink-0"></i>
+            <span
+              >No admin account found. <a
+                href={getPathPrefix('/authentication/modern/setup')}
+                class="alert-link">Set up your admin account</a
+              > to get started.</span
+            >
           </div>
 
           <form id="login-form" class="text-start my-3">
@@ -107,13 +123,19 @@ import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
   const params = new URLSearchParams(window.location.search)
   if (params.get('reset') === 'success') {
     const alert = document.getElementById('reset-success-alert')
-    if (alert) alert.removeAttribute('hidden')
+    if (alert) {
+      alert.removeAttribute('hidden')
+      alert.classList.add('d-flex')
+    }
   }
 
   // Show setup success hint if redirected from first-run setup
   if (params.get('setup') === 'success') {
     const setupAlert = document.getElementById('setup-success-alert')
-    if (setupAlert) setupAlert.removeAttribute('hidden')
+    if (setupAlert) {
+      setupAlert.removeAttribute('hidden')
+      setupAlert.classList.add('d-flex')
+    }
   }
 
   initLoginPage()

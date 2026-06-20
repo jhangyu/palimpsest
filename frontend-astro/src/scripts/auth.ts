@@ -97,6 +97,21 @@ function setSubmitLoading(form: HTMLFormElement): () => void {
  * with inputs named "email" and "password".
  */
 export function initLoginPage(): void {
+  const apiBase = (import.meta as any).env?.DEV ? 'http://localhost:8088' : ''
+
+  fetch(`${apiBase}/auth/first-run-check`, { credentials: 'include' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.needs_setup) {
+        const banner = document.getElementById('first-run-banner')
+        if (banner) {
+          banner.removeAttribute('hidden')
+          banner.classList.add('d-flex')
+        }
+      }
+    })
+    .catch(() => {})
+
   const form = document.querySelector<HTMLFormElement>('#login-form, form')
   if (!form) return
 
@@ -125,7 +140,8 @@ export function initLoginPage(): void {
     const restoreBtn = setSubmitLoading(form)
     try {
       await api.login(data)
-      window.location.href = '/dashboard'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/dashboard`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed. Please try again.'
       showFormError(form, message)
@@ -182,7 +198,8 @@ export function initRegisterPage(): void {
     const restoreBtn = setSubmitLoading(form)
     try {
       await api.register(data)
-      window.location.href = '/dashboard'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/dashboard`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed. Please try again.'
       showFormError(form, message)
@@ -302,7 +319,8 @@ export function initResetPasswordPage(): void {
     try {
       await api.resetPassword(data)
       // Redirect to login with a success hint
-      window.location.href = '/authentication/modern/login?reset=success'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/authentication/modern/login?reset=success`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Password reset failed. Please try again.'
       showFormError(form, message)
@@ -383,7 +401,10 @@ export function initSetupPage(): void {
       if (res.status === 403 || res.status === 409) {
         // Users already exist — setup already done
         form.style.display = 'none'
-        if (setupDoneAlert) setupDoneAlert.removeAttribute('hidden')
+        if (setupDoneAlert) {
+          setupDoneAlert.removeAttribute('hidden')
+          setupDoneAlert.classList.add('d-flex')
+        }
         return
       }
 
@@ -400,7 +421,8 @@ export function initSetupPage(): void {
       }
 
       // Success — redirect to login with setup success hint
-      window.location.href = '/authentication/modern/login?setup=success'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/authentication/modern/login?setup=success`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Setup failed. Please try again.'
       showFormError(form, message)
