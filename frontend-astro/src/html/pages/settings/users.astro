@@ -1,71 +1,68 @@
 ---
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
-import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
 import { getPathPrefix } from '../../../utils/path.js'
 
-const userEditHeaderConfig: PageHeaderProps = {
-  title: 'Edit User',
+const pageHeaderConfig = {
+  title: 'User Management',
   breadcrumbs: [
-    { label: 'Dashboard', href: getPathPrefix('/dashboard'), class: '' },
-    { label: 'Settings', href: getPathPrefix('/settings'), class: '' },
-    { label: 'User Management', href: getPathPrefix('/settings/users'), class: '' },
-    { label: 'Edit', class: 'active' }
-  ],
-  actions: [
-    {
-      label: 'Back',
-      href: getPathPrefix('/settings/users'),
-      type: 'link',
-      variant: 'btn-outline-primary',
-      icon: 'ri-arrow-left-s-line',
-      class: ''
-    }
+    { label: 'Dashboard', href: getPathPrefix('/dashboard') },
+    { label: 'Settings', href: getPathPrefix('/settings') },
+    { label: 'User Management', class: 'active' }
   ]
 }
 ---
 
 <AdminLayout
-  title="Edit User Account"
-  description="Update user account information"
-  currentPath="users/edit"
+  title="User Management"
+  description="Manage and monitor user accounts"
+  currentPath="settings/users"
 >
-  <PageHeader {...userEditHeaderConfig} />
+  <PageHeader {...pageHeaderConfig} />
 
-  <form id="edit-user-form" class="row g-4" novalidate>
+  <h5 class="mb-3"><i class="ri-user-add-line me-2"></i>Add User</h5>
+
+  <!-- Success banner (hidden by default) -->
+  <div id="add-user-success" class="alert alert-success mb-4" style="display:none;" role="alert">
+    <i class="ri-user-add-line me-2"></i>
+    <strong>User created.</strong> An invite link has been sent to their email address so they can set
+    their password.
+  </div>
+
+  <form id="add-user-form" class="row g-4 mb-4" novalidate>
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header">
           <div class="d-flex align-items-center">
-            <i class="ri-user-settings-line me-2"></i>
+            <i class="ri-user-add-line me-2"></i>
             <h5 class="card-title mb-0">User Information</h5>
           </div>
         </div>
         <div class="card-body">
           <div class="mb-3">
-            <label class="form-label required" for="edit-user-email">Email Address</label>
+            <label class="form-label required" for="add-user-email">Email Address</label>
             <input
               type="email"
               class="form-control"
-              id="edit-user-email"
+              id="add-user-email"
               placeholder="user@example.com"
               autocomplete="off"
               required
             />
             <div class="form-text">
-              <i class="ri-information-line me-1"></i>
-              Email changes will require verification by the user.
+              <i class="ri-mail-send-line me-1"></i>
+              An invite link will be sent to this address for the user to set their password.
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label required" for="edit-user-username">Username</label>
+            <label class="form-label required" for="add-user-username">Username</label>
             <div class="input-group">
               <span class="input-group-text"><i class="ri-at-line"></i></span>
               <input
                 type="text"
                 class="form-control"
-                id="edit-user-username"
+                id="add-user-username"
                 placeholder="lowercase letters only, 1-20 chars"
                 maxlength="20"
                 pattern="[a-z]{1,20}"
@@ -76,23 +73,14 @@ const userEditHeaderConfig: PageHeaderProps = {
           </div>
 
           <div class="mb-3">
-            <label class="form-label" for="edit-user-full-name">Full Name</label>
+            <label class="form-label" for="add-user-full-name">Full Name</label>
             <input
               type="text"
               class="form-control"
-              id="edit-user-full-name"
+              id="add-user-full-name"
               placeholder="Optional"
               autocomplete="off"
             />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label" for="edit-user-status">Account Status</label>
-            <select class="form-select" id="edit-user-status">
-              <option value="active">Active</option>
-              <option value="blocked">Blocked</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
         </div>
       </div>
@@ -107,7 +95,9 @@ const userEditHeaderConfig: PageHeaderProps = {
           </div>
         </div>
         <div class="card-body">
-          <p class="text-muted small mb-3">Modify roles assigned to this user.</p>
+          <p class="text-muted small mb-3">
+            Assign one or more roles. A user with no role will default to the standard "user" role.
+          </p>
           <div class="mb-2">
             <div class="form-check">
               <input
@@ -131,6 +121,7 @@ const userEditHeaderConfig: PageHeaderProps = {
                 name="role"
                 id="role-user"
                 value="user"
+                checked
               />
               <label class="form-check-label" for="role-user">
                 <span class="fw-semibold"><i class="ri-user-line me-1"></i>User</span>
@@ -141,12 +132,9 @@ const userEditHeaderConfig: PageHeaderProps = {
             </div>
           </div>
         </div>
-        <div class="card-footer d-flex justify-content-end gap-2">
-          <a href={getPathPrefix('/settings/users')} class="btn btn-outline-secondary">
-            <i class="ri-arrow-left-line me-1"></i>Cancel
-          </a>
+        <div class="card-footer d-flex justify-content-end">
           <button type="submit" class="btn btn-primary">
-            <i class="ri-save-line me-1"></i>Save Changes
+            <i class="ri-user-add-line me-1"></i>Create User
           </button>
         </div>
       </div>
@@ -154,21 +142,61 @@ const userEditHeaderConfig: PageHeaderProps = {
       <div class="card mt-3">
         <div class="card-body">
           <div class="d-flex gap-2">
-            <i class="ri-shield-star-line text-warning mt-1"></i>
+            <i class="ri-information-line text-primary mt-1"></i>
             <p class="text-muted small mb-0">
-              Admin cannot set or view plaintext passwords. Blocking a user will revoke all their
-              active sessions immediately.
+              Admin cannot set a password for the new user. An invite link will be sent so the user
+              can set their own password securely.
             </p>
           </div>
         </div>
       </div>
     </div>
   </form>
+
+  <hr class="my-4" />
+
+  <h5 class="mb-3"><i class="ri-list-check me-2"></i>User List</h5>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="search-wrapper" style="min-width:260px;">
+            <i class="ri-search-line search-icon"></i>
+            <input
+              type="text"
+              class="form-control search-input"
+              id="user-search-input"
+              placeholder="Search by username or email..."
+            />
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="user-list-container" class="p-3">
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </AdminLayout>
 
 <script>
-  import { initEditUserPage } from '@/scripts/users'
-  document.addEventListener('DOMContentLoaded', () => {
-    initEditUserPage()
-  })
+  import { initAddUserPage, initUserListPage } from '@/scripts/users'
+
+  const init = () => {
+    initAddUserPage()
+    initUserListPage()
+  }
+
+  document.addEventListener('astro:page-load', init)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init)
+  } else {
+    init()
+  }
 </script>

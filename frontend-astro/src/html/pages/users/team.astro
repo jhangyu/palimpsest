@@ -2,7 +2,7 @@
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import { getPathPrefix } from '../../../utils/path.js'
 
 const teamManagementConfig: PageHeaderProps = {
   title: 'Team Management',
@@ -26,14 +26,12 @@ const teamManagementConfig: PageHeaderProps = {
       <div class="card p-3">
         <div class="card-header text-center pt-3">
           <div class="position-relative d-inline-block mb-4">
-            <img
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-              alt="User Avatar"
-              class="rounded-circle"
-              width="120"
-              height="120"
-              style="object-fit: cover;"
-            />
+            <div
+              class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+              style="width: 120px; height: 120px;"
+            >
+              <i class="ri-user-line text-white" style="font-size: 3rem;"></i>
+            </div>
             <button
               class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
               title="Change Profile Picture"
@@ -41,9 +39,9 @@ const teamManagementConfig: PageHeaderProps = {
               <i class="ri-camera-line"></i>
             </button>
           </div>
-          <h5 class="mb-1">Amara Evans</h5>
+          <h5 class="mb-1">Admin</h5>
           <p class="text-muted mb-0">
-            <i class="ri-mail-line me-1"></i>amara@example.com
+            <i class="ri-mail-line me-1"></i>
           </p>
         </div>
         <div class="card-body">
@@ -62,7 +60,7 @@ const teamManagementConfig: PageHeaderProps = {
               </li>
               <!-- Notifications -->
               <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+                <a class="nav-link" href={getPathPrefix('/settings')}>
                   <i class="ri-notification-4-line"></i>
                   <span>Notifications</span>
                 </a>
@@ -125,267 +123,8 @@ const teamManagementConfig: PageHeaderProps = {
               </thead>
               <tbody>
                 <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Amara Evans</h6>
-                        <small class="text-muted">amara@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-primary">Team Lead</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar1.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Jane Smith</h6>
-                        <small class="text-muted">janesmith@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-success">Developer</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar3.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Neha Gupta</h6>
-                        <small class="text-muted">nehagupta@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-warning">Designer</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar4.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Reena Paul</h6>
-                        <small class="text-muted">reenapaul@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-danger">Engineer</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar5.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Aaron Thomas</h6>
-                        <small class="text-muted">aaronthomas@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-success">Developer</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <img
-                        src={getAssetPrefix('/assets/img/avatars/avatar6.jpg')}
-                        alt="Profile"
-                        class="rounded-circle me-3"
-                        width="40"
-                        height="40"
-                        style="object-fit: cover;"
-                      />
-                      <div>
-                        <h6 class="mb-0">Rahul Mehta</h6>
-                        <small class="text-muted">rahulmehta@example.com</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="align-middle"><span class="badge text-bg-warning">Designer</span></td>
-                  <td style="width: 60px;">
-                    <div class="dropdown">
-                      <button
-                        class="btn btn-link text-decoration-none"
-                        type="button"
-                        id="dropdownMenuButton"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="ri-more-fill text-muted fs-5"></i>
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li>
-                          <a class="dropdown-item" href="#"
-                            ><i class="ri-edit-line me-2"></i> Edit</a
-                          >
-                        </li>
-                        <li>
-                          <a class="dropdown-item text-danger" href="#"
-                            ><i class="ri-delete-bin-7-line me-2"></i> Delete</a
-                          >
-                        </li>
-                      </ul>
-                    </div>
+                  <td colspan="3" class="text-center text-muted py-4">
+                    <i class="ri-group-line me-2"></i>No team members configured
                   </td>
                 </tr>
               </tbody>

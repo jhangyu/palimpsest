@@ -1,4 +1,4 @@
-/* global document, window, HTMLElement, requestAnimationFrame */
+/* global HTMLElement, requestAnimationFrame */
 
 interface CmdkItem {
   title: string
@@ -10,8 +10,6 @@ interface CmdkItem {
 const NAV_ITEMS: CmdkItem[] = [
   { title: 'Dashboard', description: 'Overview of business metrics', icon: 'ri-dashboard-line', href: '/dashboard' },
   { title: 'Analytics', description: 'Charts and data analysis', icon: 'ri-line-chart-line', href: '/analytics' },
-  { title: 'Kanban Board', description: 'Task management board', icon: 'ri-layout-column-line', href: '/apps/kanban' },
-  { title: 'Calendar', description: 'Event calendar', icon: 'ri-calendar-line', href: '/apps/calendar' },
   { title: 'Settings', description: 'Application settings', icon: 'ri-settings-3-line', href: '/settings' },
   { title: 'Form Controls', description: 'Input elements and forms', icon: 'ri-file-list-3-line', href: '/forms/form-controls' },
   { title: 'Select', description: 'Select dropdowns', icon: 'ri-file-list-3-line', href: '/forms/select' },
@@ -21,8 +19,8 @@ const NAV_ITEMS: CmdkItem[] = [
   { title: 'Enhanced Tables', description: 'Tables with extra features', icon: 'ri-table-line', href: '/tables/enhanced' },
   { title: 'Advanced Tables', description: 'Complex table configurations', icon: 'ri-table-line', href: '/tables/advanced' },
   { title: 'Datatable', description: 'Interactive data tables', icon: 'ri-table-line', href: '/tables/datatable' },
-  { title: 'Add User', description: 'Create a new user', icon: 'ri-user-line', href: '/users/add' },
-  { title: 'List Users', description: 'View all users', icon: 'ri-user-line', href: '/users/list' },
+  { title: 'Add User', description: 'Manage user accounts', icon: 'ri-user-line', href: '/settings/users' },
+  { title: 'List Users', description: 'Manage user accounts', icon: 'ri-user-line', href: '/settings/users' },
   { title: 'Profile', description: 'User profile page', icon: 'ri-user-line', href: '/users/profile' },
   { title: 'Accordion', description: 'Collapsible content panels', icon: 'ri-layout-grid-line', href: '/interface/accordion' },
   { title: 'Alerts', description: 'Contextual alert messages', icon: 'ri-layout-grid-line', href: '/interface/alerts' },

@@ -2,7 +2,7 @@
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import type { Props as PageHeaderProps } from '../../components/common/page-header.astro'
-import { getAssetPrefix, getPathPrefix } from '../../../utils/path.js'
+import { getPathPrefix } from '../../../utils/path.js'
 
 const billingPageConfig: PageHeaderProps = {
   title: 'Billing Settings',
@@ -26,14 +26,12 @@ const billingPageConfig: PageHeaderProps = {
       <div class="card p-3">
         <div class="card-header text-center pt-3">
           <div class="position-relative d-inline-block mb-4">
-            <img
-              src={getAssetPrefix('/assets/img/avatars/avatar2.jpg')}
-              alt="User Avatar"
-              class="rounded-circle"
-              width="120"
-              height="120"
-              style="object-fit: cover;"
-            />
+            <div
+              class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+              style="width: 120px; height: 120px;"
+            >
+              <i class="ri-user-line text-white" style="font-size: 3rem;"></i>
+            </div>
             <button
               class="btn btn-primary btn-icon-sm position-absolute bottom-0 end-0 rounded-circle p-2"
               title="Change Profile Picture"
@@ -41,9 +39,9 @@ const billingPageConfig: PageHeaderProps = {
               <i class="ri-camera-line"></i>
             </button>
           </div>
-          <h5 class="mb-1">Amara Evans</h5>
+          <h5 class="mb-1">Admin</h5>
           <p class="text-muted mb-0">
-            <i class="ri-mail-line me-1"></i>amara@example.com
+            <i class="ri-mail-line me-1"></i>
           </p>
         </div>
         <div class="card-body">
@@ -62,7 +60,7 @@ const billingPageConfig: PageHeaderProps = {
               </li>
               <!-- Notifications -->
               <li class="nav-item">
-                <a class="nav-link" href={getPathPrefix('/users/notifications')}>
+                <a class="nav-link" href={getPathPrefix('/settings')}>
                   <i class="ri-notification-4-line"></i>
                   <span>Notifications</span>
                 </a>
@@ -215,7 +213,7 @@ const billingPageConfig: PageHeaderProps = {
                     <i class="ri-user-line me-2"></i>Cardholder Name
                   </span>
                 </td>
-                <td>Amara Evans</td>
+                <td>—</td>
               </tr>
               <tr>
                 <td>
@@ -223,7 +221,7 @@ const billingPageConfig: PageHeaderProps = {
                     <i class="ri-map-pin-line me-2"></i>Billing Country
                   </span>
                 </td>
-                <td>United States</td>
+                <td>—</td>
               </tr>
               <tr>
                 <td>
@@ -231,7 +229,7 @@ const billingPageConfig: PageHeaderProps = {
                     <i class="ri-mail-line me-2"></i>Postal Code
                   </span>
                 </td>
-                <td>90210</td>
+                <td>—</td>
               </tr>
               <tr>
                 <td>
@@ -239,12 +237,7 @@ const billingPageConfig: PageHeaderProps = {
                     <i class="ri-bank-card-line me-2"></i>Card Details
                   </span>
                 </td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <i class="ri-visa-line me-2 fs-5"></i>
-                    **** **** **** 1234
-                  </div>
-                </td>
+                <td>—</td>
               </tr>
             </tbody>
           </table>
@@ -272,48 +265,8 @@ const billingPageConfig: PageHeaderProps = {
             </thead>
             <tbody>
               <tr>
-                <td>March 1, 2025</td>
-                <td>$19.99</td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <i class="ri-bank-card-line me-2"></i>Credit Card
-                  </div>
-                </td>
-                <td><span class="badge text-bg-success">Paid</span></td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-light" title="Download Invoice">
-                    <i class="ri-download-2-line"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>February 1, 2025</td>
-                <td>$19.99</td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <i class="ri-paypal-line me-2"></i>PayPal
-                  </div>
-                </td>
-                <td><span class="badge text-bg-success">Paid</span></td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-light" title="Download Invoice">
-                    <i class="ri-download-2-line"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>January 1, 2025</td>
-                <td>$19.99</td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <i class="ri-bank-card-line me-2"></i>Credit Card
-                  </div>
-                </td>
-                <td><span class="badge text-bg-warning">Pending</span></td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-light" title="Download Invoice">
-                    <i class="ri-download-2-line"></i>
-                  </button>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="ri-inbox-line me-2"></i>No transaction history
                 </td>
               </tr>
             </tbody>
