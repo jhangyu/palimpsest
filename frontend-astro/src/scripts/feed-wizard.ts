@@ -2,8 +2,18 @@ import { api } from '@/scripts/api'
 import type { PreviewItem, PreviewCrawlPayload } from '@/scripts/api'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
 
+// ---------------------------------------------------------------------------
+// CodeMirror minimal interface (loaded as global script, not typed package)
+// ---------------------------------------------------------------------------
+interface CodeMirrorEditor {
+  getValue(): string
+  setValue(value: string): void
+  refresh(): void
+  on(event: string, handler: () => void): void
+}
+
 const DEFAULT_LIST_RULES = '{\n  "container": "",\n  "item": "",\n  "title": "",\n  "link": ""\n}'
-const DEFAULT_CONTENT_RULES = '{\n  "title": "",\n  "body": "",\n  "date": "",\n  "is_vue_template": false,\n  "vue_json_field": ""\n}'
+const DEFAULT_CONTENT_RULES = '{\n  "title": "",\n  "body": "",\n  "date": "",\n  "image": "",\n  "author": "",\n  "is_vue_template": false,\n  "vue_json_field": ""\n}'
 
 function parseSafe(str: string): Record<string, unknown> {
   try {
@@ -82,9 +92,11 @@ export function initFeedWizard(): void {
   const inputUrl = root.querySelector<HTMLInputElement>('#wizard-url')!
   const inputName = root.querySelector<HTMLInputElement>('#wizard-name')!
   const inputSampleUrl = root.querySelector<HTMLInputElement>('#wizard-sample-url')!
-  const textareaListRules = root.querySelector<HTMLTextAreaElement>('#wizard-list-rules')!
-  const textareaContentRules = root.querySelector<HTMLTextAreaElement>('#wizard-content-rules')!
   const checkDebug = root.querySelector<HTMLInputElement>('#wizard-debug')!
+
+  // CodeMirror container elements
+  const cmListRulesEl = root.querySelector<HTMLElement>('#cm-wizard-list-rules')!
+  const cmContentRulesEl = root.querySelector<HTMLElement>('#cm-wizard-content-rules')!
 
   // Buttons
   const btnAnalyzeList = root.querySelector<HTMLButtonElement>('#btn-analyze-list')!
@@ -97,7 +109,6 @@ export function initFeedWizard(): void {
 
   // Panels
   const rulesPanel = root.querySelector<HTMLElement>('#rules-panel')!
-  const formCol = root.querySelector<HTMLElement>('#form-col')!
   const previewSection = root.querySelector<HTMLElement>('#preview-section')!
   const previewBody = root.querySelector<HTMLElement>('#preview-body')!
   const previewError = root.querySelector<HTMLElement>('#preview-error')!
@@ -105,23 +116,37 @@ export function initFeedWizard(): void {
   const debugBanner = root.querySelector<HTMLElement>('#debug-banner')!
   const debugBannerPath = root.querySelector<HTMLElement>('#debug-banner-path')!
 
-  // Set defaults
-  textareaListRules.value = DEFAULT_LIST_RULES
-  textareaContentRules.value = DEFAULT_CONTENT_RULES
+  // Initialize CodeMirror editors with default values
+  let cmListRules: CodeMirrorEditor | null = null
+  let cmContentRules: CodeMirrorEditor | null = null
 
-  // Rules panel toggle
-  let rulesExpanded = false
+  const CM = (window as unknown as Record<string, unknown>).CodeMirror as
+    | ((el: HTMLElement, opts: Record<string, unknown>) => CodeMirrorEditor)
+    | undefined
+  if (CM) {
+    const cmOpts = {
+      mode: { name: 'javascript', json: true },
+      theme: 'default',
+      lineNumbers: true,
+      lineWrapping: true,
+      tabSize: 2,
+      indentWithTabs: false,
+      matchBrackets: true,
+      readOnly: false
+    }
+    cmListRules = CM(cmListRulesEl, { ...cmOpts, value: DEFAULT_LIST_RULES })
+    cmContentRules = CM(cmContentRulesEl, { ...cmOpts, value: DEFAULT_CONTENT_RULES })
+  }
+
+  // Rules panel toggle — simple d-none toggle, panel visible by default
+  let rulesExpanded = true
   btnToggleRules.addEventListener('click', () => {
     rulesExpanded = !rulesExpanded
     if (rulesExpanded) {
       rulesPanel.classList.remove('d-none')
-      formCol.classList.remove('col-12')
-      formCol.classList.add('col-lg-6')
       btnToggleRules.innerHTML = '<i class="ri-code-line me-1"></i> Hide Rules JSON'
     } else {
       rulesPanel.classList.add('d-none')
-      formCol.classList.remove('col-lg-6')
-      formCol.classList.add('col-12')
       btnToggleRules.innerHTML = '<i class="ri-code-line me-1"></i> Show Rules JSON'
     }
   })
@@ -142,7 +167,7 @@ export function initFeedWizard(): void {
       const rulesStr = typeof data.rules === 'string'
         ? data.rules
         : JSON.stringify(data.rules, null, 2)
-      textareaListRules.value = rulesStr
+      if (cmListRules) cmListRules.setValue(rulesStr)
       // Auto-expand rules panel so user sees result
       if (!rulesExpanded) btnToggleRules.click()
       if (checkDebug.checked && data.debug_dir) {
@@ -171,7 +196,7 @@ export function initFeedWizard(): void {
       const rulesStr = typeof data.rules === 'string'
         ? data.rules
         : JSON.stringify(data.rules, null, 2)
-      textareaContentRules.value = rulesStr
+      if (cmContentRules) cmContentRules.setValue(rulesStr)
       if (!rulesExpanded) btnToggleRules.click()
       if (checkDebug.checked && data.debug_dir) {
         alert('Debug: ' + data.debug_dir)
@@ -217,10 +242,12 @@ export function initFeedWizard(): void {
       `Crawling and analyzing ${loadingLabel}...`
 
     try {
+      const listRulesStr = cmListRules ? cmListRules.getValue() : DEFAULT_LIST_RULES
+      const contentRulesStr = cmContentRules ? cmContentRules.getValue() : DEFAULT_CONTENT_RULES
       const payload: PreviewCrawlPayload = {
         url: resolvedUrl,
-        list_rules: parseSafe(textareaListRules.value),
-        content_rules: parseSafe(textareaContentRules.value),
+        list_rules: parseSafe(listRulesStr),
+        content_rules: parseSafe(contentRulesStr),
         mode,
         target_url: targetUrl || undefined
       }
@@ -263,11 +290,14 @@ export function initFeedWizard(): void {
       return
     }
 
+    const listRulesStr = cmListRules ? cmListRules.getValue() : DEFAULT_LIST_RULES
+    const contentRulesStr = cmContentRules ? cmContentRules.getValue() : DEFAULT_CONTENT_RULES
+
     let parsedList: Record<string, unknown>
     let parsedContent: Record<string, unknown>
     try {
-      parsedList = JSON.parse(textareaListRules.value)
-      parsedContent = JSON.parse(textareaContentRules.value)
+      parsedList = JSON.parse(listRulesStr)
+      parsedContent = JSON.parse(contentRulesStr)
     } catch {
       alert('Rules must be valid JSON. Please check your list and content rules.')
       return
@@ -286,7 +316,8 @@ export function initFeedWizard(): void {
         }
       })
       alert('Feed created successfully!')
-      window.location.href = '/dashboard'
+      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      window.location.href = `${pagesPrefix}/dashboard`
     } catch (err: unknown) {
       alert('Error saving: ' + (err instanceof Error ? err.message : String(err)) + '\n(Make sure rules are valid JSON)')
     } finally {
