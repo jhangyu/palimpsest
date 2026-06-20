@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from dateutil import parser as dateutil_parser
-from rfeed import Item, Feed
+from rfeed import Item, Feed, Enclosure
 from sqlalchemy import text
 
 from core.ai import analyze_with_providers
@@ -388,16 +388,16 @@ async def delete_site(site_id: int, current_user: dict = Depends(require_user), 
     if not check_site_owner_or_admin(site, current_user["id"], is_admin):
         raise HTTPException(status_code=403, detail="Not authorized to modify this site")
 
-    async with db.begin():
-        # 刪除相關 crawl attempts 和 RSS query events
-        await db.execute(crawl_attempts.delete().where(crawl_attempts.c.site_id == site_id))
-        await db.execute(rss_query_events.delete().where(rss_query_events.c.site_id == site_id))
+    # 刪除相關 crawl attempts 和 RSS query events
+    await db.execute(crawl_attempts.delete().where(crawl_attempts.c.site_id == site_id))
+    await db.execute(rss_query_events.delete().where(rss_query_events.c.site_id == site_id))
 
-        # 刪除該網站的所有文章
-        await db.execute(articles.delete().where(articles.c.site_id == site_id))
+    # 刪除該網站的所有文章
+    await db.execute(articles.delete().where(articles.c.site_id == site_id))
 
-        # 刪除該網站
-        await db.execute(sites.delete().where(sites.c.id == site_id))
+    # 刪除該網站
+    await db.execute(sites.delete().where(sites.c.id == site_id))
+    await db.commit()
 
     return {"status": "deleted", "site_id": site_id}
 
@@ -447,12 +447,15 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
         elif pub_date is None:
             pub_date = datetime.now(timezone.utc)
 
+        image_url = row.get('image_url')
+        enclosure = Enclosure(url=image_url, length=0, type='image/jpeg') if image_url else None
         items.append(Item(
             title=row['title'],
             link=row['url'],
             description=row['content'],
             author=row['author'] or None,
-            pubDate=pub_date
+            pubDate=pub_date,
+            enclosure=enclosure
         ))
 
     feed = Feed(

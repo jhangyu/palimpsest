@@ -12,7 +12,7 @@ from core.security_models import (
 )
 from core.auth import (
     validate_username, normalize_username, normalize_email,
-    generate_reset_token, hash_token,
+    generate_reset_token, hash_token, invalidate_session_cache,
 )
 from core.email import get_email_sender
 from core.ownership import ownership_transfer_gate, verify_transfer_target
@@ -217,20 +217,21 @@ async def admin_delete_user(user_id: int, request: Request, current_user: dict =
 
     now = datetime.now(timezone.utc)
 
-    async with db.begin():
-        await db.execute(
-            users.update().where(users.c.id == user_id).values(status="blocked", updated_at=now)
-        )
+    await db.execute(
+        users.update().where(users.c.id == user_id).values(status="blocked", updated_at=now)
+    )
 
-        # Revoke sessions
-        await db.execute(
-            auth_sessions.update()
-            .where(
-                (auth_sessions.c.user_id == user_id) &
-                (auth_sessions.c.revoked_at.is_(None))
-            )
-            .values(revoked_at=now)
+    # Revoke sessions
+    await db.execute(
+        auth_sessions.update()
+        .where(
+            (auth_sessions.c.user_id == user_id) &
+            (auth_sessions.c.revoked_at.is_(None))
         )
+        .values(revoked_at=now)
+    )
+    await db.commit()
+    invalidate_session_cache()
 
     return {"status": "ok", "message": "User blocked"}
 

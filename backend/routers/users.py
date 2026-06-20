@@ -12,6 +12,7 @@ from core.auth import (
     generate_reset_token,
     validate_username, normalize_username, validate_password, normalize_email,
     check_rate_limit, record_attempt,
+    invalidate_session_cache,
 )
 from core.email import get_email_sender
 from core.security_models import (
@@ -95,36 +96,36 @@ async def update_current_user_email(req: UpdateEmailRequest, request: Request, c
     token_hash_val = hash_token(token)
     expires_at = now + timedelta(hours=4)
 
-    async with db.begin():
-        # Set pending email
-        await db.execute(
-            users.update().where(users.c.id == current_user["id"]).values(
-                pending_email=req.new_email.strip(),
-                pending_email_normalized=new_email_norm,
-                updated_at=now,
-            )
+    # Set pending email
+    await db.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            pending_email=req.new_email.strip(),
+            pending_email_normalized=new_email_norm,
+            updated_at=now,
         )
+    )
 
-        # Revoke existing verification tokens
-        await db.execute(
-            email_verification_tokens.update()
-            .where(
-                (email_verification_tokens.c.user_id == current_user["id"]) &
-                (email_verification_tokens.c.used_at.is_(None))
-            )
-            .values(used_at=now)
+    # Revoke existing verification tokens
+    await db.execute(
+        email_verification_tokens.update()
+        .where(
+            (email_verification_tokens.c.user_id == current_user["id"]) &
+            (email_verification_tokens.c.used_at.is_(None))
         )
+        .values(used_at=now)
+    )
 
-        # Insert new verification token
-        await db.execute(
-            email_verification_tokens.insert().values(
-                user_id=current_user["id"],
-                token_hash=token_hash_val,
-                email=req.new_email.strip(),
-                created_at=now,
-                expires_at=expires_at,
-            )
+    # Insert new verification token
+    await db.execute(
+        email_verification_tokens.insert().values(
+            user_id=current_user["id"],
+            token_hash=token_hash_val,
+            email=req.new_email.strip(),
+            created_at=now,
+            expires_at=expires_at,
         )
+    )
+    await db.commit()
 
     verify_link = f"{FRONTEND_ORIGIN}/authentication/modern/verify-email?token={token}"
     email_sender = get_email_sender()
@@ -174,7 +175,7 @@ async def update_current_user_password(req: ChangePasswordRequest, request: Requ
     """Change password: update hash, revoke other sessions, rotate current session."""
     # Verify current password
     if not await verify_password(req.current_password, current_user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Incorrect current password")
+        raise HTTPException(status_code=400, detail="Incorrect current password")
 
     # Validate new password
     valid, err = validate_password(req.new_password)
@@ -187,27 +188,30 @@ async def update_current_user_password(req: ChangePasswordRequest, request: Requ
     now = datetime.now(timezone.utc)
     new_hash = await hash_password(req.new_password)
 
-    async with db.begin():
-        # Update password hash
-        await db.execute(
-            users.update().where(users.c.id == current_user["id"]).values(
-                password_hash=new_hash,
-                updated_at=now,
-            )
+    # Update password hash
+    await db.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            password_hash=new_hash,
+            updated_at=now,
         )
+    )
 
-        # Revoke ALL sessions for this user
-        await db.execute(
-            auth_sessions.update()
-            .where(
-                (auth_sessions.c.user_id == current_user["id"]) &
-                (auth_sessions.c.revoked_at.is_(None))
-            )
-            .values(revoked_at=now)
+    # Revoke ALL sessions for this user
+    await db.execute(
+        auth_sessions.update()
+        .where(
+            (auth_sessions.c.user_id == current_user["id"]) &
+            (auth_sessions.c.revoked_at.is_(None))
         )
+        .values(revoked_at=now)
+    )
+    await db.commit()
 
-        # Create a new session (rotate)
-        await _create_session_and_cookies(response, request, current_user["id"], db)
+    # Invalidate in-memory session cache for all revoked sessions
+    invalidate_session_cache()
+
+    # Create a new session (rotate)
+    await _create_session_and_cookies(response, request, current_user["id"], db)
 
     return {"status": "ok", "message": "Password changed. Other sessions have been revoked."}
 

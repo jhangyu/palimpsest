@@ -229,26 +229,26 @@ async def database_migrate(current_user: dict = Depends(require_admin), db=Depen
         return {"applied": [], "message": "No pending migrations"}
 
     applied = []
-    async with db.begin():
-        for migration in pending:
-            try:
-                await migration["up"](db)
-                await db.execute(
-                    schema_versions.insert().values(
-                        version=migration["version"],
-                        description=migration["description"],
-                        applied_at=datetime.now(timezone.utc),
-                    )
+    for migration in pending:
+        try:
+            await migration["up"](db)
+            await db.execute(
+                schema_versions.insert().values(
+                    version=migration["version"],
+                    description=migration["description"],
+                    applied_at=datetime.now(timezone.utc),
                 )
-                applied.append({
-                    "version": migration["version"],
-                    "description": migration["description"],
-                })
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Migration {migration['version']} failed: {str(e)}",
-                )
+            )
+            applied.append({
+                "version": migration["version"],
+                "description": migration["description"],
+            })
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Migration {migration['version']} failed: {str(e)}",
+            )
+    await db.commit()
 
     return {"applied": applied, "message": f"Applied {len(applied)} migration(s)"}
 

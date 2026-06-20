@@ -55,35 +55,35 @@ async def first_run_setup(req: FirstRunSetupRequest, request: Request, response:
 
     pw_hash = await hash_password(req.password)
 
-    async with db.begin():
-        result = await db.execute(
-            users.insert().values(
-                email=req.email.strip(),
-                email_normalized=email_norm,
-                username=username_norm,
-                username_normalized=username_norm,
-                full_name=req.full_name,
-                password_hash=pw_hash,
-                status="active",
-                email_verified_at=now,
-                avatar_source="none",
-                preferences={},
-                created_at=now,
-                updated_at=now,
-            )
+    result = await db.execute(
+        users.insert().values(
+            email=req.email.strip(),
+            email_normalized=email_norm,
+            username=username_norm,
+            username_normalized=username_norm,
+            full_name=req.full_name,
+            password_hash=pw_hash,
+            status="active",
+            email_verified_at=now,
+            avatar_source="none",
+            preferences={},
+            created_at=now,
+            updated_at=now,
         )
-        user_id = result.inserted_primary_key[0]
+    )
+    user_id = result.inserted_primary_key[0]
 
-        # Assign admin role
-        admin_role = (await db.execute(roles.select().where(roles.c.name == "admin"))).mappings().first()
-        if admin_role:
-            await db.execute(user_roles.insert().values(user_id=user_id, role_id=admin_role["id"]))
-        # Also assign user role
-        user_role = (await db.execute(roles.select().where(roles.c.name == "user"))).mappings().first()
-        if user_role:
-            await db.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
+    # Assign admin role
+    admin_role = (await db.execute(roles.select().where(roles.c.name == "admin"))).mappings().first()
+    if admin_role:
+        await db.execute(user_roles.insert().values(user_id=user_id, role_id=admin_role["id"]))
+    # Also assign user role
+    user_role = (await db.execute(roles.select().where(roles.c.name == "user"))).mappings().first()
+    if user_role:
+        await db.execute(user_roles.insert().values(user_id=user_id, role_id=user_role["id"]))
 
-    # Create session (outside begin block to avoid nested commit conflict)
+    await db.commit()
+
     await _create_session_and_cookies(response, request, user_id, db)
 
     log_with_time(f"[Auth] First-run admin created: {username_norm}")
@@ -465,3 +465,9 @@ async def auth_resend_verification(req: ResendVerificationRequest, request: Requ
     await email_sender.send_verification_email(current_user["pending_email"], verify_link)
 
     return {"status": "ok", "message": "Verification email sent"}
+
+
+@router.get("/first-run-check")
+async def first_run_check(db=Depends(get_db)):
+    result = (await db.execute(text("SELECT COUNT(*) AS cnt FROM users"))).mappings().first()
+    return {"needs_setup": result is None or result["cnt"] == 0}
