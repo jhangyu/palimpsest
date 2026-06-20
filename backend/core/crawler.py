@@ -4,7 +4,7 @@ import re
 import asyncio
 import json
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import md5
 
 from sqlalchemy import select, text
@@ -53,8 +53,21 @@ _TAG_RE = re.compile(r'<[^>]+>')
 
 def _utcnow_iso() -> str:
     """Return current UTC time as timezone-aware ISO string."""
-    from datetime import timezone
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_pub_date(raw) -> datetime:
+    """Convert a date string to timezone-aware datetime. Returns utcnow on failure."""
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    if not raw or not isinstance(raw, str):
+        return datetime.now(timezone.utc)
+    try:
+        from dateutil.parser import parse as dateutil_parse
+        dt = dateutil_parse(raw)
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        return datetime.now(timezone.utc)
 
 
 def compute_visible_word_count(content: str) -> int:
@@ -122,39 +135,68 @@ def compute_visible_word_count(content: str) -> int:
 
 
 
+# Shared context settings — same keyword names work for both CDPBrowser and Playwright
+_BROWSER_CONTEXT_SETTINGS = {
+    "user_agent": MODERN_CHROME_UA,
+    "viewport": {"width": 1920, "height": 1080},
+    "locale": "zh-TW",
+    "timezone_id": "Asia/Taipei",
+    "extra_http_headers": {
+        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+    },
+}
+
+# Args for local Playwright Chromium launch (anti-detection)
+_LOCAL_CHROME_ARGS = [
+    "--disable-blink-features=AutomationControlled",
+    "--disable-dev-shm-usage",
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-web-security",
+    "--disable-features=IsolateOrigins,site-per-process",
+]
+
+
+def _require_playwright():
+    """Lazy-import playwright for CHROME_MODE=local. Raises clear error if not installed."""
+    try:
+        from playwright.async_api import async_playwright
+        return async_playwright
+    except ImportError:
+        raise RuntimeError(
+            "CHROME_MODE=local requires playwright. "
+            "Install it with: pip install playwright && playwright install chromium"
+        )
+
+
 async def get_page_content(url: str, wait_for_selector: str | None = None, browser=None, fast_mode=False) -> str:
     """連線到遠端 Chrome (Browserless) 取得渲染後的 HTML
 
     Args:
         url: 目標網址
         wait_for_selector: 可選，等待特定元素出現後再取得 HTML
-        browser: 可選，重用現有的 browser 實例
+        browser: 可選，重用現有的 browser 實例 (CDPBrowser or Playwright Browser)
         fast_mode: 預覽模式，縮短等待時間
+
+    Browser selection:
+        - CHROME_MODE=server (default/production): lightweight CDP client → remote Chrome
+        - CHROME_MODE=local (dev): playwright → local Chromium (requires pip install playwright)
     """
-    from playwright.async_api import async_playwright
     import time
     start_ts = time.time()
 
-    # 決定是否使用內部啟動的 playwright
+    # Reuse existing browser instance (works for both CDP and Playwright browsers)
     if browser:
-        context = await browser.new_context(
-            user_agent=MODERN_CHROME_UA,
-            viewport={"width": 1920, "height": 1080},
-            locale="zh-TW",
-            timezone_id="Asia/Taipei",
-            extra_http_headers={
-                "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Accept-Encoding": "gzip, deflate, br",
-                "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"Windows"',
-                "sec-fetch-dest": "document",
-                "sec-fetch-mode": "navigate",
-                "sec-fetch-site": "none",
-                "sec-fetch-user": "?1",
-                "upgrade-insecure-requests": "1",
-            }
-        )
+        context = await browser.new_context(**_BROWSER_CONTEXT_SETTINGS)
         page = await context.new_page()
         try:
             content = await get_page_content_on_page(page, url, wait_for_selector, fast_mode)
@@ -165,43 +207,31 @@ async def get_page_content(url: str, wait_for_selector: str | None = None, brows
             log_with_time(f"[Crawler] Error in reused browser for {url}: {e}")
             return ""
 
-    async with async_playwright() as p:
-        try:
-            mode = os.getenv("CHROME_MODE", "server")
-            if mode == "local":
-                # 本地模式：添加反偵測參數
-                browser_obj = await p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--disable-dev-shm-usage",
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-web-security",
-                        "--disable-features=IsolateOrigins,site-per-process",
-                    ]
-                )
-            else:
-                browser_obj = await p.chromium.connect_over_cdp(CHROME_WS)
+    mode = os.getenv("CHROME_MODE", "server")
 
-            context = await browser_obj.new_context(
-                user_agent=MODERN_CHROME_UA,
-                viewport={"width": 1920, "height": 1080},
-                locale="zh-TW",
-                timezone_id="Asia/Taipei",
-                extra_http_headers={
-                    "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                    "sec-ch-ua-mobile": "?0",
-                    "sec-ch-ua-platform": '"Windows"',
-                    "sec-fetch-dest": "document",
-                    "sec-fetch-mode": "navigate",
-                    "sec-fetch-site": "none",
-                    "sec-fetch-user": "?1",
-                    "upgrade-insecure-requests": "1",
-                }
-            )
+    if mode == "local":
+        # Local dev mode: use playwright to launch local Chromium
+        async_playwright = _require_playwright()
+        async with async_playwright() as p:
+            try:
+                browser_obj = await p.chromium.launch(
+                    headless=True, args=_LOCAL_CHROME_ARGS,
+                )
+                context = await browser_obj.new_context(**_BROWSER_CONTEXT_SETTINGS)
+                page = await context.new_page()
+                content = await get_page_content_on_page(page, url, wait_for_selector, fast_mode)
+                await browser_obj.close()
+                log_with_time(f"[Crawler] Fetched {url} in {time.time() - start_ts:.2f}s (local)")
+                return content
+            except Exception as e:
+                log_with_time(f"[Crawler] Error fetching {url}: {e}")
+                return ""
+    else:
+        # Server/production mode: lightweight CDP client → remote Chrome (browserless)
+        try:
+            from core.cdp_client import CDPBrowser
+            browser_obj = await CDPBrowser.connect(CHROME_WS)
+            context = await browser_obj.new_context(**_BROWSER_CONTEXT_SETTINGS)
             page = await context.new_page()
             content = await get_page_content_on_page(page, url, wait_for_selector, fast_mode)
             await browser_obj.close()
@@ -253,7 +283,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         articles_failed, content_fetch_failed, parse_failed, error_message
     """
     _compute_wc = compute_visible_word_count
-    _utc_now = _utcnow_iso
+    _utc_now = lambda: datetime.now(timezone.utc)
 
     result = {
         "status": "success",
@@ -376,42 +406,43 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             return result
 
         # Stage 2: 並行抓取內文 (控制併發)
-        # PERF-009: Launch a single shared Playwright browser for the entire crawl session.
+        # PERF-009: Launch a single shared browser for the entire crawl session.
         # Each article will create a new page/context rather than a new browser process.
         _shared_browser = None
-        _pw_ctx = None
+        _pw_ctx = None  # Only used for CHROME_MODE=local playwright cleanup
         if scrape_method == "playwright":
-            try:
-                from playwright.async_api import async_playwright
-                _pw_ctx = async_playwright()
-                _pw = await _pw_ctx.__aenter__()
-                mode = os.getenv("CHROME_MODE", "server")
-                if mode == "local":
+            mode = os.getenv("CHROME_MODE", "server")
+            if mode == "local":
+                # Local dev: use playwright for shared browser
+                try:
+                    async_playwright = _require_playwright()
+                    _pw_ctx = async_playwright()
+                    _pw = await _pw_ctx.__aenter__()
                     _shared_browser = await _pw.chromium.launch(
-                        headless=True,
-                        args=[
-                            "--disable-blink-features=AutomationControlled",
-                            "--disable-dev-shm-usage",
-                            "--no-sandbox",
-                            "--disable-setuid-sandbox",
-                            "--disable-web-security",
-                            "--disable-features=IsolateOrigins,site-per-process",
-                        ]
+                        headless=True, args=_LOCAL_CHROME_ARGS,
                     )
-                else:
-                    _shared_browser = await _pw.chromium.connect_over_cdp(CHROME_WS)
-                log_with_time(f"[Crawl] Shared Playwright browser ready for site {site_id}")
-            except Exception as br_err:
-                log_with_time(f"[Crawl] Failed to launch shared browser: {br_err}, falling back to per-article browser")
-                if _pw_ctx is not None:
-                    try:
-                        await _pw_ctx.__aexit__(None, None, None)
-                    except Exception:
-                        pass
-                _shared_browser = None
-                _pw_ctx = None
+                    log_with_time(f"[Crawl] Shared Playwright browser ready for site {site_id} (local)")
+                except Exception as br_err:
+                    log_with_time(f"[Crawl] Failed to launch shared browser: {br_err}, falling back to per-article browser")
+                    if _pw_ctx is not None:
+                        try:
+                            await _pw_ctx.__aexit__(None, None, None)
+                        except Exception:
+                            pass
+                    _shared_browser = None
+                    _pw_ctx = None
+            else:
+                # Server/production: use CDP client for shared browser
+                try:
+                    from core.cdp_client import CDPBrowser
+                    _shared_browser = await CDPBrowser.connect(CHROME_WS)
+                    log_with_time(f"[Crawl] Shared CDP browser ready for site {site_id}")
+                except Exception as br_err:
+                    log_with_time(f"[Crawl] Failed to launch shared browser: {br_err}, falling back to per-article browser")
+                    _shared_browser = None
 
         semaphore = asyncio.Semaphore(3)
+        _db_lock = asyncio.Lock()
         crawl_results = []
 
         async def fetch_and_save_content(article: dict):
@@ -421,7 +452,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 uhash = url_hash(a_url)
 
                 # PERF-008 / PERF-009: Reuse session-level browser or HTTP client.
-                # Playwright: use shared browser (new page per article, not new browser).
+                # CDP: use shared browser (new page per article, not new browser).
                 # Scrapling: fetch_page manages its own connection; _get_http_client() is
                 # available for any direct HTTP calls added in future.
                 if scrape_method == "playwright" and _shared_browser is not None:
@@ -441,7 +472,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 if debug_writer is not None:
                     debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page_html or "")
 
-                pub_date = datetime.now().isoformat()
+                pub_date = datetime.now(timezone.utc)
                 try:
                     content_text, parsed_date, image_url, author = parse_article(a_page, content_rules, a_url)
                 except Exception as parse_err:
@@ -452,6 +483,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
                 if parsed_date:
                     pub_date = parsed_date
+                pub_date = _parse_pub_date(pub_date)
 
                 # Stage 2 Filter: apply full filter (title + content) before DB write
                 if filter_rules:
@@ -475,93 +507,98 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 if debug_writer is not None:
                     debug_writer.save(f"03_article_cleaned_{uhash}", "cleaned.html", content_text[:5000])
 
-                try:
-                    if force_update:
-                        # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
-                        await db.execute(
-                            text("""
-                                INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
-                                VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
-                                ON CONFLICT (url) DO UPDATE SET
-                                    site_id = :sid, title = :title, content = :content,
-                                    image_url = :image_url, published_at = :pub_date,
-                                    updated_at = :updated_at, word_count = :word_count,
-                                    author = :author
-                            """),
-                            {
-                                "sid": site_id, "title": title, "url": a_url,
-                                "content": content_text, "image_url": image_url,
-                                "pub_date": pub_date, "created_at": now_utc,
-                                "updated_at": now_utc, "word_count": wc,
-                                "author": author,
-                            }
-                        )
-                        await db.commit()
-                        log_with_time(f"[Crawl] Force updated: {title[:30]}...")
-                        crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
-                        result["articles_updated"] += 1
-                    else:
-                        # 排程模式：檢查 published_at 是否改變
-                        existing = (await db.execute(
-                            select(articles.c.id, articles.c.published_at, articles.c.created_at)
-                            .where(articles.c.url == a_url)
-                        )).mappings().first()
-                        if existing:
-                            old_pub_date = existing['published_at']
-                            if old_pub_date == pub_date:
-                                # 時間相同，不用更新
-                                log_with_time(f"[Crawl] Skipped (no change): {title[:30]}...")
-                                return
-                            # 時間改變了，更新內容, preserve created_at
+                async with _db_lock:
+                    try:
+                        if force_update:
+                            # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
                             await db.execute(
-                                articles.update()
-                                .where(articles.c.url == a_url)
-                                .values(
-                                    title=title,
-                                    content=content_text,
-                                    image_url=image_url,
-                                    published_at=pub_date,
-                                    updated_at=now_utc,
-                                    word_count=wc,
-                                    author=author,
-                                )
+                                text("""
+                                    INSERT INTO articles (site_id, title, url, content, image_url, published_at, created_at, updated_at, word_count, author)
+                                    VALUES (:sid, :title, :url, :content, :image_url, :pub_date, :created_at, :updated_at, :word_count, :author)
+                                    ON CONFLICT (url) DO UPDATE SET
+                                        site_id = :sid, title = :title, content = :content,
+                                        image_url = :image_url, published_at = :pub_date,
+                                        updated_at = :updated_at, word_count = :word_count,
+                                        author = :author
+                                """),
+                                {
+                                    "sid": site_id, "title": title, "url": a_url,
+                                    "content": content_text, "image_url": image_url,
+                                    "pub_date": pub_date, "created_at": now_utc,
+                                    "updated_at": now_utc, "word_count": wc,
+                                    "author": author,
+                                }
                             )
                             await db.commit()
-                            log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
-                            crawl_results.append({"url": a_url, "title": title, "status": "updated"})
+                            log_with_time(f"[Crawl] Force updated: {title[:30]}...")
+                            crawl_results.append({"url": a_url, "title": title, "status": "force_updated"})
                             result["articles_updated"] += 1
                         else:
-                            # 不存在，直接插入
-                            await db.execute(
-                                articles.insert().values(
-                                    site_id=site_id,
-                                    title=title,
-                                    url=a_url,
-                                    content=content_text,
-                                    image_url=image_url,
-                                    published_at=pub_date,
-                                    created_at=now_utc,
-                                    updated_at=now_utc,
-                                    word_count=wc,
-                                    author=author,
+                            # 排程模式：檢查 published_at 是否改變
+                            existing = (await db.execute(
+                                select(articles.c.id, articles.c.published_at, articles.c.created_at)
+                                .where(articles.c.url == a_url)
+                            )).mappings().first()
+                            if existing:
+                                old_pub_date = existing['published_at']
+                                if old_pub_date == pub_date:
+                                    # 時間相同，不用更新
+                                    log_with_time(f"[Crawl] Skipped (no change): {title[:30]}...")
+                                    return
+                                # 時間改變了，更新內容, preserve created_at
+                                await db.execute(
+                                    articles.update()
+                                    .where(articles.c.url == a_url)
+                                    .values(
+                                        title=title,
+                                        content=content_text,
+                                        image_url=image_url,
+                                        published_at=pub_date,
+                                        updated_at=now_utc,
+                                        word_count=wc,
+                                        author=author,
+                                    )
                                 )
-                            )
-                            await db.commit()
-                            log_with_time(f"[Crawl] Saved: {title[:30]}...")
-                            crawl_results.append({"url": a_url, "title": title, "status": "saved"})
-                            result["articles_saved"] += 1
-                except Exception as db_err:
-                    log_with_time(f"[Crawl] DB error saving {a_url}: {db_err}")
-                    result["articles_failed"] += 1
+                                await db.commit()
+                                log_with_time(f"[Crawl] Updated (new content): {title[:30]}...")
+                                crawl_results.append({"url": a_url, "title": title, "status": "updated"})
+                                result["articles_updated"] += 1
+                            else:
+                                # 不存在，直接插入
+                                await db.execute(
+                                    articles.insert().values(
+                                        site_id=site_id,
+                                        title=title,
+                                        url=a_url,
+                                        content=content_text,
+                                        image_url=image_url,
+                                        published_at=pub_date,
+                                        created_at=now_utc,
+                                        updated_at=now_utc,
+                                        word_count=wc,
+                                        author=author,
+                                    )
+                                )
+                                await db.commit()
+                                log_with_time(f"[Crawl] Saved: {title[:30]}...")
+                                crawl_results.append({"url": a_url, "title": title, "status": "saved"})
+                                result["articles_saved"] += 1
+                    except Exception as db_err:
+                        log_with_time(f"[Crawl] DB error saving {a_url}: {db_err}")
+                        try:
+                            await db.rollback()
+                        except Exception:
+                            pass
+                        result["articles_failed"] += 1
 
         try:
             await asyncio.gather(*[fetch_and_save_content(a) for a in articles_to_crawl])
         finally:
-            # PERF-009: Close shared Playwright browser after all articles are processed
+            # PERF-009: Close shared browser after all articles are processed
             if _shared_browser is not None:
                 try:
                     await _shared_browser.close()
-                    log_with_time(f"[Crawl] Shared Playwright browser closed for site {site_id}")
+                    log_with_time(f"[Crawl] Shared browser closed for site {site_id}")
                 except Exception:
                     pass
             if _pw_ctx is not None:
@@ -648,10 +685,11 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
             if debug_writer is not None:
                 debug_writer.save(f"03_article_raw_{uhash}", "raw.html", a_page.html_content or "")
 
-            pub_date = datetime.now().isoformat()
+            pub_date = datetime.now(timezone.utc)
             content_text, parsed_date, _, _ = parse_article(a_page, content_rules, a_url)
             if parsed_date:
                 pub_date = parsed_date
+            pub_date = _parse_pub_date(pub_date)
 
             # 從 content_rules 的 title selector 提取真正標題（覆蓋佔位符）
             title_selector = normalize_selector(content_rules.get('title', ''))
@@ -693,7 +731,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
                 "title": title,
                 "url": a_url,
                 "content": content_text,
-                "published_at": pub_date,
+                "published_at": pub_date.isoformat() if isinstance(pub_date, datetime) else str(pub_date),
                 "filtered": is_filtered,
             }
 
