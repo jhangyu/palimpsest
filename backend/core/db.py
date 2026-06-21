@@ -185,6 +185,26 @@ from core.crawl_repair_models import define_crawl_repair_tables
 crawl_repair_tables = define_crawl_repair_tables(metadata)
 
 # ---------------------------------------------------------------------------
+# Test-compatible database instance (databases library)
+# ---------------------------------------------------------------------------
+import databases
+database = databases.Database(DATABASE_URL)
+
+# ---------------------------------------------------------------------------
+# Module-level state setters (used by test fixtures)
+# ---------------------------------------------------------------------------
+_kek_backend = None
+_llm_profiles_enabled = False
+
+def set_kek_backend(backend):
+    global _kek_backend
+    _kek_backend = backend
+
+def set_llm_profiles_enabled(enabled):
+    global _llm_profiles_enabled
+    _llm_profiles_enabled = enabled
+
+# ---------------------------------------------------------------------------
 # FastAPI Depends functions (DI layer)
 # ---------------------------------------------------------------------------
 

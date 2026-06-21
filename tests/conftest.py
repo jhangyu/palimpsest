@@ -132,7 +132,7 @@ async def db(test_db_url):
 # HTTP client fixtures
 # ---------------------------------------------------------------------------
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def client(db):
     """Async HTTPX test client pointed at the FastAPI app.
 
@@ -282,7 +282,7 @@ async def _login_client(client, email: str, password: str):
 # User seed fixtures
 # ---------------------------------------------------------------------------
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def regular_user(db):
     """Seed and return a regular (non-admin) user record.
 
@@ -301,7 +301,7 @@ async def regular_user(db):
     await _delete_user(db, user["id"])
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def admin_user(db):
     """Seed and return an admin user record.
 
@@ -320,7 +320,7 @@ async def admin_user(db):
     await _delete_user(db, user["id"])
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def blocked_user(db):
     """Seed and return a user with status='blocked'.
 
@@ -343,7 +343,7 @@ async def blocked_user(db):
 # Authenticated client fixtures
 # ---------------------------------------------------------------------------
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def auth_client(client, regular_user):
     """HTTPX client with a valid authenticated session cookie (regular user).
 
@@ -359,7 +359,7 @@ async def auth_client(client, regular_user):
     await ac.aclose()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def admin_client(client, admin_user):
     """HTTPX client authenticated as an admin user.
 
@@ -379,7 +379,7 @@ async def admin_client(client, admin_user):
 # CSRF helper
 # ---------------------------------------------------------------------------
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def csrf_token(auth_client):
     """Return a valid CSRF token extracted from the authenticated client's
     cookies.
@@ -394,3 +394,80 @@ async def csrf_token(auth_client):
         token = resp.cookies.get("csrf_token", "")
     assert token, "Failed to obtain CSRF token from authenticated client"
     return token
+
+
+# ---------------------------------------------------------------------------
+# CSRF helper (reusable non-fixture function)
+# ---------------------------------------------------------------------------
+
+async def _get_csrf_token(client) -> str:
+    """Extract CSRF token from an authenticated client's cookies."""
+    token = client.cookies.get("csrf_token", "")
+    if not token:
+        resp = await client.get("/auth/me")
+        token = resp.cookies.get("csrf_token", "")
+    return token
+
+
+# ---------------------------------------------------------------------------
+# KEK (Key Encryption Key) fixtures for AI provider encryption tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def kek_backend(tmp_path_factory):
+    """Provide a FileKeyEncryptionBackend with a temp keyring for encryption tests."""
+    keyring_dir = tmp_path_factory.mktemp("kek")
+    from core.llm.key_backends import FileKeyEncryptionBackend
+    FileKeyEncryptionBackend.generate_keyring(str(keyring_dir), "v1")
+    return FileKeyEncryptionBackend(str(keyring_dir), "v1")
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def kek_client(db, kek_backend):
+    """Async HTTPX test client with LLM profiles ENABLED and KEK backend injected.
+    Use this for AI provider CRUD tests that need encryption."""
+    from main import app
+    from httpx import AsyncClient, ASGITransport
+    from core.db import set_kek_backend, set_llm_profiles_enabled
+
+    app.state.database = db
+    app.state.kek_backend = kek_backend
+    app.state.llm_profiles_enabled = True
+    set_kek_backend(kek_backend)
+    set_llm_profiles_enabled(True)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    # Reset state
+    app.state.kek_backend = None
+    app.state.llm_profiles_enabled = False
+    set_kek_backend(None)
+    set_llm_profiles_enabled(False)
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def kek_auth_client(kek_client, regular_user):
+    """Authenticated client with KEK enabled. For AI provider tests."""
+    ac, _csrf = await _login_client(
+        kek_client,
+        email=regular_user["email"],
+        password="TestPass123!",
+    )
+    yield ac
+    await ac.aclose()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def kek_admin_client(kek_client, admin_user):
+    """Authenticated admin client with KEK enabled."""
+    ac, _csrf = await _login_client(
+        kek_client,
+        email=admin_user["email"],
+        password="TestPass123!",
+    )
+    yield ac
+    await ac.aclose()

@@ -19,6 +19,7 @@ from .llm.key_backends import KeyEncryptionBackend, WrappedKey
 from .llm.models import ProviderConfig, ProviderError
 from .llm.registry import create_provider as create_llm_adapter
 from .llm.vault import (
+    CredentialAuthenticationError,
     CredentialEnvelope,
     UserKeyEnvelope,
     decrypt_provider_credential,
@@ -118,7 +119,33 @@ async def _get_user_dek(db, tables: AIProviderTables, backend: KeyEncryptionBack
         )).mappings().first()
     if key_row is None:
         raise ProviderNotFoundError("user secret key could not be initialized")
-    return await unwrap_user_dek(backend, _user_key_envelope(key_row))
+    try:
+        return await unwrap_user_dek(backend, _user_key_envelope(key_row))
+    except CredentialAuthenticationError:
+        # KEK was regenerated — check if user has any encrypted providers
+        provider_count = (await db.execute(
+            sqlalchemy.select(sqlalchemy.func.count()).select_from(tables.user_ai_providers).where(
+                tables.user_ai_providers.c.user_id == user_id
+            )
+        )).scalar()
+        if provider_count and provider_count > 0:
+            raise  # Re-raise — encrypted providers would be lost
+        # No providers — safe to re-bootstrap with current KEK
+        await db.execute(
+            tables.user_secret_keys.delete().where(
+                tables.user_secret_keys.c.user_id == user_id
+            )
+        )
+        await db.commit()
+        await bootstrap_user_secret_key(db, tables.user_secret_keys, backend, user_id=user_id)
+        key_row = (await db.execute(
+            sqlalchemy.select(tables.user_secret_keys).where(
+                tables.user_secret_keys.c.user_id == user_id
+            )
+        )).mappings().first()
+        if key_row is None:
+            raise ProviderNotFoundError("user secret key could not be re-initialized")
+        return await unwrap_user_dek(backend, _user_key_envelope(key_row))
 
 
 async def _fetch_provider(db, tables: AIProviderTables, *, provider_id: int) -> Any:
@@ -490,17 +517,16 @@ async def reorder_providers(
             )
 
     now = _now()
-    async with db.begin():
-        for priority, pid in enumerate(ordered_ids):
-            row = next(r for r in rows if r["id"] == pid)
-            await db.execute(
-                tables.user_ai_providers.update()
-                .where(
-                    (tables.user_ai_providers.c.id == pid)
-                    & (tables.user_ai_providers.c.user_id == user_id)
-                )
-                .values(priority=priority, updated_at=now, revision=row["revision"] + 1)
+    for priority, pid in enumerate(ordered_ids):
+        row = next(r for r in rows if r["id"] == pid)
+        await db.execute(
+            tables.user_ai_providers.update()
+            .where(
+                (tables.user_ai_providers.c.id == pid)
+                & (tables.user_ai_providers.c.user_id == user_id)
             )
+            .values(priority=priority, updated_at=now, revision=row["revision"] + 1)
+        )
 
     return await list_user_providers(db, tables, user_id=user_id)
 

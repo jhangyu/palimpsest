@@ -433,6 +433,7 @@ async def lifespan(app: FastAPI):
     if _llm_profiles_enabled:
         kek_path = os.getenv("LLM_KEK_PATH", "/run/secrets/llm_kek")
         kek_version = os.getenv("LLM_KEK_VERSION", "v1")
+        app.state.kek_backend = None
         try:
             _kek_backend = FileKeyEncryptionBackend(kek_path, kek_version)
             app.state.kek_backend = _kek_backend
@@ -452,18 +453,38 @@ async def lifespan(app: FastAPI):
             if app.state.kek_backend is None:
                 # Check if any providers exist that require vault
                 provider_count = None
+                has_secret_keys = False
                 try:
                     async with async_session_factory() as session:
                         result = await session.execute(
                             text("SELECT COUNT(*) as cnt FROM user_ai_providers")
                         )
                         provider_count = result.mappings().first()
+                        sk_result = await session.execute(
+                            text("SELECT COUNT(*) as cnt FROM user_secret_keys")
+                        )
+                        sk_count = sk_result.mappings().first()
+                        has_secret_keys = sk_count is not None and sk_count["cnt"] > 0
                     has_providers = provider_count and provider_count["cnt"] > 0
                 except Exception as db_exc:
                     raise RuntimeError(
                         f"[FATAL] KEK unavailable ({e}) and provider count check failed ({db_exc}). "
                         "Cannot determine safe startup state. Refusing to start."
                     ) from db_exc
+
+                # Orphaned secret keys without providers — clear before auto-generating
+                if not has_providers and has_secret_keys:
+                    try:
+                        async with async_session_factory() as cleanup_session:
+                            stale = await cleanup_session.execute(
+                                text("DELETE FROM user_secret_keys RETURNING user_id")
+                            )
+                            deleted_rows = stale.fetchall()
+                            await cleanup_session.commit()
+                            if deleted_rows:
+                                log_with_time(f"[Startup] Cleared {len(deleted_rows)} orphaned user secret key(s) (no providers exist)")
+                    except Exception as cleanup_exc:
+                        log_with_time(f"[Startup] Warning: could not clear orphaned user secret keys: {cleanup_exc}")
 
                 if has_providers:
                     cnt = provider_count["cnt"] if provider_count else "unknown"
@@ -484,6 +505,18 @@ async def lifespan(app: FastAPI):
                             app.state.kek_backend = _kek_backend
                             kek_path = candidate_path
                             log_with_time(f"[Startup] KEK keyring auto-generated at {candidate_path}")
+                            # Clean up any stale user_secret_keys from previous KEK
+                            try:
+                                async with async_session_factory() as cleanup_session:
+                                    stale = await cleanup_session.execute(
+                                        text("DELETE FROM user_secret_keys RETURNING user_id")
+                                    )
+                                    deleted_rows = stale.fetchall()
+                                    await cleanup_session.commit()
+                                    if deleted_rows:
+                                        log_with_time(f"[Startup] Cleared {len(deleted_rows)} stale user secret key(s) from previous KEK")
+                            except Exception as cleanup_exc:
+                                log_with_time(f"[Startup] Warning: could not clear stale user secret keys: {cleanup_exc}")
                             _generated = True
                             break
                         except Exception as gen_exc:

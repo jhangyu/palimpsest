@@ -20,7 +20,7 @@ RUN npm run build
 FROM python:3.11-slim-bookworm AS runtime
 
 LABEL org.opencontainers.image.title="Palimpsest" \
-      org.opencontainers.image.version="0.1.1" \
+      org.opencontainers.image.version="0.1.5" \
       org.opencontainers.image.description="AI-powered full-text RSS content management system" \
       org.opencontainers.image.source="https://github.com/jhangyu/palimpsest" \
       org.opencontainers.image.licenses="MIT"
