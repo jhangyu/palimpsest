@@ -16,8 +16,12 @@ import { test, expect } from '@playwright/test'
 // =============================================================================
 test.describe('Page Load', () => {
 
-  test.skip('7.01 Page loads: spinner then user table [T01]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.01 Page loads: spinner then user table [T01]', async ({ page }) => {
+    // Add delay mock to catch spinner before table appears
+    await page.route('**/admin/users*', async (route) => {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await route.continue()
+    })
     await page.goto('/settings/users')
     await expect(page.locator('#user-list-container .spinner-border')).toBeVisible()
     await expect(page.locator('#user-list-container .table')).toBeVisible()
@@ -33,7 +37,7 @@ test.describe('Page Load', () => {
   })
 
   test.skip('7.02 Non-admin user: user-list-container shows Access Denied [T02]', async ({ page }) => {
-    // TODO: requires auth session fixture (non-admin account)
+    // Requires non-admin session fixture
     await page.goto('/settings/users')
     const alert = page.locator('#user-list-container .alert-danger')
     await expect(alert).toBeVisible()
@@ -41,7 +45,7 @@ test.describe('Page Load', () => {
   })
 
   test.skip('7.03 Non-admin user: add-user-form shows Access Denied [T03]', async ({ page }) => {
-    // TODO: requires auth session fixture (non-admin account)
+    // Requires non-admin session fixture
     await page.goto('/settings/users')
     const alert = page.locator('#add-user-form .alert-danger')
     await expect(alert).toBeVisible()
@@ -53,9 +57,9 @@ test.describe('Page Load', () => {
 // Add User — Form Validation
 // =============================================================================
 test.describe('Add User — Form Validation', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('7.04 Email empty submit shows validation error [T04]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.04 Email empty submit shows validation error [T04]', async ({ page }) => {
     await page.goto('/settings/users')
     await page.locator('#add-user-email').clear()
     await page.locator('#add-user-form button[type="submit"]').click()
@@ -63,16 +67,14 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-email ~ .invalid-feedback')).toContainText('Valid email is required.')
   })
 
-  test.skip('7.05 Email invalid format shows validation error [T05]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.05 Email invalid format shows validation error [T05]', async ({ page }) => {
     await page.goto('/settings/users')
     await page.locator('#add-user-email').fill('notanemail')
     await page.locator('#add-user-form button[type="submit"]').click()
     await expect(page.locator('#add-user-email.is-invalid')).toBeVisible()
   })
 
-  test.skip('7.06 Username invalid format (uppercase/digits) shows validation error [T06]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.06 Username invalid format (uppercase/digits) shows validation error [T06]', async ({ page }) => {
     await page.goto('/settings/users')
     await page.locator('#add-user-username').fill('User123')
     await page.locator('#add-user-form button[type="submit"]').click()
@@ -80,8 +82,7 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-username ~ .invalid-feedback')).toContainText('Username must be 1-20 lowercase English letters only.')
   })
 
-  test.skip('7.07 Username empty submit shows validation error [T07]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.07 Username empty submit shows validation error [T07]', async ({ page }) => {
     await page.goto('/settings/users')
     await page.locator('#add-user-email').fill('valid@example.com')
     await page.locator('#add-user-username').clear()
@@ -89,25 +90,37 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-username.is-invalid')).toBeVisible()
   })
 
-  test.skip('7.08 Successfully create user with user role only [T08]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.08 Successfully create user with user role only [T08]', async ({ page }) => {
     await page.goto('/settings/users')
+
+    // Mock POST /admin/users to return 201 success
+    await page.route('**/admin/users', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 99, email: 'newusertest@example.com' }),
+        })
+      } else {
+        await route.continue()
+      }
+    })
 
     // Intercept POST /admin/users
     const postPromise = page.waitForRequest(req =>
       req.method() === 'POST' && req.url().includes('/admin/users')
     )
 
-    await page.locator('#add-user-email').fill('newuser@example.com')
-    await page.locator('#add-user-username').fill('newuser')
+    await page.locator('#add-user-email').fill('newusertest@example.com')
+    await page.locator('#add-user-username').fill('newusertest')
     // #role-user should be checked by default
     await expect(page.locator('#role-user')).toBeChecked()
     await page.locator('#add-user-form button[type="submit"]').click()
 
     const postReq = await postPromise
     const body = postReq.postDataJSON()
-    expect(body.email).toBe('newuser@example.com')
-    expect(body.username).toBe('newuser')
+    expect(body.email).toBe('newusertest@example.com')
+    expect(body.username).toBe('newusertest')
     expect(body.roles).toEqual(['user'])
 
     // Success banner becomes visible
@@ -118,16 +131,28 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-username')).toHaveValue('')
   })
 
-  test.skip('7.09 Successfully create user with admin + user roles [T09]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.09 Successfully create user with admin + user roles [T09]', async ({ page }) => {
     await page.goto('/settings/users')
+
+    // Mock POST /admin/users to return 201 success
+    await page.route('**/admin/users', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 100, email: 'adminusertest@example.com' }),
+        })
+      } else {
+        await route.continue()
+      }
+    })
 
     const postPromise = page.waitForRequest(req =>
       req.method() === 'POST' && req.url().includes('/admin/users')
     )
 
-    await page.locator('#add-user-email').fill('adminuser@example.com')
-    await page.locator('#add-user-username').fill('adminuser')
+    await page.locator('#add-user-email').fill('adminusertest@example.com')
+    await page.locator('#add-user-username').fill('adminusertest')
     await page.locator('#role-admin').check()
     await page.locator('#add-user-form button[type="submit"]').click()
 
@@ -139,8 +164,7 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-success')).toBeVisible()
   })
 
-  test.skip('7.10 Duplicate email shows server error on email field [T10]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.10 Duplicate email shows server error on email field [T10]', async ({ page }) => {
     await page.goto('/settings/users')
 
     // Mock POST /admin/users to return email conflict error
@@ -163,8 +187,7 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-email.is-invalid')).toBeVisible()
   })
 
-  test.skip('7.11 Duplicate username shows server error on username field [T11]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.11 Duplicate username shows server error on username field [T11]', async ({ page }) => {
     await page.goto('/settings/users')
 
     await page.route('**/admin/users', async (route) => {
@@ -186,8 +209,7 @@ test.describe('Add User — Form Validation', () => {
     await expect(page.locator('#add-user-username.is-invalid')).toBeVisible()
   })
 
-  test.skip('7.12 Submit button shows loading state (disabled + spinner) [T12]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.12 Submit button shows loading state (disabled + spinner) [T12]', async ({ page }) => {
     await page.goto('/settings/users')
 
     // Intercept POST and delay response
@@ -223,8 +245,7 @@ test.describe('Add User — Form Validation', () => {
 // =============================================================================
 test.describe('User List & Search', () => {
 
-  test.skip('7.13 Search input triggers live filtering [T13]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.13 Search input triggers live filtering [T13]', async ({ page }) => {
     await page.goto('/settings/users')
     await expect(page.locator('.table tbody tr')).not.toHaveCount(0)
 
@@ -239,8 +260,7 @@ test.describe('User List & Search', () => {
     await expect(page.locator('.table tbody tr')).not.toHaveCount(0)
   })
 
-  test.skip('7.14 Search with no results shows "No users found." [T14]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.14 Search with no results shows "No users found." [T14]', async ({ page }) => {
     await page.goto('/settings/users')
 
     await page.route('**/admin/users?*', async (route) => {
@@ -259,9 +279,10 @@ test.describe('User List & Search', () => {
     await expect(page.locator('#user-list-container p.text-muted')).toContainText('No users found.')
   })
 
-  test.skip('7.15 Clear search restores full user list [T15]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.15 Clear search restores full user list [T15]', async ({ page }) => {
     await page.goto('/settings/users')
+    // Wait for table to load before capturing initial count (loadUsers is async)
+    await expect(page.locator('.table tbody tr').first()).toBeVisible()
     const initialCount = await page.locator('.table tbody tr').count()
 
     await page.locator('#user-search-input').fill('somequery')
@@ -270,8 +291,7 @@ test.describe('User List & Search', () => {
     await expect(page.locator('.table tbody tr')).toHaveCount(initialCount)
   })
 
-  test.skip('7.16 Each row displays correct columns: username, email, roles, status, last login, actions [T16]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.16 Each row displays correct columns: username, email, roles, status, last login, actions [T16]', async ({ page }) => {
     await page.goto('/settings/users')
     await expect(page.locator('.table tbody tr').first()).toBeVisible()
 
@@ -302,9 +322,9 @@ test.describe('User List & Search', () => {
 // Block / Unblock
 // =============================================================================
 test.describe('Block / Unblock', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('7.17 Block active user: PUT with status blocked, toast, badge update [T17]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.17 Block active user: PUT with status blocked, toast, badge update [T17]', async ({ page }) => {
     await page.goto('/settings/users')
 
     const putPromise = page.waitForRequest(req =>
@@ -319,14 +339,13 @@ test.describe('Block / Unblock', () => {
     expect(body.status).toBe('blocked')
 
     // Toast shows "User blocked."
-    await expect(page.locator('.toast-body, .toast')).toContainText('User blocked.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('User blocked.')
 
     // Badge updates to Blocked
     await expect(page.locator('.badge.bg-danger-subtle')).toBeVisible()
   })
 
-  test.skip('7.18 Unblock blocked user: PUT with status active, toast, badge update [T18]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.18 Unblock blocked user: PUT with status active, toast, badge update [T18]', async ({ page }) => {
     await page.goto('/settings/users')
 
     const putPromise = page.waitForRequest(req =>
@@ -340,12 +359,11 @@ test.describe('Block / Unblock', () => {
     const body = putReq.postDataJSON()
     expect(body.status).toBe('active')
 
-    await expect(page.locator('.toast-body, .toast')).toContainText('User unblocked.')
-    await expect(page.locator('.badge.bg-success-subtle')).toBeVisible()
+    await expect(page.locator('.alert.position-fixed')).toContainText('User unblocked.')
+    await expect(page.locator('.badge.bg-success-subtle').first()).toBeVisible()
   })
 
-  test.skip('7.19 Block/Unblock button disabled during request [T19]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.19 Block/Unblock button disabled during request [T19]', async ({ page }) => {
     await page.goto('/settings/users')
 
     // Intercept PUT and delay response
@@ -368,8 +386,7 @@ test.describe('Block / Unblock', () => {
     await expect(page.locator('button[data-action="toggle-block"]:disabled')).toBeVisible()
   })
 
-  test.skip('7.20 Block/Unblock API failure shows danger toast [T20]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.20 Block/Unblock API failure shows danger toast [T20]', async ({ page }) => {
     await page.goto('/settings/users')
 
     await page.route('**/admin/users/*', async (route) => {
@@ -388,7 +405,7 @@ test.describe('Block / Unblock', () => {
     await toggleBtn.click()
 
     // Toast shows danger variant
-    await expect(page.locator('.toast.bg-danger, .toast-body')).toBeVisible()
+    await expect(page.locator('.alert.position-fixed')).toBeVisible()
 
     // Button re-enabled
     await expect(toggleBtn).toBeEnabled()
@@ -399,9 +416,9 @@ test.describe('Block / Unblock', () => {
 // Delete User
 // =============================================================================
 test.describe('Delete User', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('7.21 Delete button triggers confirm dialog with username [T21]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.21 Delete button triggers confirm dialog with username [T21]', async ({ page }) => {
     await page.goto('/settings/users')
 
     let confirmMessage = ''
@@ -419,8 +436,7 @@ test.describe('Delete User', () => {
     expect(confirmMessage).toContain('This cannot be undone.')
   })
 
-  test.skip('7.22 Cancel confirm does not delete user, list unchanged [T22]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.22 Cancel confirm does not delete user, list unchanged [T22]', async ({ page }) => {
     await page.goto('/settings/users')
 
     let deleteRequested = false
@@ -441,8 +457,20 @@ test.describe('Delete User', () => {
     await expect(page.locator('.table tbody tr')).toHaveCount(rowCount)
   })
 
-  test.skip('7.23 Confirm delete: DELETE API call, toast, list reloads [T23]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.23 Confirm delete: DELETE API call, toast, list reloads [T23]', async ({ page }) => {
+    // Mock DELETE to return 200 (avoid issues with trying to delete admin's own account)
+    await page.route('**/admin/users/*', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 'ok' }),
+        })
+      } else {
+        await route.continue()
+      }
+    })
+
     await page.goto('/settings/users')
 
     await page.on('dialog', async (dialog) => {
@@ -459,11 +487,10 @@ test.describe('Delete User', () => {
     await deletePromise
 
     // Toast shows "User deleted."
-    await expect(page.locator('.toast-body, .toast')).toContainText('User deleted.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('User deleted.')
   })
 
-  test.skip('7.24 Delete button disabled during request [T24]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.24 Delete button disabled during request [T24]', async ({ page }) => {
     await page.goto('/settings/users')
 
     await page.on('dialog', async (dialog) => {
@@ -489,8 +516,7 @@ test.describe('Delete User', () => {
     await expect(page.locator('button[data-action="delete-user"]:disabled')).toBeVisible()
   })
 
-  test.skip('7.25 Delete API failure shows danger toast, button re-enabled [T25]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.25 Delete API failure shows danger toast, button re-enabled [T25]', async ({ page }) => {
     await page.goto('/settings/users')
 
     await page.on('dialog', async (dialog) => {
@@ -513,7 +539,7 @@ test.describe('Delete User', () => {
     await deleteBtn.click()
 
     // Toast shows danger
-    await expect(page.locator('.toast.bg-danger, .toast-body')).toBeVisible()
+    await expect(page.locator('.alert.position-fixed')).toBeVisible()
 
     // Button re-enabled
     await expect(deleteBtn).toBeEnabled()
@@ -525,8 +551,8 @@ test.describe('Delete User', () => {
 // =============================================================================
 test.describe('Edit Button Navigation', () => {
 
-  test.skip('7.26 Click Edit navigates to /users/edit?id={userId} [T26]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.26 Click Edit navigates to /users/edit?id={userId} [T26]', async ({ page }) => {
+    test.slow()
     await page.goto('/settings/users')
 
     const editLink = page.locator('a.btn-outline-secondary[href*="/users/edit?id="]').first()
@@ -545,8 +571,7 @@ test.describe('Edit Button Navigation', () => {
 // =============================================================================
 test.describe('Pagination', () => {
 
-  test.skip('7.27 No pagination when users ≤ 20 [T27]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.27 No pagination when users ≤ 20 [T27]', async ({ page }) => {
     await page.goto('/settings/users')
 
     // Mock API to return ≤ 20 users
@@ -568,11 +593,8 @@ test.describe('Pagination', () => {
     await expect(page.locator('.pagination')).toHaveCount(0)
   })
 
-  test.skip('7.28 Pagination visible when users > 20, current page active [T28]', async ({ page }) => {
-    // TODO: requires auth session fixture
-    await page.goto('/settings/users')
-
-    // Mock API to return > 20 users
+  test('7.28 Pagination visible when users > 20, current page active [T28]', async ({ page }) => {
+    // Mock API to return > 20 users (set up before goto)
     await page.route('**/admin/users*', async (route) => {
       await route.fulfill({
         status: 200,
@@ -580,23 +602,23 @@ test.describe('Pagination', () => {
         body: JSON.stringify({
           users: Array.from({ length: 20 }, (_, i) => ({
             id: i + 1, email: `user${i}@test.com`, username: `user${i}`,
-            roles: ['user'], status: 'active', last_login: null,
+            roles: ['user'], status: 'active', last_login_at: null,
           })),
-          total: 45, page: 1, page_size: 20,
+          total: 25, page: 1, page_size: 20,
         }),
       })
     })
 
     await page.goto('/settings/users')
+    await expect(page.locator('.table')).toBeVisible()
     await expect(page.locator('nav ul.pagination')).toBeVisible()
     await expect(page.locator('li.page-item.active')).toBeVisible()
   })
 
-  test.skip('7.29 Click page 2 triggers GET with page=2, list updates [T29]', async ({ page }) => {
-    // TODO: requires auth session fixture
-    await page.goto('/settings/users')
+  test('7.29 Click page 2 triggers GET with page=2, list updates [T29]', async ({ page }) => {
+    test.slow()
 
-    // Mock initial load with pagination
+    // Mock initial load with pagination (set up before goto)
     await page.route('**/admin/users*', async (route) => {
       const url = new URL(route.request().url())
       const currentPage = url.searchParams.get('page') || '1'
@@ -608,14 +630,15 @@ test.describe('Pagination', () => {
             id: (Number(currentPage) - 1) * 20 + i + 1,
             email: `user${(Number(currentPage) - 1) * 20 + i}@test.com`,
             username: `user${(Number(currentPage) - 1) * 20 + i}`,
-            roles: ['user'], status: 'active', last_login: null,
+            roles: ['user'], status: 'active', last_login_at: null,
           })),
-          total: 45, page: Number(currentPage), page_size: 20,
+          total: 25, page: Number(currentPage), page_size: 20,
         }),
       })
     })
 
     await page.goto('/settings/users')
+    await expect(page.locator('.table')).toBeVisible()
 
     const page2Promise = page.waitForRequest(req =>
       req.url().includes('/admin/users') && req.url().includes('page=2')
@@ -634,29 +657,59 @@ test.describe('Pagination', () => {
 // =============================================================================
 test.describe('Status / Role Badges', () => {
 
-  test.skip('7.30 Active user shows green Active badge [T30]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.30 Active user shows green Active badge [T30]', async ({ page }) => {
     await page.goto('/settings/users')
+    // Wait for table to load
+    await expect(page.locator('.table')).toBeVisible()
 
     const activeBadge = page.locator('.badge.bg-success-subtle.text-success')
     await expect(activeBadge.first()).toBeVisible()
     await expect(activeBadge.first()).toHaveText('Active')
   })
 
-  test.skip('7.31 Blocked user shows red Blocked badge [T31]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.31 Blocked user shows red Blocked badge [T31]', async ({ page }) => {
+    // Mock API to include a blocked user
+    await page.route('**/admin/users*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          users: [
+            { id: 1, email: 'active@test.com', username: 'activeuser', roles: ['user'], status: 'active', last_login_at: null, full_name: null },
+            { id: 2, email: 'blocked@test.com', username: 'blockeduser', roles: ['user'], status: 'blocked', last_login_at: null, full_name: null },
+          ],
+          total: 2, page: 1, page_size: 20,
+        }),
+      })
+    })
     await page.goto('/settings/users')
+    // Wait for table to load
+    await expect(page.locator('.table')).toBeVisible()
 
     const blockedBadge = page.locator('.badge.bg-danger-subtle.text-danger')
     await expect(blockedBadge.first()).toBeVisible()
     await expect(blockedBadge.first()).toHaveText('Blocked')
   })
 
-  test.skip('7.32 User with no roles shows "—" placeholder [T32]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.32 User with no roles shows "—" placeholder [T32]', async ({ page }) => {
+    // Mock API to include a user with no roles
+    await page.route('**/admin/users*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          users: [
+            { id: 1, email: 'noroles@test.com', username: 'norolesuser', roles: [], status: 'active', last_login_at: null, full_name: null },
+          ],
+          total: 1, page: 1, page_size: 20,
+        }),
+      })
+    })
     await page.goto('/settings/users')
+    // Wait for table to load
+    await expect(page.locator('.table')).toBeVisible()
 
-    // Find a user row with "—" in roles column
+    // Find a user row with "—" in roles column (td:nth-child(2) = Roles column)
     const placeholder = page.locator('td:nth-child(2) .text-muted')
     await expect(placeholder.first()).toHaveText('—')
   })
@@ -667,8 +720,7 @@ test.describe('Status / Role Badges', () => {
 // =============================================================================
 test.describe('API Error Handling', () => {
 
-  test.skip('7.33 401 Unauthorized redirects to login page [T33]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.33 401 Unauthorized redirects to login page [T33]', async ({ page }) => {
     await page.goto('/settings/users')
 
     // Mock any API call to return 401
@@ -686,8 +738,7 @@ test.describe('API Error Handling', () => {
     await expect(page).toHaveURL(/\/authentication\/modern\/login/)
   })
 
-  test.skip('7.34 User list load failure shows alert-danger with error message [T34]', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('7.34 User list load failure shows alert-danger with error message [T34]', async ({ page }) => {
     await page.route('**/admin/users*', async (route) => {
       await route.fulfill({
         status: 500,

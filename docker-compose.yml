@@ -3,8 +3,10 @@
 # =============================================================================
 # Before first run:
 #   1. Adjust volume paths below to match your environment
-#   2. Set LLM_FALLBACK_API_KEY and other secrets (or use provider profiles)
-#   KEK keyring is auto-generated on first startup at /app/data/kek
+#   2. Generate the KEK keyring:
+#        mkdir -p ./secrets/llm_kek
+#        python -c "import os; open('./secrets/llm_kek/v1.key','wb').write(os.urandom(32))"
+#   3. Set LLM_FALLBACK_API_KEY and other secrets (or use provider profiles)
 # =============================================================================
 
 services:
@@ -20,7 +22,7 @@ services:
       POSTGRES_DB: palimpsest
     volumes:
       # Adjust base path to your environment
-      - ./data/postgres:/var/lib/postgresql/data
+      - /Users/jhangyu/docker/palimpsest/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U palimpsest -d palimpsest"]
       interval: 10s
@@ -109,6 +111,7 @@ services:
       # Adjust base path to your environment
       - /Users/jhangyu/docker/palimpsest/data:/app/data
       - /Users/jhangyu/docker/palimpsest/log:/app/log
+      - /Users/jhangyu/docker/palimpsest/secrets:/run/secrets
     ports:
       - "8088:8088"
     depends_on:

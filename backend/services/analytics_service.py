@@ -285,17 +285,17 @@ async def compute_analytics_overview(db, days: int = 30) -> dict:
     latest_rows = (await db.execute(
         text(
             "SELECT a.site_id, COALESCE(s.name, 'Feed #' || a.site_id::text) AS feed_name, "
-            "a.title, a.url, a.created_at, a.word_count "
+            "a.title, a.url, a.published_at, a.word_count "
             "FROM articles a "
             "LEFT JOIN sites s ON s.id = a.site_id "
-            "ORDER BY a.created_at DESC NULLS LAST LIMIT 10"
+            "ORDER BY a.published_at DESC NULLS LAST, a.updated_at DESC NULLS LAST LIMIT 10"
         )
     )).mappings().all()
     latest_articles = [
         {
             "feed_name": row["feed_name"],
             "article_title": row["title"],
-            "update_time": row["created_at"].isoformat() if row["created_at"] else "",
+            "published_at": row["published_at"].isoformat() if row["published_at"] else "",
             "word_count": row["word_count"] or 0,
             "ori_url": row["url"],
         }
@@ -487,12 +487,12 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
         search_params["search_pat"] = f"%{search.strip()}%"
 
     # --- DPERF-010: compute all 4 counts in a single conditional aggregation query ---
-    # DD-10: created_at is now TIMESTAMPTZ — no CAST needed
+    # DD-10: published_at is TIMESTAMPTZ — no CAST needed
     counts_sql = (
         "SELECT"
-        " COUNT(*) FILTER (WHERE a.created_at >= :c_today_from AND a.created_at < :c_today_to) AS today_count,"
-        " COUNT(*) FILTER (WHERE a.created_at >= :c_week_from) AS week_count,"
-        " COUNT(*) FILTER (WHERE a.created_at >= :c_month_from) AS month_count,"
+        " COUNT(*) FILTER (WHERE a.published_at >= :c_today_from AND a.published_at < :c_today_to) AS today_count,"
+        " COUNT(*) FILTER (WHERE a.published_at >= :c_week_from) AS week_count,"
+        " COUNT(*) FILTER (WHERE a.published_at >= :c_month_from) AS month_count,"
         " COUNT(*) AS all_count"
         " FROM articles a WHERE 1=1" + search_sql
     )
@@ -514,18 +514,18 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
     # --- Build time condition for the main paginated query ---
     time_sql = ""
     time_params: dict = {}
-    # DD-10: created_at is now TIMESTAMPTZ — no CAST needed
+    # DD-10: published_at is TIMESTAMPTZ — no CAST needed
     if filter == "today":
         time_sql = (
-            " AND a.created_at >= :main_from"
-            " AND a.created_at < :main_to"
+            " AND a.published_at >= :main_from"
+            " AND a.published_at < :main_to"
         )
         time_params = {"main_from": today_start_utc, "main_to": today_end_utc}
     elif filter == "week":
-        time_sql = " AND a.created_at >= :main_from"
+        time_sql = " AND a.published_at >= :main_from"
         time_params = {"main_from": week_start_utc}
     elif filter == "month":
-        time_sql = " AND a.created_at >= :main_from"
+        time_sql = " AND a.published_at >= :main_from"
         time_params = {"main_from": month_start_utc}
     # "all" → no time condition
 
@@ -534,12 +534,12 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
     # --- Paginated main query (JOIN with sites to get feed_name, no separate sites fetch) ---
     offset = (page - 1) * page_size
     main_sql = (
-        "SELECT a.site_id, a.title, a.url, a.image_url, a.author, a.created_at, a.word_count, "
+        "SELECT a.site_id, a.title, a.url, a.image_url, a.author, a.published_at, a.word_count, "
         "COALESCE(s.name, 'Feed #' || a.site_id::text) AS feed_name "
         "FROM articles a LEFT JOIN sites s ON s.id = a.site_id WHERE 1=1"
         + search_sql
         + time_sql
-        + " ORDER BY a.created_at DESC NULLS LAST"
+        + " ORDER BY a.published_at DESC NULLS LAST, a.updated_at DESC NULLS LAST"
         " LIMIT :lim OFFSET :off"
     )
     all_params = {**search_params, **time_params, "lim": page_size, "off": offset}
@@ -551,7 +551,7 @@ async def compute_articles_list(db, filter: str, search: str, page: int, page_si
             "image_url": row["image_url"],
             "feed_name": row["feed_name"],
             "word_count": row["word_count"] or 0,
-            "update_time": row["created_at"].isoformat() if row["created_at"] else "",
+            "published_at": row["published_at"].isoformat() if row["published_at"] else "",
             "ori_url": row["url"],
             "author": row["author"],
         }

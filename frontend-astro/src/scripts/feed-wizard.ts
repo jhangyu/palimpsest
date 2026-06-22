@@ -162,6 +162,8 @@ export function initFeedWizard(): void {
       btnAnalyzeList,
       '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Analyzing...'
     )
+    // Disable the other analyze button to prevent concurrent analysis
+    btnAnalyzeContent.disabled = true
     try {
       const data = await api.analyzeList(url, checkDebug.checked)
       const rulesStr = typeof data.rules === 'string'
@@ -177,6 +179,7 @@ export function initFeedWizard(): void {
       alert('Error analyzing list: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       restore()
+      btnAnalyzeContent.disabled = false
     }
   })
 
@@ -191,6 +194,8 @@ export function initFeedWizard(): void {
       btnAnalyzeContent,
       '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Analyzing...'
     )
+    // Disable the other analyze button to prevent concurrent analysis
+    btnAnalyzeList.disabled = true
     try {
       const data = await api.analyzeContent(sampleUrl, checkDebug.checked)
       const rulesStr = typeof data.rules === 'string'
@@ -205,6 +210,7 @@ export function initFeedWizard(): void {
       alert('Error analyzing content: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       restore()
+      btnAnalyzeList.disabled = false
     }
   })
 

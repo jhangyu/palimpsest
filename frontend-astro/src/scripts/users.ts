@@ -99,7 +99,8 @@ function populateProfileForm(profile: UserProfile): void {
     pendingEmailText.textContent = profile.pending_email
     pendingEmailBanner.style.removeProperty('display')
   } else if (pendingEmailBanner) {
-    pendingEmailBanner.style.display = 'none'
+    // Use setProperty with 'important' to override Bootstrap's .d-flex !important rule
+    pendingEmailBanner.style.setProperty('display', 'none', 'important')
   }
 
   // Avatar section
@@ -177,12 +178,12 @@ function bindProfileForms(profile: UserProfile): void {
       setFieldError('profile-email', 'Enter a valid email address.')
       return
     }
-    if (!password) {
-      setFieldError('profile-email-password', 'Current password is required.')
+    if (newEmail === profile.email) {
+      setFieldError('profile-email', 'New email is the same as current email.')
       return
     }
-    if (newEmail === profile.email) {
-      setFieldError('profile-email', 'New email is the same as the current email.')
+    if (!password) {
+      setFieldError('profile-email-password', 'Current password is required.')
       return
     }
     setButtonLoading(btn, true)
@@ -702,7 +703,7 @@ export async function initEditUserPage(): Promise<void> {
   if (currentUser && !isAdmin()) {
     form.innerHTML = `
       <div class="alert alert-danger">
-        <i class="ri-shield-cross-line me-2"></i>Access denied.
+        <i class="ri-shield-cross-line me-2"></i>Access denied. Administrator privileges required.
       </div>`
     return
   }

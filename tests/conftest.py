@@ -29,6 +29,11 @@ import pytest
 import pytest_asyncio
 
 # ---------------------------------------------------------------------------
+# Real admin guard — tests must NEVER delete or modify this account.
+# ---------------------------------------------------------------------------
+REAL_ADMIN_EMAIL: str = os.environ.get("ADMIN_EMAIL", "jhangyu@gmail.com")
+
+# ---------------------------------------------------------------------------
 # Environment setup — MUST run before any app imports so that core.db picks
 # up the correct DATABASE_URL at module-import time.
 # ---------------------------------------------------------------------------

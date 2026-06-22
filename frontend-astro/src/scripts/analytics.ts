@@ -173,7 +173,7 @@ function populateLatestArticles(data: AnalyticsOverview) {
     <tr>
       <td>${escapeHtml(a.feed_name)}</td>
       <td>${escapeHtml(a.article_title)}</td>
-      <td>${fmtTime(a.update_time)}</td>
+      <td>${fmtTime(a.published_at)}</td>
       <td>${fmtNumber(a.word_count)}</td>
       <td><a href="${escapeAttr(safeUrl(a.ori_url))}" target="_blank" rel="noopener" title="${escapeAttr(a.ori_url)}">${escapeHtml(truncateUrl(a.ori_url))}</a></td>
     </tr>

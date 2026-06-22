@@ -14,21 +14,21 @@ const settingsPageHeader = {
 }
 
 // Client-side JavaScript for form validation, tab navigation, and AI tokens
+const _settingsApiBase = import.meta.env.DEV ? 'http://localhost:8088' : ''
 const settingsPageScript = `
 <script>
+  var _SETTINGS_API_BASE = '${_settingsApiBase}';
   function setupSettingsPage() {
     const settingsRoot = document.querySelector('[data-settings-page-root]');
     if (!settingsRoot || settingsRoot.dataset.settingsPageBound === 'true') return;
     settingsRoot.dataset.settingsPageBound = 'true';
 
-    // Initialize Bootstrap form validation
+    // Initialize Bootstrap form validation (placeholder forms — always prevent default)
     const settingsForms = document.querySelectorAll('.needs-validation');
     Array.from(settingsForms).forEach(form => {
       form.addEventListener('submit', event => {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
+        event.preventDefault();
+        event.stopPropagation();
         form.classList.add('was-validated');
       }, false);
     });
@@ -61,7 +61,7 @@ const settingsPageScript = `
     const notifSection = document.getElementById('notifications-section');
     if (notifSection) {
       // Load saved preferences
-      fetch('/api/users/me', { credentials: 'same-origin' })
+      fetch(_SETTINGS_API_BASE + '/users/me', { credentials: 'include' })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (!data) return;
@@ -85,21 +85,21 @@ const settingsPageScript = `
             notifications[t] = el ? el.checked : true;
           });
 
-          // Get CSRF token
-          const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+          // Get CSRF token from cookie (double-submit pattern)
+          const csrfCookie = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
           const headers = { 'Content-Type': 'application/json' };
-          if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.getAttribute('content');
+          if (csrfCookie) headers['X-CSRF-Token'] = decodeURIComponent(csrfCookie.split('=')[1]);
 
           // First GET current preferences, then merge and PUT
-          fetch('/api/users/me', { credentials: 'same-origin' })
+          fetch(_SETTINGS_API_BASE + '/users/me', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
               const existingPrefs = (data && data.preferences) ? data.preferences : {};
               const mergedPrefs = Object.assign({}, existingPrefs, { notifications });
 
-              return fetch('/api/users/me/preferences', {
+              return fetch(_SETTINGS_API_BASE + '/users/me/preferences', {
                 method: 'PUT',
-                credentials: 'same-origin',
+                credentials: 'include',
                 headers,
                 body: JSON.stringify({ preferences: mergedPrefs })
               });

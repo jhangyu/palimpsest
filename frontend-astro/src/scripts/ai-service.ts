@@ -43,6 +43,7 @@ export interface AIProvider {
   revision: number
   created_at: string
   updated_at: string
+  kek_status?: string
 }
 
 interface RuntimeStatus {
@@ -358,6 +359,10 @@ function renderProviderRow(provider: AIProvider, isFirst: boolean, isLast: boole
       <i class="ri-arrow-down-line"></i>
     </button>`
 
+  const kekBadge = provider.kek_status === 'needs-reentry'
+    ? `<span class="badge text-bg-warning ms-1">needs re-entry</span>`
+    : ''
+
   return `
     <tr data-provider-row="${provider.id}">
       <td>
@@ -367,7 +372,7 @@ function renderProviderRow(provider: AIProvider, isFirst: boolean, isLast: boole
         </div>
       </td>
       <td>${enabledSwitch}</td>
-      <td>${escapeHtml(provider.label)}</td>
+      <td>${escapeHtml(provider.label)}${kekBadge}</td>
       <td>${protocolBadge}</td>
       <td><span class="font-monospace small">${escapeHtml(provider.model)}</span></td>
       <td>

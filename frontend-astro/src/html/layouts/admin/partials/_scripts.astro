@@ -19,12 +19,13 @@ function getJS(filename: string) {
   // Handle sidebar-mini state
   const sidebarMini = localStorage.getItem('sidebar-mini')
   if (sidebarMini == 'true') {
-    sidebarElement.classList.add('sidebar-mini')
-    mainContentElement.classList.add('expanded-mini')
+    sidebarElement?.classList.add('sidebar-mini')
+    mainContentElement?.classList.add('expanded-mini')
 
     // Change the toggle-mini button icon
     const toggleMiniButton = document.getElementById('toggle-mini-button')
-    toggleMiniButton.innerHTML = '<i class="ri-arrow-right-double-line opacity-75"></i>'
+    if (toggleMiniButton)
+      toggleMiniButton.innerHTML = '<i class="ri-arrow-right-double-line opacity-75"></i>'
 
     const navItems = document.querySelectorAll('.nav-tree .has-submenu.open')
     navItems.forEach((item) => {

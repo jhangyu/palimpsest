@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { Site, FilterConfig } from './api'
+import { invalidateCache } from '@/scripts/cache'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
 import {
   renderPreview,
@@ -225,6 +226,7 @@ async function fetchSites(): Promise<void> {
   refreshBtn.disabled = true
 
   try {
+    invalidateCache('sites') // Force fresh fetch — bypasses module-level cache
     sites = await api.getSites()
     renderTable()
   } catch (err: unknown) {
@@ -305,12 +307,18 @@ async function handleEdit(id: number): Promise<void> {
     const site = await api.getSite(id)
     selectedSite = site
     const filterConfig = site.filter_rules ?? null
+    // Handle list_rules/content_rules: the API may return them as string (TEXT column)
+    // or as object (JSON column). Normalize to a formatted JSON string for the editor.
+    const normalizeRules = (rules: unknown): string => {
+      if (typeof rules === 'string') return rules  // already a JSON string
+      return JSON.stringify(rules, null, 2)
+    }
     editData = {
       name: site.name,
       url: site.url,
       refresh_frequency: site.refresh_frequency || 60,
-      list_rules: JSON.stringify(site.list_rules, null, 2),
-      content_rules: JSON.stringify(site.content_rules, null, 2),
+      list_rules: normalizeRules(site.list_rules),
+      content_rules: normalizeRules(site.content_rules),
       filter_rules: filterConfig ? JSON.stringify(filterConfig) : '',
       sample_url: ''
     }
@@ -465,8 +473,10 @@ async function handleAnalyze(mode: 'list' | 'content'): Promise<void> {
   if (!targetUrl) return
 
   const btn = mode === 'list' ? analyzeListBtn : analyzeContentBtn
+  const otherBtn = mode === 'list' ? analyzeContentBtn : analyzeListBtn
   const originalHtml = btn.innerHTML
   btn.disabled = true
+  if (otherBtn) otherBtn.disabled = true
   btn.innerHTML =
     '<span class="spinner-border spinner-border-sm" role="status"></span> Analyzing...'
 
@@ -493,6 +503,7 @@ async function handleAnalyze(mode: 'list' | 'content'): Promise<void> {
   } finally {
     btn.disabled = false
     btn.innerHTML = originalHtml
+    if (otherBtn) otherBtn.disabled = false
   }
 }
 

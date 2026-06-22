@@ -16,8 +16,7 @@ import { test, expect } from '@playwright/test'
 // =============================================================================
 test.describe('Tab Navigation', () => {
 
-  test.skip('6.01 Page loads with System Basics tab active by default', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.01 Page loads with System Basics tab active by default', async ({ page }) => {
     await page.goto('/settings')
     await expect(page.locator('#system-section.show.active')).toBeVisible()
     await expect(page.locator('#crawler-section')).not.toHaveClass(/show/)
@@ -25,32 +24,28 @@ test.describe('Tab Navigation', () => {
     await expect(page.locator('#notifications-section')).not.toHaveClass(/show/)
   })
 
-  test.skip('6.02 Nav-tree System Basics item is active on page load', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.02 Nav-tree System Basics item is active on page load', async ({ page }) => {
     await page.goto('/settings')
     await expect(page.locator('.nav-tree .nav-item.active a[href="#system-section"]')).toBeVisible()
   })
 
-  test.skip('6.03 Click Crawler Defaults tab switches panel', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.03 Click Crawler Defaults tab switches panel', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#crawler-section')).toHaveClass(/show/)
     await expect(page.locator('#crawler-section')).toHaveClass(/active/)
     await expect(page.locator('#system-section')).not.toHaveClass(/active/)
-    await expect(page.locator('.nav-tree .nav-item.active')).toBeVisible()
+    await expect(page.locator('.nav-tree .nav-item.active').filter({ hasText: 'Crawler Defaults' })).toBeVisible()
   })
 
-  test.skip('6.04 Click Maintenance tab switches panel', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.04 Click Maintenance tab switches panel', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#maintenance-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#maintenance-section')).toHaveClass(/show/)
     await expect(page.locator('#maintenance-section')).toHaveClass(/active/)
   })
 
-  test.skip('6.05 Click Notifications tab switches panel', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.05 Click Notifications tab switches panel', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#notifications-section')).toHaveClass(/show/)
@@ -63,8 +58,7 @@ test.describe('Tab Navigation', () => {
 // =============================================================================
 test.describe('System Basics — Form Validation', () => {
 
-  test.skip('6.06 Application Name required validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.06 Application Name required validation', async ({ page }) => {
     await page.goto('/settings')
     const input = page.locator('#system-form input[type="text"]')
     await input.clear()
@@ -75,58 +69,57 @@ test.describe('System Basics — Form Validation', () => {
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.07 Base URL required validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.07 Base URL required validation', async ({ page }) => {
     await page.goto('/settings')
     const input = page.locator('#system-form input[type="url"]')
     await input.clear()
     await page.locator('button[form="system-form"]').click()
     await expect(page.locator('#system-form')).toHaveClass(/was-validated/)
-    await expect(page.locator('#system-form .invalid-feedback').first()).toBeVisible()
+    // Scope to the URL field's invalid-feedback specifically to avoid strict-mode violation
+    await expect(page.locator('#system-form .invalid-feedback').filter({ hasText: /URL/ })).toBeVisible()
     const isValid = await input.evaluate((el: HTMLInputElement) => el.checkValidity())
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.08 Base URL format validation rejects invalid URL', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.08 Base URL format validation rejects invalid URL', async ({ page }) => {
     await page.goto('/settings')
     const input = page.locator('#system-form input[type="url"]')
     await input.clear()
     await input.fill('not-a-url')
     await page.locator('button[form="system-form"]').click()
     await expect(page.locator('#system-form')).toHaveClass(/was-validated/)
-    await expect(page.locator('#system-form .invalid-feedback').first()).toContainText('Please enter a valid URL')
+    // Scope to the URL field's invalid-feedback specifically
+    await expect(page.locator('#system-form .invalid-feedback').filter({ hasText: /URL/ })).toContainText('Please enter a valid URL')
     const isValid = await input.evaluate((el: HTMLInputElement) => el.checkValidity())
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.09 Admin Email required validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.09 Admin Email required validation', async ({ page }) => {
     await page.goto('/settings')
     const input = page.locator('#system-form input[type="email"]')
     await input.clear()
     await page.locator('button[form="system-form"]').click()
     await expect(page.locator('#system-form')).toHaveClass(/was-validated/)
-    await expect(page.locator('#system-form .invalid-feedback').first()).toBeVisible()
+    // Scope to the email field's invalid-feedback specifically
+    await expect(page.locator('#system-form .invalid-feedback').filter({ hasText: /email/ })).toBeVisible()
     const isValid = await input.evaluate((el: HTMLInputElement) => el.checkValidity())
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.10 Admin Email format validation rejects invalid email', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.10 Admin Email format validation rejects invalid email', async ({ page }) => {
     await page.goto('/settings')
     const input = page.locator('#system-form input[type="email"]')
     await input.clear()
     await input.fill('notanemail')
     await page.locator('button[form="system-form"]').click()
     await expect(page.locator('#system-form')).toHaveClass(/was-validated/)
-    await expect(page.locator('#system-form .invalid-feedback').first()).toContainText('Please enter a valid email address')
+    // Scope to the email field's invalid-feedback specifically
+    await expect(page.locator('#system-form .invalid-feedback').filter({ hasText: /email/ })).toContainText('Please enter a valid email address')
     const isValid = await input.evaluate((el: HTMLInputElement) => el.checkValidity())
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.11 Save Changes button exists with correct attributes', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.11 Save Changes button exists with correct attributes', async ({ page }) => {
     await page.goto('/settings')
     const btn = page.locator('#system-section .card-footer button[type="submit"][form="system-form"]')
     await expect(btn).toBeVisible()
@@ -134,8 +127,7 @@ test.describe('System Basics — Form Validation', () => {
     await expect(btn.locator('i.ri-save-3-line')).toBeVisible()
   })
 
-  test.skip('6.12 Valid form submission adds was-validated class without API call', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.12 Valid form submission adds was-validated class without API call', async ({ page }) => {
     await page.goto('/settings')
     const requests: string[] = []
     page.on('request', req => requests.push(req.url()))
@@ -158,8 +150,7 @@ test.describe('System Basics — Form Validation', () => {
 // =============================================================================
 test.describe('Crawler Defaults — Form Validation', () => {
 
-  test.skip('6.13 All four number inputs visible with correct defaults', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.13 All four number inputs visible with correct defaults', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const inputs = page.locator('#crawler-form input[type="number"]')
@@ -170,8 +161,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
     await expect(inputs.nth(3)).toHaveValue('30')
   })
 
-  test.skip('6.14 Refresh Frequency min value validation (min=5)', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.14 Refresh Frequency min value validation (min=5)', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#crawler-form input[type="number"]').nth(0)
@@ -181,8 +171,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.15 Auto-Repair Threshold min value validation (min=1)', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.15 Auto-Repair Threshold min value validation (min=1)', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#crawler-form input[type="number"]').nth(1)
@@ -192,8 +181,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.16 Max Concurrent Crawls min value validation (min=1)', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.16 Max Concurrent Crawls min value validation (min=1)', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#crawler-form input[type="number"]').nth(2)
@@ -203,8 +191,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.17 Crawl Timeout min value validation (min=10)', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.17 Crawl Timeout min value validation (min=10)', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#crawler-form input[type="number"]').nth(3)
@@ -214,8 +201,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
     expect(isValid).toBe(false)
   })
 
-  test.skip('6.18 Crawler Defaults Save Changes button exists', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.18 Crawler Defaults Save Changes button exists', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#crawler-section"][data-bs-toggle="tab"]').click()
     const btn = page.locator('#crawler-section .card-footer button[type="submit"][form="crawler-form"]')
@@ -228,8 +214,7 @@ test.describe('Crawler Defaults — Form Validation', () => {
 // =============================================================================
 test.describe('Maintenance — Form Fields', () => {
 
-  test.skip('6.19 Article Retention field visible with default value 30', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.19 Article Retention field visible with default value 30', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#maintenance-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#maintenance-form input[type="number"]').nth(0)
@@ -237,8 +222,7 @@ test.describe('Maintenance — Form Fields', () => {
     await expect(input).toHaveValue('30')
   })
 
-  test.skip('6.20 Logs Retention field visible with default value 14', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.20 Logs Retention field visible with default value 14', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#maintenance-section"][data-bs-toggle="tab"]').click()
     const input = page.locator('#maintenance-form input[type="number"]').nth(1)
@@ -246,8 +230,7 @@ test.describe('Maintenance — Form Fields', () => {
     await expect(input).toHaveValue('14')
   })
 
-  test.skip('6.21 Maintenance Save Changes button exists', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.21 Maintenance Save Changes button exists', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#maintenance-section"][data-bs-toggle="tab"]').click()
     const btn = page.locator('#maintenance-section .card-footer button[type="submit"][form="maintenance-form"]')
@@ -259,13 +242,28 @@ test.describe('Maintenance — Form Fields', () => {
 // Notifications — API Integration
 // =============================================================================
 test.describe('Notifications — API Integration', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('6.22 Page load fetches preferences and updates toggles', async ({ page }) => {
-    // TODO: requires auth session fixture
-    await page.goto('/settings')
+  test('6.22 Page load fetches preferences and updates toggles', async ({ page }) => {
+    // Mock GET /users/me to return all notifications enabled (avoids backend state dependency)
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('/preferences')) {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'admin@example.com', username: 'admin',
+            preferences: { notifications: { fail_crawl: true, ai_reanalyze: true, fail_access: true } }
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    })
+    // Set up waitForResponse BEFORE goto so it captures the fetch that fires on page load
     const responsePromise = page.waitForResponse(resp =>
       resp.url().includes('/users/me') && resp.request().method() === 'GET'
     )
+    await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await responsePromise
     await expect(page.locator('[data-notification-type="fail_crawl"]')).toBeVisible()
@@ -274,33 +272,76 @@ test.describe('Notifications — API Integration', () => {
     await expect(page.locator('[data-notification-type="fail_crawl"]')).toBeChecked()
   })
 
-  test.skip('6.23 fail_crawl toggle defaults to checked', async ({ page }) => {
-    // TODO: requires auth session fixture (user with empty preferences)
+  test('6.23 fail_crawl toggle defaults to checked', async ({ page }) => {
+    // Mock GET /users/me to return all notifications enabled (avoids backend state dependency)
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('/preferences')) {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'admin@example.com', username: 'admin',
+            preferences: { notifications: { fail_crawl: true, ai_reanalyze: true, fail_access: true } }
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#notif-fail-crawl')).toBeChecked()
   })
 
-  test.skip('6.24 ai_reanalyze toggle defaults to checked', async ({ page }) => {
-    // TODO: requires auth session fixture (user with empty preferences)
+  test('6.24 ai_reanalyze toggle defaults to checked', async ({ page }) => {
+    // Mock GET /users/me to return all notifications enabled (avoids backend state dependency)
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('/preferences')) {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'admin@example.com', username: 'admin',
+            preferences: { notifications: { fail_crawl: true, ai_reanalyze: true, fail_access: true } }
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#notif-ai-reanalyze')).toBeChecked()
   })
 
-  test.skip('6.25 fail_access toggle defaults to checked', async ({ page }) => {
-    // TODO: requires auth session fixture (user with empty preferences)
+  test('6.25 fail_access toggle defaults to checked', async ({ page }) => {
+    // Mock GET /users/me to return all notifications enabled (avoids backend state dependency)
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('/preferences')) {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'admin@example.com', username: 'admin',
+            preferences: { notifications: { fail_crawl: true, ai_reanalyze: true, fail_access: true } }
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#notif-fail-access')).toBeChecked()
   })
 
-  test.skip('6.26 Uncheck fail_crawl and save sends PUT request', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.26 Uncheck fail_crawl and save sends PUT request', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await page.locator('#notif-fail-crawl').uncheck()
 
+    // Set up GET promise BEFORE clicking save — the save sequence does GET then PUT,
+    // both promises must be established before the click to capture all responses
+    const getPromise = page.waitForResponse(resp =>
+      resp.url().includes('/users/me') && !resp.url().includes('/preferences') && resp.request().method() === 'GET'
+    )
     const putPromise = page.waitForResponse(resp =>
       resp.url().includes('/users/me/preferences') && resp.request().method() === 'PUT'
     )
@@ -308,14 +349,10 @@ test.describe('Notifications — API Integration', () => {
     const putResponse = await putPromise
     expect(putResponse.status()).toBe(200)
 
-    const getPromise = page.waitForResponse(resp =>
-      resp.url().includes('/users/me') && resp.request().method() === 'GET'
-    )
     await getPromise
   })
 
-  test.skip('6.27 Save success shows "Saved" button text then reverts', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.27 Save success shows "Saved" button text then reverts', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
 
@@ -331,8 +368,7 @@ test.describe('Notifications — API Integration', () => {
     await expect(page.locator('#btn-save-notifications')).toContainText('Save Changes', { timeout: 5000 })
   })
 
-  test.skip('6.28 Saved preference persists after page reload', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.28 Saved preference persists after page reload', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await page.locator('#notif-fail-crawl').uncheck()
@@ -348,8 +384,22 @@ test.describe('Notifications — API Integration', () => {
     await expect(page.locator('#notif-fail-crawl')).not.toBeChecked()
   })
 
-  test.skip('6.29 Uncheck all toggles, save, reload — all remain unchecked', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.29 Uncheck all toggles, save, reload — all remain unchecked', async ({ page }) => {
+    // Mock page-load GET /users/me exactly once (times: 1) so initial checkboxes are stable
+    // (all true), then the save-handler GET and post-reload GET pass through to real backend
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('/preferences')) {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'admin@example.com', username: 'admin',
+            preferences: { notifications: { fail_crawl: true, ai_reanalyze: true, fail_access: true } }
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    }, { times: 1 })
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
 
@@ -370,8 +420,7 @@ test.describe('Notifications — API Integration', () => {
     await expect(page.locator('#notif-fail-access')).not.toBeChecked()
   })
 
-  test.skip('6.30 Save Changes button is type="button" (not submit)', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('6.30 Save Changes button is type="button" (not submit)', async ({ page }) => {
     await page.goto('/settings')
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await expect(page.locator('#btn-save-notifications')).toHaveAttribute('type', 'button')
@@ -383,9 +432,11 @@ test.describe('Notifications — API Integration', () => {
 // =============================================================================
 test.describe('Authentication Guard', () => {
 
-  test.skip('6.31 Unauthenticated access to /settings redirects to login', async ({ page }) => {
-    // TODO: requires verifying redirect behavior when NOT logged in
+  test('6.31 Unauthenticated access to /settings redirects to login', async ({ page }) => {
+    // Clear cookies to simulate unauthenticated state
+    await page.context().clearCookies()
     await page.goto('/settings')
+    await page.waitForURL('**/login**', { timeout: 15000 })
     await expect(page).toHaveURL(/\/authentication\/modern\/login/)
   })
 })

@@ -25,10 +25,13 @@ export const darkMode = () => {
   // Apply user's preferred theme on load
   setTheme(getPreferredTheme())
 
-  // Set up theme toggle button click handler
+  // Set up theme toggle button click handler using onclick to avoid duplicate
+  // listeners when darkMode() is called multiple times (e.g. astro:page-load)
   const themeToggle = document.getElementById("theme-toggle")
-  themeToggle?.addEventListener("click", () => {
-    const theme = document.documentElement.getAttribute("data-bs-theme")
-    setTheme(theme === "dark" ? "light" : "dark")
-  })
+  if (themeToggle) {
+    themeToggle.onclick = () => {
+      const theme = document.documentElement.getAttribute("data-bs-theme")
+      setTheme(theme === "dark" ? "light" : "dark")
+    }
+  }
 }

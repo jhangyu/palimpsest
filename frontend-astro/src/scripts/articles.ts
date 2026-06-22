@@ -98,8 +98,8 @@ function renderCell(colId: string, item: ArticleListItem): string {
     }
     case 'word_count':
       return `<span class="text-end d-block">${item.word_count.toLocaleString('en-US')}</span>`
-    case 'update_time':
-      return fmtTime(item.update_time)
+    case 'published_at':
+      return fmtTime(item.published_at)
     default:
       return escapeHtml(String((item as unknown as Record<string, unknown>)[colId] ?? ''))
   }
@@ -228,7 +228,7 @@ function buildArticlesTable(articles: ArticleListItem[]) {
         return true
       }
     },
-    { id: 'update_time', accessorKey: 'update_time', header: 'Updated', enableSorting: true }
+    { id: 'published_at', accessorKey: 'published_at', header: 'Published', enableSorting: true }
   ]
 
   const tableEl = document.createElement('table')
@@ -478,7 +478,7 @@ function exportCSV(
       item.article_title,
       item.feed_name,
       String(item.word_count),
-      fmtTime(item.update_time),
+      fmtTime(item.published_at),
       item.ori_url
     ].map(val => {
       const str = val ?? ''

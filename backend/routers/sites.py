@@ -432,7 +432,7 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
 
     site_name_normalized = normalize_site_name(site['name'])
 
-    query = articles.select().where(articles.c.site_id == site['id']).order_by(articles.c.id.desc()).limit(limit)
+    query = articles.select().where(articles.c.site_id == site['id']).order_by(articles.c.published_at.desc().nulls_last(), articles.c.updated_at.desc().nulls_last()).limit(limit)
     rows = (await db.execute(query)).mappings().all()
 
     items = []

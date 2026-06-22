@@ -64,6 +64,13 @@ const PalimpsestAdmin = (function () {
 // Auto-initialize on first load and after View Transitions navigation
 if (typeof document !== 'undefined') {
   document.addEventListener('astro:page-load', PalimpsestAdmin.init)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!PalimpsestAdmin.isInitialized()) PalimpsestAdmin.init()
+    })
+  } else {
+    if (!PalimpsestAdmin.isInitialized()) PalimpsestAdmin.init()
+  }
 }
 
 export default PalimpsestAdmin

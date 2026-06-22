@@ -14,17 +14,15 @@ import { test, expect } from '@playwright/test'
 // =============================================================================
 test.describe('Page Initialization — /users/security', () => {
 
-  test.skip('TC-01: Page loads and displays user info in sidebar', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-01: Page loads and displays user info in sidebar', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-session="user-name"]')).not.toHaveText('Loading...')
-    await expect(page.locator('[data-session="user-email"]')).not.toHaveText('Loading...')
-    await expect(page.locator('[data-session="user-name"]')).not.toHaveText('')
-    await expect(page.locator('[data-session="user-email"]')).not.toHaveText('')
+    await expect(page.locator('[data-session="user-name"]').first()).not.toHaveText('Loading...')
+    await expect(page.locator('[data-session="user-email"]').first()).not.toHaveText('Loading...')
+    await expect(page.locator('[data-session="user-name"]').first()).not.toHaveText('')
+    await expect(page.locator('[data-session="user-email"]').first()).not.toHaveText('')
   })
 
-  test.skip('TC-02: Password Change Form default state — fields empty and success alert hidden', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-02: Password Change Form default state — fields empty and success alert hidden', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     await expect(page.locator('#passwordUpdateForm')).toBeVisible()
     await expect(page.locator('#currentPassword')).toHaveValue('')
@@ -40,8 +38,7 @@ test.describe('Page Initialization — /users/security', () => {
 // =============================================================================
 test.describe('Password Visibility Toggle', () => {
 
-  test.skip('TC-03: Toggle currentPassword visibility', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-03: Toggle currentPassword visibility', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     const input = page.locator('#currentPassword')
     const toggle = page.locator('#currentPassword + button.password-toggle')
@@ -55,8 +52,7 @@ test.describe('Password Visibility Toggle', () => {
     await expect(toggle.locator('i')).toHaveClass(/ri-eye-off-line/)
   })
 
-  test.skip('TC-04: Toggle newPassword visibility', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-04: Toggle newPassword visibility', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     const input = page.locator('#newPassword')
     const toggle = page.locator('#newPassword + button.password-toggle')
@@ -70,8 +66,7 @@ test.describe('Password Visibility Toggle', () => {
     await expect(toggle.locator('i')).toHaveClass(/ri-eye-off-line/)
   })
 
-  test.skip('TC-05: Toggle confirmPassword visibility', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-05: Toggle confirmPassword visibility', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     const input = page.locator('#confirmPassword')
     const toggle = page.locator('#confirmPassword + button.password-toggle')
@@ -92,39 +87,46 @@ test.describe('Password Visibility Toggle', () => {
 // =============================================================================
 test.describe('Client-Side Validation', () => {
 
-  test.skip('TC-06: Empty currentPassword shows validation error on submit', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-06: Empty currentPassword shows validation error on submit', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     let apiCalled = false
     await page.route('**/users/me/password', (route) => { apiCalled = true; route.abort() })
+    // Bypass native HTML5 validation so JS handler runs and adds is-invalid class
+    await page.locator('#passwordUpdateForm').evaluate(form => form.setAttribute('novalidate', ''))
     await page.locator('#passwordUpdateForm button[type="submit"]').click()
     await expect(page.locator('#currentPassword')).toHaveClass(/is-invalid/)
     await expect(page.locator('#currentPassword ~ .invalid-feedback')).toContainText('Current password is required.')
     expect(apiCalled).toBe(false)
   })
 
-  test.skip('TC-07: newPassword too short (<8 chars) shows validation error', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-07: newPassword too short (<8 chars) shows validation error', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     await page.locator('#currentPassword').fill('currentpass')
     await page.locator('#newPassword').fill('short')
+    // Bypass native HTML5 validation so JS handler runs and adds is-invalid class
+    await page.locator('#passwordUpdateForm').evaluate(form => form.setAttribute('novalidate', ''))
     await page.locator('#passwordUpdateForm button[type="submit"]').click()
     await expect(page.locator('#newPassword')).toHaveClass(/is-invalid/)
     await expect(page.locator('#newPassword ~ .invalid-feedback')).toContainText('Password must be 8-20 characters.')
   })
 
-  test.skip('TC-08: newPassword too long (>20 chars) shows validation error', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-08: newPassword too long (>20 chars) shows validation error', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     await page.locator('#currentPassword').fill('currentpass')
-    await page.locator('#newPassword').fill('abcdefghijklmnopqrstu1')
+    // Bypass maxlength attribute so we can set a value longer than 20 chars
+    await page.locator('#newPassword').evaluate((el: HTMLInputElement, v) => {
+      el.removeAttribute('maxlength')
+      el.value = v
+      el.dispatchEvent(new Event('input'))
+    }, 'abcdefghijklmnopqrstu1')
+    // Bypass native HTML5 validation so JS handler runs and checks length > 20
+    await page.locator('#passwordUpdateForm').evaluate(form => form.setAttribute('novalidate', ''))
     await page.locator('#passwordUpdateForm button[type="submit"]').click()
     await expect(page.locator('#newPassword')).toHaveClass(/is-invalid/)
     await expect(page.locator('#newPassword ~ .invalid-feedback')).toContainText('Password must be 8-20 characters.')
   })
 
-  test.skip('TC-09: confirmPassword mismatch shows validation error', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-09: confirmPassword mismatch shows validation error', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     await page.locator('#currentPassword').fill('currentpass')
     await page.locator('#newPassword').fill('validPass123')
@@ -140,9 +142,9 @@ test.describe('Client-Side Validation', () => {
 // Password Change — Submit & API Interaction
 // =============================================================================
 test.describe('Password Change — Submit & API Interaction', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('TC-10: Submit button shows loading state during API call', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-10: Submit button shows loading state during API call', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Mock slow API response
     await page.route('**/users/me/password', async (route) => {
@@ -159,8 +161,7 @@ test.describe('Password Change — Submit & API Interaction', () => {
     await expect(submitBtn).toContainText('Saving...')
   })
 
-  test.skip('TC-11: Successful password change shows alert and resets form', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-11: Successful password change shows alert and resets form', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Mock successful API response
     await page.route('**/users/me/password', async (route) => {
@@ -178,8 +179,7 @@ test.describe('Password Change — Submit & API Interaction', () => {
     await expect(submitBtn).toBeEnabled()
   })
 
-  test.skip('TC-12: Success alert displays correct message text', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-12: Success alert displays correct message text', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Mock successful API response
     await page.route('**/users/me/password', async (route) => {
@@ -193,8 +193,7 @@ test.describe('Password Change — Submit & API Interaction', () => {
     await expect(page.locator('#password-success-alert')).toContainText('All other sessions have been revoked')
   })
 
-  test.skip('TC-13: Wrong currentPassword shows inline error from API 400', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-13: Wrong currentPassword shows inline error from API 400', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Mock API 400 with "incorrect" in message
     await page.route('**/users/me/password', async (route) => {
@@ -209,8 +208,7 @@ test.describe('Password Change — Submit & API Interaction', () => {
     await expect(page.locator('.alert.alert-danger')).not.toBeVisible()
   })
 
-  test.skip('TC-14: Non-password API error shows toast alert', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-14: Non-password API error shows toast alert', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Mock API error without "incorrect"/"wrong"/"invalid" keywords
     await page.route('**/users/me/password', async (route) => {
@@ -224,10 +222,9 @@ test.describe('Password Change — Submit & API Interaction', () => {
     await expect(page.locator('.alert.alert-danger')).toContainText('Internal server error occurred')
   })
 
-  test.skip('TC-15: Old session token is revoked after password change (API-level)', async ({ page, request }) => {
+  test('TC-15: Old session token is revoked after password change (API-level)', async ({ page, request }) => {
     // IMPLEMENTED in backend: test_change_password in test_user_management.py
     // This Playwright test verifies the same behavior from the browser perspective
-    // TODO: requires auth session fixture
     await page.goto('/users/security', { waitUntil: 'networkidle' })
     // Capture current session cookie before password change
     const cookies = await page.context().cookies()
@@ -256,18 +253,18 @@ test.describe('Password Change — Submit & API Interaction', () => {
 // Navigation & Access Control
 // =============================================================================
 test.describe('Navigation & Access Control', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('TC-16: Unauthenticated access redirects to login page', async ({ page }) => {
+  test('TC-16: Unauthenticated access redirects to login page', async ({ page }) => {
     // TODO: requires clean browser context (no auth cookies)
     await page.context().clearCookies()
     await page.goto('/users/security')
     await expect(page).toHaveURL(/\/authentication\/modern\/login/)
   })
 
-  test.skip('TC-17: AI Service card link navigates to /users/ai-service', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('TC-17: AI Service card link navigates to /users/ai-service', async ({ page }) => {
     await page.goto('/users/security', { waitUntil: 'networkidle' })
-    const aiServiceLink = page.locator('a[href*="ai-service"]')
+    const aiServiceLink = page.locator('.content-wrapper a.btn[href*="ai-service"]')
     await expect(aiServiceLink).toBeVisible()
     await aiServiceLink.click()
     await expect(page).toHaveURL(/\/users\/ai-service/)

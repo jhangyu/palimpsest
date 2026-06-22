@@ -31,6 +31,12 @@ bower_components/
 .jekyll-cache/
 .jekyll-metadata
 
+# Playwright auth state
+tests/.auth/
+
+# Playwright test results
+test-results/
+
 # ETC
 /.cache/
 

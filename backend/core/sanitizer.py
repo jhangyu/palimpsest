@@ -26,6 +26,16 @@ ALLOWED_UL_ATTRS = {'class'}   # ul 只允許 class（gallery 用）
 ALLOWED_LI_ATTRS = set()       # li 不允許屬性
 
 
+def sanitize_image_url(url: str) -> str:
+    """
+    清理圖片 URL，移除 .jpg/.png/.webp 副檔名後的 query string 和 fragment。
+    其他 URL 原樣返回。
+    """
+    if not url:
+        return url
+    return re.sub(r'(?i)(\.(?:jpg|png|webp))[?#].*$', r'\1', url)
+
+
 # ── 核心淨化函式 ─────────────────────────────────────────────────────────────────
 
 def sanitize_content_html(html_content: str) -> str:
@@ -94,6 +104,12 @@ def sanitize_content_html(html_content: str) -> str:
                 if key in allowed
             }
 
+    # 清理 img src 中的圖片 URL query 參數
+    for img in soup.find_all('img'):
+        src = img.get('src')
+        if src:
+            img['src'] = sanitize_image_url(str(src))
+
     # 處理空白的文字節點
     result = str(soup)
     result = re.sub(r'>\s+<', '><', result)
@@ -141,6 +157,7 @@ def decode_vue_gallery(html_content: str) -> str:
             src_data = item.get('src', {})
             # 使用 'l' size 作為主要顯示圖片
             img_url = src_data.get('l', src_data.get('m', src_data.get('s', '')))
+            img_url = sanitize_image_url(img_url)
             title = item.get('title', '')
 
             if img_url:

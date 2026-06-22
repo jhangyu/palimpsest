@@ -136,7 +136,7 @@ export interface ArticleListItem {
   image_url: string | null
   feed_name: string
   word_count: number
-  update_time: string
+  published_at: string
   ori_url: string
   author: string | null
 }
@@ -226,7 +226,7 @@ export interface TrafficMetrics {
 export interface LatestArticle {
   feed_name: string
   article_title: string
-  update_time: string
+  published_at: string
   word_count: number
   ori_url: string
 }
@@ -318,10 +318,10 @@ function csrfHeader(): Record<string, string> {
 
 // --- Error Handling ---
 
-async function throwOnError(res: Response): Promise<void> {
+async function throwOnError(res: Response, options?: { skipRedirectOn401?: boolean }): Promise<void> {
   if (!res.ok) {
-    // 401 → redirect to login
-    if (res.status === 401) {
+    // 401 → redirect to login (unless caller opts out, e.g. password verification endpoints)
+    if (res.status === 401 && !options?.skipRedirectOn401) {
       const currentPath = window.location.pathname
       const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
       const loginPath = `${pagesPrefix}/authentication/modern/login`
@@ -335,7 +335,12 @@ async function throwOnError(res: Response): Promise<void> {
     let detail: string
     try {
       const body = await res.json()
-      detail = body.detail || `HTTP ${res.status}`
+      if (Array.isArray(body.detail)) {
+        // FastAPI validation errors return an array of objects
+        detail = body.detail.map((e: { msg: string }) => e.msg).join('; ')
+      } else {
+        detail = body.detail || `HTTP ${res.status}`
+      }
     } catch {
       detail = `HTTP ${res.status}`
     }
@@ -576,7 +581,8 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify(data)
     })
-    await throwOnError(res)
+    // 401 here means wrong current password, not session expired — don't redirect
+    await throwOnError(res, { skipRedirectOn401: true })
   },
 
   updateUsername: async (data: { new_username: string }): Promise<void> => {

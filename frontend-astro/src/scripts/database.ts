@@ -151,9 +151,12 @@ async function loadDatabaseStatus(): Promise<void> {
           .join('')
         const alertBody = migrationAlert.querySelector('.db-migration-list')
         if (alertBody) alertBody.innerHTML = `<ul class="mb-0">${list}</ul>`
+        const countEl = document.getElementById('db-migration-count')
+        if (countEl) countEl.textContent = String(status.pending_migrations.length)
         migrationAlert.style.removeProperty('display')
       } else {
-        migrationAlert.style.display = 'none'
+        // Use setProperty with 'important' to override the d-flex !important utility class
+        migrationAlert.style.setProperty('display', 'none', 'important')
       }
     }
 
@@ -297,7 +300,8 @@ function bindImportHandlers(): void {
 
     // Show file info
     if (fileInfo) {
-      fileInfo.textContent = `Selected: ${file.name} (${formatBytes(file.size)})`
+      const nameSpan = document.getElementById('import-file-name')
+      if (nameSpan) nameSpan.textContent = `${file.name} (${formatBytes(file.size)})`
       fileInfo.style.removeProperty('display')
     }
 
@@ -320,8 +324,9 @@ function bindImportHandlers(): void {
     fileInput.value = ''
 
     if (fileInfo) {
-      fileInfo.textContent = ''
-      fileInfo.style.display = 'none'
+      const nameSpan = document.getElementById('import-file-name')
+      if (nameSpan) nameSpan.textContent = ''
+      fileInfo.style.setProperty('display', 'none', 'important')
     }
     if (optionsEl) optionsEl.style.display = 'none'
     if (previewEl) previewEl.style.display = 'none'
@@ -476,6 +481,7 @@ function bindImportHandlers(): void {
   function showImportStatus(message: string, type: 'success' | 'danger' | 'warning' | 'info'): void {
     if (!resultEl) return
     resultEl.innerHTML = `<div class="alert alert-${type} mt-3">${message}</div>`
+    resultEl.style.removeProperty('display')
   }
 }
 

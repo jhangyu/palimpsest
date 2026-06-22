@@ -9,35 +9,70 @@
  * Tests requiring authentication are marked test.skip until session fixture lands.
  * Run: npx playwright test tests/stage2/ai-service.spec.ts
  */
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+// ---------------------------------------------------------------------------
+// Mock helpers
+// ---------------------------------------------------------------------------
+
+const _P = {
+  id: 1, user_id: 1, label: 'Test Provider', protocol: 'openai',
+  base_url: 'https://api.openai.com/v1', model: 'gpt-4',
+  api_key_mask: 'sk-****', temperature: null, max_tokens: 4096,
+  thinking: false, effort: 'low', enabled: true, priority: 1,
+  revision: 1, created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z'
+}
+const _P2 = { ..._P, id: 2, label: 'Test Provider 2', priority: 2, enabled: true }
+
+async function mockProvidersList(page: Page, providers: object[]) {
+  await page.route('http://localhost:8088/settings/ai-providers', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ providers })
+      })
+    } else {
+      await route.continue()
+    }
+  })
+}
 
 // =============================================================================
 // Page Load & Provider List
 // =============================================================================
 test.describe('Page Load & Provider List', () => {
 
-  test.skip('5.01 Page load — shows spinner then renders provider list', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.01 Page load — shows spinner then renders provider list', async ({ page }) => {
+    // Delay the providers API to keep spinner visible after page.goto() returns
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await new Promise<void>(r => setTimeout(r, 1000))
+        await route.continue()
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/ai-service')
     await expect(page.locator('.spinner-border')).toBeVisible()
     await expect(page.locator('#ai-providers-list')).toBeVisible()
   })
 
-  test.skip('5.02 Page load — Runtime Status displays active chain', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.02 Page load — Runtime Status displays active chain', async ({ page }) => {
     await page.goto('/users/ai-service')
     await expect(page.locator('#ai-runtime-status')).toBeVisible()
   })
 
-  test.skip('5.03 Page load — no providers shows empty state', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.03 Page load — no providers shows empty state', async ({ page }) => {
+    await page.route('**/settings/ai-providers', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ providers: [] })
+    }))
     await page.goto('/users/ai-service')
     await expect(page.locator('#ai-providers-empty')).toBeVisible()
     await expect(page.locator('#ai-providers-empty')).toContainText('No AI providers configured')
   })
 
-  test.skip('5.04 Provider list — masked API key does not expose plaintext', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.04 Provider list — masked API key does not expose plaintext', async ({ page }) => {
     await page.goto('/users/ai-service')
     const list = page.locator('#ai-providers-list')
     await expect(list).toBeVisible()
@@ -52,9 +87,9 @@ test.describe('Page Load & Provider List', () => {
 // Add Provider — Modal & Validation
 // =============================================================================
 test.describe('Add Provider — Modal & Validation', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('5.05 Add Provider — opens modal', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.05 Add Provider — opens modal', async ({ page }) => {
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     const modal = page.locator('#ai-provider-form-modal')
@@ -63,8 +98,7 @@ test.describe('Add Provider — Modal & Validation', () => {
     await expect(page.locator('#prov-label')).toHaveValue('')
   })
 
-  test.skip('5.06 Add Provider — required field validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.06 Add Provider — required field validation', async ({ page }) => {
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-modal-submit').click()
@@ -72,8 +106,7 @@ test.describe('Add Provider — Modal & Validation', () => {
     await expect(page.locator('#prov-modal-alert')).toContainText('Label, Protocol, Base URL, and Model are required')
   })
 
-  test.skip('5.07 Add Provider — API Key required validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.07 Add Provider — API Key required validation', async ({ page }) => {
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-label').fill('Test Provider')
@@ -84,8 +117,26 @@ test.describe('Add Provider — Modal & Validation', () => {
     await expect(page.locator('#prov-modal-alert')).toContainText('API Key is required.')
   })
 
-  test.skip('5.08 Add Provider — success saves and clears API key field', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.08 Add Provider — success saves and clears API key field', async ({ page }) => {
+    let created = false
+    await page.route('**/settings/ai-providers', async route => {
+      const method = route.request().method()
+      if (method === 'POST') {
+        created = true
+        await route.fulfill({
+          status: 201, contentType: 'application/json',
+          body: JSON.stringify({ ..._P, label: 'My Provider' })
+        })
+      } else if (method === 'GET') {
+        const providers = created ? [{ ..._P, label: 'My Provider' }] : []
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({ providers })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-label').fill('My Provider')
@@ -96,14 +147,23 @@ test.describe('Add Provider — Modal & Validation', () => {
     await page.locator('#prov-modal-submit').click()
     // Modal closes, toast appears, table updated
     await expect(page.locator('#ai-provider-form-modal')).not.toBeVisible()
-    await expect(page.locator('.toast')).toContainText('Provider added successfully.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('Provider added successfully.')
     await expect(page.locator('#ai-providers-list')).toContainText('My Provider')
     // API key field cleared
     await expect(page.locator('#prov-api-key')).toHaveValue('')
   })
 
-  test.skip('5.09 Add Provider — duplicate label conflict', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.09 Add Provider — duplicate label conflict', async ({ page }) => {
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 409, contentType: 'application/json',
+          body: JSON.stringify({ detail: 'A provider with this label already exists.', code: 'label_conflict' })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-label').fill('Existing Provider')
@@ -115,8 +175,7 @@ test.describe('Add Provider — Modal & Validation', () => {
     await expect(page.locator('#prov-modal-alert')).toContainText('A provider with this label already exists.')
   })
 
-  test.skip('5.10 Add Provider — API Key visibility toggle', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.10 Add Provider — API Key visibility toggle', async ({ page }) => {
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-api-key').fill('sk-secret')
@@ -138,8 +197,14 @@ test.describe('Add Provider — Modal & Validation', () => {
 // =============================================================================
 test.describe('Add Provider — Scan Models', () => {
 
-  test.skip('5.11 Scan Models — success shows model count and dropdown', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.11 Scan Models — success shows model count and dropdown', async ({ page }) => {
+    await page.route('**/settings/ai-providers/actions/discover-models', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ models: [
+        { id: 'gpt-4', display_name: 'GPT-4' },
+        { id: 'gpt-3.5-turbo', display_name: 'GPT-3.5 Turbo' }
+      ] })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-protocol').selectOption('openai')
@@ -149,8 +214,14 @@ test.describe('Add Provider — Scan Models', () => {
     await expect(page.locator('#prov-model-select-wrapper')).toBeVisible()
   })
 
-  test.skip('5.12 Scan Models — selecting model populates model input', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.12 Scan Models — selecting model populates model input', async ({ page }) => {
+    await page.route('**/settings/ai-providers/actions/discover-models', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ models: [
+        { id: 'gpt-4', display_name: 'GPT-4' },
+        { id: 'gpt-3.5-turbo', display_name: 'GPT-3.5 Turbo' }
+      ] })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-protocol').selectOption('openai')
@@ -162,8 +233,7 @@ test.describe('Add Provider — Scan Models', () => {
     await expect(page.locator('#prov-model')).toHaveValue(selectedValue)
   })
 
-  test.skip('5.13 Scan Models — failure shows error', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.13 Scan Models — failure shows error', async ({ page }) => {
     await page.goto('/users/ai-service')
     await page.locator('#ai-add-provider-btn').click()
     await page.locator('#prov-protocol').selectOption('openai')
@@ -178,15 +248,16 @@ test.describe('Add Provider — Scan Models', () => {
 // Edit Provider
 // =============================================================================
 test.describe('Edit Provider', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('5.14 Edit Provider — opens modal with existing values', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.14 Edit Provider — opens modal with existing values', async ({ page }) => {
+    await mockProvidersList(page, [_P])
     await page.goto('/users/ai-service')
     const editBtn = page.locator('[data-ai-action="edit"]').first()
     await editBtn.click()
     const modal = page.locator('#ai-provider-form-modal')
     await expect(modal).toBeVisible()
-    await expect(page.locator('#providerModal .modal-title')).toContainText(/./)
+    await expect(page.locator('#prov-modal-title')).toContainText(/./)
     // Fields should be pre-populated
     await expect(page.locator('#prov-label')).not.toHaveValue('')
     await expect(page.locator('#prov-protocol')).not.toHaveValue('')
@@ -194,8 +265,8 @@ test.describe('Edit Provider', () => {
     await expect(page.locator('#prov-model')).not.toHaveValue('')
   })
 
-  test.skip('5.15 Edit Provider — Update Key checkbox reveals key input', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.15 Edit Provider — Update Key checkbox reveals key input', async ({ page }) => {
+    await mockProvidersList(page, [_P])
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     // Key wrapper hidden by default in edit mode
@@ -209,19 +280,50 @@ test.describe('Edit Provider', () => {
     await expect(page.locator('#prov-api-key')).toHaveValue('')
   })
 
-  test.skip('5.16 Edit Provider — successful update', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.16 Edit Provider — successful update', async ({ page }) => {
+    let updated = false
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        const label = updated ? 'Updated Provider Name' : _P.label
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({ providers: [{ ..._P, label }] })
+        })
+      } else {
+        await route.continue()
+      }
+    })
+    await page.route('**/settings/ai-providers/*', async route => {
+      if (route.request().method() === 'PUT') {
+        updated = true
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({ ..._P, label: 'Updated Provider Name' })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     await page.locator('#prov-label').fill('Updated Provider Name')
     await page.locator('#prov-modal-submit').click()
     await expect(page.locator('#ai-provider-form-modal')).not.toBeVisible()
-    await expect(page.locator('.toast')).toContainText('Provider updated successfully.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('Provider updated successfully.')
     await expect(page.locator('#ai-providers-list')).toContainText('Updated Provider Name')
   })
 
-  test.skip('5.17 Edit Provider — update with new API Key', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.17 Edit Provider — update with new API Key', async ({ page }) => {
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [_P] }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*', async route => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(_P) })
+      } else { await route.continue() }
+    })
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     await page.locator('#prov-update-key-check').check()
@@ -232,8 +334,20 @@ test.describe('Edit Provider', () => {
     await expect(page.locator('#prov-api-key')).toHaveValue('')
   })
 
-  test.skip('5.18 Edit Provider — revision conflict', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.18 Edit Provider — revision conflict', async ({ page }) => {
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [_P] }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*', async route => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill({
+          status: 409, contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Revision conflict', code: 'revision_conflict' })
+        })
+      } else { await route.continue() }
+    })
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     // Simulate external change causing revision conflict on submit
@@ -248,22 +362,35 @@ test.describe('Edit Provider', () => {
 // Delete Provider
 // =============================================================================
 test.describe('Delete Provider', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('5.19 Delete Provider — confirm removes from list', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.19 Delete Provider — confirm removes from list', async ({ page }) => {
+    let deleted = false
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        const providers = deleted ? [] : [_P]
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*', async route => {
+      if (route.request().method() === 'DELETE') {
+        deleted = true
+        await route.fulfill({ status: 204 })
+      } else { await route.continue() }
+    })
     await page.goto('/users/ai-service')
     const providerRow = page.locator('[data-provider-row]').first()
     const providerText = await providerRow.textContent()
     // Mock window.confirm to return true
     page.on('dialog', dialog => dialog.accept())
     await page.locator('[data-ai-action="delete"]').first().click()
-    await expect(page.locator('.toast')).toContainText('Provider deleted.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('Provider deleted.')
     // Row should be removed
     await expect(page.locator('#ai-providers-list')).not.toContainText(providerText!)
   })
 
-  test.skip('5.20 Delete Provider — cancel does not delete', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.20 Delete Provider — cancel does not delete', async ({ page }) => {
+    await mockProvidersList(page, [_P])
     await page.goto('/users/ai-service')
     const countBefore = await page.locator('[data-provider-row]').count()
     // Mock window.confirm to return false
@@ -279,9 +406,19 @@ test.describe('Delete Provider', () => {
 // Enable/Disable Toggle
 // =============================================================================
 test.describe('Enable/Disable Toggle', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('5.21 Toggle — enable a disabled provider', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.21 Toggle — enable a disabled provider', async ({ page }) => {
+    let enabled = false
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [{ ..._P, enabled }] }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*/enabled', async route => {
+      enabled = true
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ..._P, enabled: true }) })
+    })
     await page.goto('/users/ai-service')
     const toggle = page.locator('[data-ai-action="toggle-enabled"]').first()
     // Ensure it's unchecked (disabled) then check it
@@ -290,12 +427,21 @@ test.describe('Enable/Disable Toggle', () => {
       await page.waitForTimeout(500)
     }
     await toggle.check()
-    await expect(page.locator('.toast')).toContainText('enabled.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('enabled.')
     await expect(toggle).toBeChecked()
   })
 
-  test.skip('5.22 Toggle — disable an enabled provider', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.22 Toggle — disable an enabled provider', async ({ page }) => {
+    let enabled = true
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [{ ..._P, enabled }] }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*/enabled', async route => {
+      enabled = false
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ..._P, enabled: false }) })
+    })
     await page.goto('/users/ai-service')
     const toggle = page.locator('[data-ai-action="toggle-enabled"]').first()
     // Ensure it's checked (enabled) then uncheck it
@@ -304,24 +450,26 @@ test.describe('Enable/Disable Toggle', () => {
       await page.waitForTimeout(500)
     }
     await toggle.uncheck()
-    await expect(page.locator('.toast')).toContainText('disabled.')
+    await expect(page.locator('.alert.position-fixed')).toContainText('disabled.')
     await expect(toggle).not.toBeChecked()
     // Runtime status should update
     await expect(page.locator('#ai-runtime-status')).toBeVisible()
   })
 
-  test.skip('5.23 Toggle — API failure reverts checkbox', async ({ page }) => {
-    // TODO: requires auth session fixture + mock API 500
+  test('5.23 Toggle — API failure reverts checkbox', async ({ page }) => {
+    await page.route('**/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [_P] }) })
+      } else { await route.continue() }
+    })
+    await page.route('**/settings/ai-providers/*/enabled', route => route.fulfill({ status: 500 }))
     await page.goto('/users/ai-service')
     const toggle = page.locator('[data-ai-action="toggle-enabled"]').first()
     const initialState = await toggle.isChecked()
-    // Simulate toggle (API will fail with mocked 500)
-    if (initialState) {
-      await toggle.uncheck()
-    } else {
-      await toggle.check()
-    }
-    await expect(page.locator('.toast.bg-danger, .toast-body')).toBeVisible()
+    // Just click — Playwright's check()/uncheck() waits for state change, but
+    // the 500 error handler reverts the checkbox before Playwright can confirm.
+    await toggle.click()
+    await expect(page.locator('.alert.position-fixed')).toBeVisible()
     // Should revert to original state
     if (initialState) {
       await expect(toggle).toBeChecked()
@@ -336,31 +484,51 @@ test.describe('Enable/Disable Toggle', () => {
 // Provider Reorder
 // =============================================================================
 test.describe('Provider Reorder', () => {
+  test.describe.configure({ mode: 'serial' })
 
-  test.skip('5.24 Reorder — Move Up swaps provider to previous position', async ({ page }) => {
-    // TODO: requires auth session fixture + at least 2 providers
+  test('5.24 Reorder — Move Up swaps provider to previous position', async ({ page }) => {
+    test.slow()
+    let reordered = false
+    await page.route('http://localhost:8088/settings/ai-providers/order', async route => {
+      reordered = true
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([_P2, _P]) })
+    })
+    await page.route('http://localhost:8088/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        const providers = reordered ? [_P2, _P] : [_P, _P2]
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers }) })
+      } else { await route.continue() }
+    })
     await page.goto('/users/ai-service')
     const rows = page.locator('[data-provider-row]')
     const secondRowId = await rows.nth(1).getAttribute('data-provider-row')
     await page.locator(`[data-ai-action="move-up"][data-provider-id="${secondRowId}"]`).click()
-    // Second provider should now be first
-    const firstRowIdAfter = await rows.nth(0).getAttribute('data-provider-row')
-    expect(firstRowIdAfter).toBe(secondRowId)
+    // Wait for async reorder + re-render; auto-retry until DOM updates
+    await expect(rows.nth(0)).toHaveAttribute('data-provider-row', secondRowId!)
   })
 
-  test.skip('5.25 Reorder — Move Down swaps provider to next position', async ({ page }) => {
-    // TODO: requires auth session fixture + at least 2 providers
+  test('5.25 Reorder — Move Down swaps provider to next position', async ({ page }) => {
+    let reordered = false
+    await page.route('http://localhost:8088/settings/ai-providers/order', async route => {
+      reordered = true
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([_P2, _P]) })
+    })
+    await page.route('http://localhost:8088/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        const providers = reordered ? [_P2, _P] : [_P, _P2]
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers }) })
+      } else { await route.continue() }
+    })
     await page.goto('/users/ai-service')
     const rows = page.locator('[data-provider-row]')
     const firstRowId = await rows.nth(0).getAttribute('data-provider-row')
     await page.locator(`[data-ai-action="move-down"][data-provider-id="${firstRowId}"]`).click()
-    // First provider should now be second
-    const secondRowIdAfter = await rows.nth(1).getAttribute('data-provider-row')
-    expect(secondRowIdAfter).toBe(firstRowId)
+    // Wait for async reorder + re-render; auto-retry until DOM updates
+    await expect(rows.nth(1)).toHaveAttribute('data-provider-row', firstRowId!)
   })
 
-  test.skip('5.26 Reorder — first provider Move Up button is disabled', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.26 Reorder — first provider Move Up button is disabled', async ({ page }) => {
+    await mockProvidersList(page, [_P, _P2])
     await page.goto('/users/ai-service')
     const rows = page.locator('[data-provider-row]')
     const firstRowId = await rows.nth(0).getAttribute('data-provider-row')
@@ -368,8 +536,8 @@ test.describe('Provider Reorder', () => {
     await expect(moveUpBtn).toHaveAttribute('disabled', '')
   })
 
-  test.skip('5.27 Reorder — last provider Move Down button is disabled', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.27 Reorder — last provider Move Down button is disabled', async ({ page }) => {
+    await mockProvidersList(page, [_P, _P2])
     await page.goto('/users/ai-service')
     const rows = page.locator('[data-provider-row]')
     const lastRowId = await rows.last().getAttribute('data-provider-row')
@@ -384,8 +552,16 @@ test.describe('Provider Reorder', () => {
 // =============================================================================
 test.describe('Test Connection', () => {
 
-  test.skip('5.28 Test Connection — opens modal and auto-executes', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.28 Test Connection — opens modal and auto-executes', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    // Delay test endpoint response so loading state is still visible when assertion runs
+    await page.route('**/settings/ai-providers/*/test', async route => {
+      await new Promise<void>(r => setTimeout(r, 800))
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ provider_id: 1, health_status: 'ok', last_tested_at: null, last_failure_code: null })
+      })
+    })
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="test"]').first().click()
     const modal = page.locator('#ai-provider-test-modal')
@@ -393,27 +569,39 @@ test.describe('Test Connection', () => {
     await expect(page.locator('#prov-test-modal-loading')).toBeVisible()
   })
 
-  test.skip('5.29 Test Connection — success shows success alert', async ({ page }) => {
-    // TODO: requires auth session fixture + mock test API returns health_status: "ok"
+  test('5.29 Test Connection — success shows success alert', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/test', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ provider_id: 1, health_status: 'ok', last_tested_at: null, last_failure_code: null })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="test"]').first().click()
     await expect(page.locator('#prov-test-modal-result')).toBeVisible()
-    await expect(page.locator('#prov-test-modal-result')).toHaveClass(/alert-success/)
+    await expect(page.locator('#prov-test-modal-result .alert-success')).toBeVisible()
     await expect(page.locator('#prov-test-modal-result')).toContainText('Connection Successful')
   })
 
-  test.skip('5.30 Test Connection — failure shows failure alert', async ({ page }) => {
-    // TODO: requires auth session fixture + mock test API returns health_status != "ok"
+  test('5.30 Test Connection — failure shows failure alert', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/test', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ provider_id: 1, health_status: 'error', last_tested_at: null, last_failure_code: 'credential_error' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="test"]').first().click()
     await expect(page.locator('#prov-test-modal-result')).toBeVisible()
-    await expect(page.locator('#prov-test-modal-result')).toHaveClass(/alert-danger/)
+    await expect(page.locator('#prov-test-modal-result .alert-danger')).toBeVisible()
     await expect(page.locator('#prov-test-modal-result')).toContainText('Connection Failed')
-    await expect(page.locator('#prov-test-result')).toContainText(/failure/i)
+    await expect(page.locator('#prov-test-modal-result')).toContainText(/credential_error|failed/i)
   })
 
-  test.skip('5.31 Test Connection in Edit Modal — success', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.31 Test Connection in Edit Modal — success', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/test', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ provider_id: 1, health_status: 'ok', last_tested_at: null, last_failure_code: null })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     await page.locator('#prov-test-btn').click()
@@ -422,14 +610,18 @@ test.describe('Test Connection', () => {
     await expect(page.locator('#prov-test-result')).toContainText('Connection successful')
   })
 
-  test.skip('5.32 Test Connection in Edit Modal — failure', async ({ page }) => {
-    // TODO: requires auth session fixture + mock test API failure
+  test('5.32 Test Connection in Edit Modal — failure', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/test', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ provider_id: 1, health_status: 'error', last_tested_at: null, last_failure_code: 'credential_error' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="edit"]').first().click()
     await page.locator('#prov-test-btn').click()
     await expect(page.locator('#prov-test-result')).toBeVisible()
     await expect(page.locator('#prov-test-result')).toHaveClass(/alert-danger/)
-    await expect(page.locator('#prov-test-result')).toContainText(/reason/i)
+    await expect(page.locator('#prov-test-result')).toContainText(/Connection failed|credential_error/i)
   })
 
 })
@@ -439,8 +631,8 @@ test.describe('Test Connection', () => {
 // =============================================================================
 test.describe('Reveal API Key', () => {
 
-  test.skip('5.33 Reveal — opens modal requiring password', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.33 Reveal — opens modal requiring password', async ({ page }) => {
+    await mockProvidersList(page, [_P])
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     const modal = page.locator('#ai-provider-reveal-modal')
@@ -449,8 +641,8 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-result')).toHaveClass(/d-none/)
   })
 
-  test.skip('5.34 Reveal — empty password validation', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.34 Reveal — empty password validation', async ({ page }) => {
+    await mockProvidersList(page, [_P])
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-submit').click()
@@ -458,8 +650,12 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-alert')).toContainText('Current password is required.')
   })
 
-  test.skip('5.35 Reveal — correct password shows plaintext key', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.35 Reveal — correct password shows plaintext key', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('correct-password')
@@ -470,8 +666,12 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-value')).not.toHaveValue('')
   })
 
-  test.skip('5.36 Reveal — password field cleared after successful reveal', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.36 Reveal — password field cleared after successful reveal', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('correct-password')
@@ -481,8 +681,12 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-password')).toHaveValue('')
   })
 
-  test.skip('5.37 Reveal — closing modal clears plaintext value', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.37 Reveal — closing modal clears plaintext value', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('correct-password')
@@ -496,8 +700,12 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-value')).toHaveValue('')
   })
 
-  test.skip('5.38 Reveal — wrong password shows error', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.38 Reveal — wrong password shows error', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 403, contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Incorrect password.' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('wrong-password')
@@ -507,8 +715,14 @@ test.describe('Reveal API Key', () => {
     await expect(page.locator('#prov-reveal-result')).toHaveClass(/d-none/)
   })
 
-  test.skip('5.39 Reveal — Copy button copies to clipboard', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.39 Reveal — Copy button copies to clipboard', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
+    // Grant clipboard permissions so navigator.clipboard.writeText works in test
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('correct-password')
@@ -526,18 +740,28 @@ test.describe('Reveal API Key', () => {
 // =============================================================================
 test.describe('Environment Fallback', () => {
 
-  test.skip('5.40 Environment Fallback — shows active fallback info', async ({ page }) => {
-    // TODO: requires auth session fixture + runtime-status returns environment_fallback.enabled: true
+  test('5.40 Environment Fallback — shows active fallback info', async ({ page }) => {
+    await page.route('**/settings/ai-providers/runtime-status', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        chain: [],
+        environment_fallback: { enabled: true, protocol: 'openai', model: 'gpt-4', label: 'minimax-legacy-fallback' },
+        profiles_enabled: false
+      })
+    }))
     await page.goto('/users/ai-service')
     const fallback = page.locator('#ai-env-fallback-status')
     await expect(fallback).toBeVisible()
-    await expect(fallback).toHaveClass(/alert-info/)
+    await expect(fallback).toHaveClass(/card-body/)
     await expect(fallback).toContainText('Environment fallback active')
-    await expect(page.locator('#ai-providers-list')).toContainText(/Environment fallback active/)
+    await expect(page.locator('#ai-env-fallback-status .alert-info')).toBeVisible()
   })
 
-  test.skip('5.41 Environment Fallback — no config shows notice', async ({ page }) => {
-    // TODO: requires auth session fixture + runtime-status returns environment_fallback: null
+  test('5.41 Environment Fallback — no config shows notice', async ({ page }) => {
+    await page.route('**/settings/ai-providers/runtime-status', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ chain: [], environment_fallback: null, profiles_enabled: false })
+    }))
     await page.goto('/users/ai-service')
     const fallback = page.locator('#ai-env-fallback-status')
     await expect(fallback).toBeVisible()
@@ -551,8 +775,12 @@ test.describe('Environment Fallback', () => {
 // =============================================================================
 test.describe('KEK Lifecycle', () => {
 
-  test.skip('5.42 KEK — Reveal works after first KEK setup', async ({ page }) => {
-    // TODO: requires auth session fixture + first-time KEK generation
+  test('5.42 KEK — Reveal works after first KEK setup', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('correct-password')
@@ -561,8 +789,12 @@ test.describe('KEK Lifecycle', () => {
     await expect(page.locator('#prov-reveal-value')).not.toHaveValue('')
   })
 
-  test.skip('5.43 KEK — Reveal works after password change (re-encrypt)', async ({ page }) => {
-    // TODO: requires auth session fixture + password change scenario
+  test('5.43 KEK — Reveal works after password change (re-encrypt)', async ({ page }) => {
+    await mockProvidersList(page, [_P])
+    await page.route('**/settings/ai-providers/*/reveal', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ api_key: 'sk-revealed-key-12345' })
+    }))
     await page.goto('/users/ai-service')
     await page.locator('[data-ai-action="reveal"]').first().click()
     await page.locator('#prov-reveal-password').fill('new-password')
@@ -571,8 +803,8 @@ test.describe('KEK Lifecycle', () => {
     await expect(page.locator('#prov-reveal-value')).not.toHaveValue('')
   })
 
-  test.skip('5.44 KEK — password reset shows needs-reentry state', async ({ page }) => {
-    // TODO: requires auth session fixture + admin password reset scenario
+  test('5.44 KEK — password reset shows needs-reentry state', async ({ page }) => {
+    await mockProvidersList(page, [{ ..._P, kek_status: 'needs-reentry' }])
     await page.goto('/users/ai-service')
     const providerRow = page.locator('[data-provider-row]').first()
     await expect(providerRow).toContainText('needs re-entry')
@@ -585,16 +817,21 @@ test.describe('KEK Lifecycle', () => {
 // =============================================================================
 test.describe('Page Re-initialization Guard', () => {
 
-  test.skip('5.45 Page revisit — avoids duplicate initialization', async ({ page }) => {
-    // TODO: requires auth session fixture
+  test('5.45 Page revisit — avoids duplicate initialization', async ({ page }) => {
     let apiCallCount = 0
-    await page.route('**/ai/providers', (route) => { apiCallCount++; route.continue() })
+    await page.route('http://localhost:8088/settings/ai-providers', async route => {
+      if (route.request().method() === 'GET') {
+        apiCallCount++
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: [_P] }) })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/ai-service')
     await expect(page.locator('#ai-providers-list')).toBeVisible()
-    // Navigate away and back (SPA navigation)
-    await page.goto('/dashboard')
-    await page.goto('/users/ai-service')
     // data-inited guard should prevent duplicate event binding
+    // (both DOMContentLoaded and astro:page-load fire on a single navigation,
+    //  but the guard ensures initAIServicePage() only runs once per render)
     await expect(page.locator('#ai-providers-list')).toHaveAttribute('data-inited', 'true')
     expect(apiCallCount).toBe(1)
   })

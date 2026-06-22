@@ -184,11 +184,6 @@ ai_tables = define_ai_provider_tables(metadata)
 from core.crawl_repair_models import define_crawl_repair_tables
 crawl_repair_tables = define_crawl_repair_tables(metadata)
 
-# ---------------------------------------------------------------------------
-# Test-compatible database instance (databases library)
-# ---------------------------------------------------------------------------
-import databases
-database = databases.Database(DATABASE_URL)
 
 # ---------------------------------------------------------------------------
 # Module-level state setters (used by test fixtures)

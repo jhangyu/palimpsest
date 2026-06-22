@@ -11,6 +11,7 @@ import json
 import zipfile
 from datetime import datetime, date as _date_cls, timezone
 
+import sqlalchemy
 from sqlalchemy import text
 
 from core.auth import normalize_email, normalize_username
@@ -82,6 +83,22 @@ class _ExportEncoder(json.JSONEncoder):
 def _serialize_row_for_export(row_dict: dict) -> str:
     """Serialize a database row to a JSON string for export."""
     return json.dumps(row_dict, cls=_ExportEncoder, ensure_ascii=False)
+
+
+def _coerce_datetime_fields(row_data: dict, tbl) -> dict:
+    """Convert ISO 8601 datetime strings to datetime objects for DateTime columns.
+
+    asyncpg requires actual datetime.datetime instances, not strings.
+    The export encoder serialises datetimes as ISO strings, so on import
+    we must convert them back before executing any INSERT/UPDATE.
+    """
+    for col in tbl.columns:
+        if not isinstance(col.type, sqlalchemy.DateTime):
+            continue
+        val = row_data.get(col.name)
+        if isinstance(val, str):
+            row_data[col.name] = datetime.fromisoformat(val)
+    return row_data
 
 
 # ---------------------------------------------------------------------------
@@ -356,6 +373,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         k: v for k, v in row.items()
                         if k != "id" and k in valid_columns
                     }
+                    _coerce_datetime_fields(row_data, tbl)
                     name = row.get("name")
                     existing = (
                         (await db.execute(
@@ -395,6 +413,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         k: v for k, v in row.items()
                         if k != "id" and k in valid_columns
                     }
+                    _coerce_datetime_fields(row_data, tbl)
                     email = row.get("email")
                     existing = (
                         (await db.execute(
@@ -476,6 +495,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         k: v for k, v in row.items()
                         if k != "id" and k in valid_columns
                     }
+                    _coerce_datetime_fields(row_data, tbl)
                     url = row.get("url")
                     existing = (
                         (await db.execute(
@@ -511,6 +531,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         k: v for k, v in row.items()
                         if k != "id" and k in valid_columns
                     }
+                    _coerce_datetime_fields(row_data, tbl)
                     old_site_id = row_data.get("site_id")
                     if old_site_id is not None and old_site_id in site_id_map:
                         row_data["site_id"] = site_id_map[old_site_id]
@@ -544,6 +565,7 @@ async def execute_import(db, import_data: dict, mode: str) -> list[dict]:
                         k: v for k, v in row.items()
                         if k != "id" and k in valid_columns
                     }
+                    _coerce_datetime_fields(row_data, tbl)
                     old_site_id = row_data.get("site_id")
                     if old_site_id is not None and old_site_id in site_id_map:
                         row_data["site_id"] = site_id_map[old_site_id]
