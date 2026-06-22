@@ -241,7 +241,7 @@ test.describe('Password Change — Submit & API Interaction', () => {
     // Verify by calling /auth/me with old token
     if (sessionCookie) {
       const response = await request.get('/auth/me', {
-        headers: { Cookie: `session=${sessionCookie.value}` },
+        headers: { Cookie: `session=${sessionCookie.value}` }
       })
       expect(response.status()).toBe(401)
     }

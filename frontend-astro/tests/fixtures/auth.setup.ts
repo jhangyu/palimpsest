@@ -42,7 +42,7 @@ setup('authenticate via API', async ({ request }) => {
 
   // POST /auth/login — the backend sets session cookies on the response
   const loginRes = await request.post('http://localhost:8088/auth/login', {
-    data: { email, password },
+    data: { email, password }
   })
 
   expect(loginRes.ok(), `Login failed: ${loginRes.status()} ${loginRes.statusText()}`).toBeTruthy()

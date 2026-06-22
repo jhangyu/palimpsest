@@ -12,11 +12,11 @@ export default defineConfig({
   fullyParallel: true,
   workers: 2,
   expect: {
-    timeout: 10000,
+    timeout: 10000
   },
   reporter: [
     ['list'],
-    ['json', { outputFile: 'test-results/stage2-results.json' }],
+    ['json', { outputFile: 'test-results/stage2-results.json' }]
   ],
   use: {
     baseURL: 'http://localhost:5174',
@@ -33,24 +33,24 @@ export default defineConfig({
     // --- Auth setup (runs first) ---
     {
       name: 'setup',
-      testMatch: /fixtures\/auth\.setup\.ts$/,
+      testMatch: /fixtures\/auth\.setup\.ts$/
     },
     // --- Tests that require an authenticated session ---
     {
       name: 'logged-in',
       dependencies: ['setup'],
       use: {
-        storageState: STORAGE_STATE,
+        storageState: STORAGE_STATE
       },
-      testMatch: /stage2\/.*\.spec\.ts$/,
+      testMatch: /stage2\/.*\.spec\.ts$/
     },
     // --- Tests that do NOT require auth (default) ---
     {
       name: 'default',
       testIgnore: [
         /stage2\/.*\.spec\.ts$/,
-        /fixtures\/.*\.setup\.ts$/,
-      ],
-    },
-  ],
+        /fixtures\/.*\.setup\.ts$/
+      ]
+    }
+  ]
 })

@@ -99,7 +99,7 @@ test.describe('Add User — Form Validation', () => {
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
-          body: JSON.stringify({ id: 99, email: 'newusertest@example.com' }),
+          body: JSON.stringify({ id: 99, email: 'newusertest@example.com' })
         })
       } else {
         await route.continue()
@@ -140,7 +140,7 @@ test.describe('Add User — Form Validation', () => {
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
-          body: JSON.stringify({ id: 100, email: 'adminusertest@example.com' }),
+          body: JSON.stringify({ id: 100, email: 'adminusertest@example.com' })
         })
       } else {
         await route.continue()
@@ -173,7 +173,7 @@ test.describe('Add User — Form Validation', () => {
         await route.fulfill({
           status: 409,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'email already exists' }),
+          body: JSON.stringify({ detail: 'email already exists' })
         })
       } else {
         await route.continue()
@@ -195,7 +195,7 @@ test.describe('Add User — Form Validation', () => {
         await route.fulfill({
           status: 409,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'username already exists' }),
+          body: JSON.stringify({ detail: 'username already exists' })
         })
       } else {
         await route.continue()
@@ -219,7 +219,7 @@ test.describe('Add User — Form Validation', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ id: 1, email: 'test@example.com', username: 'test' }),
+          body: JSON.stringify({ id: 1, email: 'test@example.com', username: 'test' })
         })
       } else {
         await route.continue()
@@ -268,7 +268,7 @@ test.describe('User List & Search', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ users: [], total: 0, page: 1, page_size: 20 }),
+          body: JSON.stringify({ users: [], total: 0, page: 1, page_size: 20 })
         })
       } else {
         await route.continue()
@@ -373,7 +373,7 @@ test.describe('Block / Unblock', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ id: 1, status: 'blocked' }),
+          body: JSON.stringify({ id: 1, status: 'blocked' })
         })
       } else {
         await route.continue()
@@ -394,7 +394,7 @@ test.describe('Block / Unblock', () => {
         await route.fulfill({
           status: 500,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'Internal server error' }),
+          body: JSON.stringify({ detail: 'Internal server error' })
         })
       } else {
         await route.continue()
@@ -464,7 +464,7 @@ test.describe('Delete User', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ status: 'ok' }),
+          body: JSON.stringify({ status: 'ok' })
         })
       } else {
         await route.continue()
@@ -503,7 +503,7 @@ test.describe('Delete User', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ status: 'ok' }),
+          body: JSON.stringify({ status: 'ok' })
         })
       } else {
         await route.continue()
@@ -528,7 +528,7 @@ test.describe('Delete User', () => {
         await route.fulfill({
           status: 500,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'Internal server error' }),
+          body: JSON.stringify({ detail: 'Internal server error' })
         })
       } else {
         await route.continue()
@@ -582,10 +582,10 @@ test.describe('Pagination', () => {
         body: JSON.stringify({
           users: Array.from({ length: 5 }, (_, i) => ({
             id: i + 1, email: `user${i}@test.com`, username: `user${i}`,
-            roles: ['user'], status: 'active', last_login: null,
+            roles: ['user'], status: 'active', last_login: null
           })),
-          total: 5, page: 1, page_size: 20,
-        }),
+          total: 5, page: 1, page_size: 20
+        })
       })
     })
 
@@ -602,10 +602,10 @@ test.describe('Pagination', () => {
         body: JSON.stringify({
           users: Array.from({ length: 20 }, (_, i) => ({
             id: i + 1, email: `user${i}@test.com`, username: `user${i}`,
-            roles: ['user'], status: 'active', last_login_at: null,
+            roles: ['user'], status: 'active', last_login_at: null
           })),
-          total: 25, page: 1, page_size: 20,
-        }),
+          total: 25, page: 1, page_size: 20
+        })
       })
     })
 
@@ -630,10 +630,10 @@ test.describe('Pagination', () => {
             id: (Number(currentPage) - 1) * 20 + i + 1,
             email: `user${(Number(currentPage) - 1) * 20 + i}@test.com`,
             username: `user${(Number(currentPage) - 1) * 20 + i}`,
-            roles: ['user'], status: 'active', last_login_at: null,
+            roles: ['user'], status: 'active', last_login_at: null
           })),
-          total: 25, page: Number(currentPage), page_size: 20,
-        }),
+          total: 25, page: Number(currentPage), page_size: 20
+        })
       })
     })
 
@@ -676,10 +676,10 @@ test.describe('Status / Role Badges', () => {
         body: JSON.stringify({
           users: [
             { id: 1, email: 'active@test.com', username: 'activeuser', roles: ['user'], status: 'active', last_login_at: null, full_name: null },
-            { id: 2, email: 'blocked@test.com', username: 'blockeduser', roles: ['user'], status: 'blocked', last_login_at: null, full_name: null },
+            { id: 2, email: 'blocked@test.com', username: 'blockeduser', roles: ['user'], status: 'blocked', last_login_at: null, full_name: null }
           ],
-          total: 2, page: 1, page_size: 20,
-        }),
+          total: 2, page: 1, page_size: 20
+        })
       })
     })
     await page.goto('/settings/users')
@@ -699,10 +699,10 @@ test.describe('Status / Role Badges', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           users: [
-            { id: 1, email: 'noroles@test.com', username: 'norolesuser', roles: [], status: 'active', last_login_at: null, full_name: null },
+            { id: 1, email: 'noroles@test.com', username: 'norolesuser', roles: [], status: 'active', last_login_at: null, full_name: null }
           ],
-          total: 1, page: 1, page_size: 20,
-        }),
+          total: 1, page: 1, page_size: 20
+        })
       })
     })
     await page.goto('/settings/users')
@@ -728,7 +728,7 @@ test.describe('API Error Handling', () => {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Unauthorized' }),
+        body: JSON.stringify({ detail: 'Unauthorized' })
       })
     })
 
@@ -743,7 +743,7 @@ test.describe('API Error Handling', () => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Internal server error' }),
+        body: JSON.stringify({ detail: 'Internal server error' })
       })
     })
 

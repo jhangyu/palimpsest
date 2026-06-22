@@ -574,7 +574,7 @@ test.describe('Profile Photo — Avatar Upload', () => {
     await page.locator('#avatar-file-input').setInputFiles({
       name: 'avatar.jpg',
       mimeType: 'image/jpeg',
-      buffer: Buffer.alloc(1024),
+      buffer: Buffer.alloc(1024)
     })
     // PUT /users/me/avatar called; avatar visible; placeholder hidden; badge = "Uploaded photo"
     await expect(page.locator('#profile-avatar-img')).not.toHaveClass(/d-none/)
@@ -587,7 +587,7 @@ test.describe('Profile Photo — Avatar Upload', () => {
     await page.locator('#avatar-file-input').setInputFiles({
       name: 'image.svg',
       mimeType: 'image/svg+xml',
-      buffer: Buffer.from('<svg></svg>'),
+      buffer: Buffer.from('<svg></svg>')
     })
     // toast "Only JPEG, PNG, or WebP images are allowed."; no API call; file input cleared
     await expect(page.locator('.alert.position-fixed')).toContainText('Only JPEG, PNG, or WebP images are allowed.')
@@ -600,7 +600,7 @@ test.describe('Profile Photo — Avatar Upload', () => {
     await page.locator('#avatar-file-input').setInputFiles({
       name: 'large.png',
       mimeType: 'image/png',
-      buffer: Buffer.alloc(600 * 1024),
+      buffer: Buffer.alloc(600 * 1024)
     })
     // toast "Image must be 512 KB or smaller."; no API call; file input cleared
     await expect(page.locator('.alert.position-fixed')).toContainText('Image must be 512 KB or smaller.')
