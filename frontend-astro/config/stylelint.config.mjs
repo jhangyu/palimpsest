@@ -15,6 +15,7 @@ export default {
     '@stylistic/string-quotes': 'single',
     '@stylistic/no-eol-whitespace': true,
     '@stylistic/number-leading-zero': 'always',
+    'nesting-selector-no-missing-scoping-root': null,
     'scss/load-partial-extension': null,
     'no-descending-specificity': null,
     'selector-class-pattern': null,

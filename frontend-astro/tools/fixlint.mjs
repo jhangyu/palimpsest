@@ -174,7 +174,7 @@ export async function fixlint(taskType, options = {}) {
         await step.fn()
         log(`${stepNumber} ${step.description} applied`, 'success')
       } catch (error) {
-        throw new Error(`${step.name} failed: ${error.message}`)
+        throw new Error(`${step.name} failed: ${error.message}`, { cause: error })
       }
     }
 
