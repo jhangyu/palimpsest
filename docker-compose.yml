@@ -1,3 +1,14 @@
+# ---
+# name: docker-compose
+# description: "Production stack: FastAPI app, PostgreSQL 15, headless Chrome (browserless), persistent host volumes"
+# type: deployment
+# target:
+#   layer: infrastructure
+#   domain: deployment
+# spec_doc: null
+# test_file: tests/stage3/test_stage3_docker.sh
+# services: [db, chrome, app]
+# ---
 # =============================================================================
 # Palimpsest — Production Docker Compose
 # =============================================================================
@@ -14,7 +25,7 @@ services:
   # PostgreSQL
   # ---------------------------------------------------------------------------
   db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: palimpsest-db
     environment:
       POSTGRES_USER: palimpsest

@@ -26,7 +26,7 @@ if ! nc -z localhost 5432 >/dev/null 2>&1; then
       -e POSTGRES_DB=palimpsest \
       -p 127.0.0.1:5432:5432 \
       -v "$PROJECT_DIR/data/postgres:/var/lib/postgresql/data" \
-      postgres:15-alpine >/dev/null
+      postgres:17-alpine >/dev/null
   fi
 
   for _ in $(seq 1 30); do

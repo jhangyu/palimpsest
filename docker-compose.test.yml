@@ -1,6 +1,17 @@
+# ---
+# name: docker-compose.test
+# description: "CI test stack: ephemeral postgres on tmpfs, limited Chrome sessions, app on port 18088, LLM profiles disabled"
+# type: deployment
+# target:
+#   layer: infrastructure
+#   domain: deployment
+# spec_doc: null
+# test_file: tests/stage3/test_stage3_docker.sh
+# services: [db-test, chrome-test, app-test]
+# ---
 services:
   db-test:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: palimpsest
       POSTGRES_PASSWORD: testpass123
