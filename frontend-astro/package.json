@@ -1,7 +1,7 @@
 {
   "name": "palimpsest",
   "description": "Palimpsest - AI-powered RSS content management system",
-  "version": "0.1.0",
+  "version": "0.1.7",
   "license": "MIT",
   "author": "AsteroDigital <https://asterodigital.com>",
   "type": "module",
