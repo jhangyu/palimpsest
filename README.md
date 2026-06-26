@@ -4,65 +4,210 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 
 ## Features
 
-### Feed Engine
-- Multi-method crawling: Scrapling as the default fetcher with Playwright (headless Chromium) fallback via Browserless Chrome or local browser, browser reuse, and `asyncio.gather` + `Semaphore(3)` parallel fetching
-- AI-powered selector inference: list page and article page structure analysis using configurable multi-provider LLMs
-- Smart HTML extraction: Vue.js template detection, gallery decoding, HTML sanitization with configurable tag whitelists
-- Crawl auto-repair: automatic failure counting, AI re-analysis, candidate validation, and atomic rule promotion when a feed fails consecutively
-- Background scheduler: APScheduler with per-site refresh intervals and random jitter to prevent thundering herd
-- Article filter engine: recursive tri-state rule evaluation with blacklist/whitelist modes, field targeting (title, content, or both), and regex support
-- Debug output system: per-stage intermediate artifacts for crawler and AI analysis troubleshooting
+### Two-Stage RSS Extraction
 
-### AI Provider Layer
-- Multi-provider abstraction: OpenAI, Anthropic, Gemini, and custom OpenAI-compatible providers
-- Ordered fallback engine: configurable per-user priority chain with shared total deadline, progressive failure classification
-- Per-user credential vault: KEK/DEK envelope encryption, API keys never stored in plaintext
-- AI Service management UI: full CRUD, drag-to-reorder, enable/disable toggle, model discovery, connection test, API key reveal (password-gated)
-- SSRF protection: DNS resolution validation with exact allowlist for private/LAN services
-- Environment fallback: configurable `LLM_FALLBACK_*` variables when no user provider is configured
+- **List page analysis**: AI infers CSS selectors for article links, titles, and dates from the listing page HTML (`list_rules`)
+- **Content page analysis**: AI infers selectors for article body, author, and images from individual article pages (`content_rules`)
+- Each stage is independently configurable — users can manually refine AI-suggested selectors via the Analyze page
 
-### Authentication & RBAC
-- Argon2id password hashing with automatic rehash on login
-- Server-side HttpOnly sessions with configurable TTL
-- CSRF double-submit cookie pattern on all state-changing endpoints
-- Role-based access control (admin / user) with first-run admin setup
-- Admin user management: invite, update, block, role assignment
-- Email verification flow, password reset with time-limited tokens
-- User profile management: full name, username, email, avatar upload (JPEG/PNG/WebP, max 512 KB), Gravatar support
-- Rate limiting on auth endpoints (login, forgot-password, reset-password, resend-verification)
+### AI-Powered CSS Selector Inference
 
-### Dashboard (Astro Frontend)
-- Astro 5 + asteroadmin + gentelella v4 admin layout
-- Vanilla TypeScript business logic (not React components)
-- SCSS pipeline: sass-embedded + PostCSS + LightningCSS
-- ECharts integration with dark mode support, stacked bar charts
-- TanStack Table for sortable/paginated data tables
-- PWA-ready, dark mode (light default) with FOUC prevention
-- 41 Astro pages, 0 lint errors
+- Sends structurally-cleaned HTML to an LLM for selector inference; `clean_html_for_ai` strips noise separately for list vs. content mode
+- Supports OpenAI, Anthropic, Gemini, and any OpenAI-compatible endpoint — configured per user
+- Interactive Analyze page lets users test selectors and iterate without re-crawling
 
-### Notifications
-- Real-time notification panel surfacing crawl failures and AI re-analyze events
-- Per-event error classification: network/access failures vs. content extraction failures
-- Deduplication and chronological ordering across failure and repair attempt streams
+### Lazy-Load Image Resolution
 
-### Analytics
-- Real analytics data: `rss_query_events` and `crawl_attempts` tracking
-- CJK-aware shared word count helper (English tokens + CJK character count)
-- Daily/weekly bucketing in Asia/Taipei timezone
-- Overview API: summary metrics, article growth, feed distribution, traffic charts, latest articles table
-- Article list page with time filtering (today/week/month/all), search, and pagination
+- Modern sites use `src="/placeholder.png"` with real URLs in `data-original`, `data-src`, `data-lazy-src`, or `data-lazy` attributes — standard parsers miss these
+- `_resolve_lazy_images()` resolves the fallback chain and is applied at three pipeline stages: content sanitization, AI HTML cleaning (list and content modes), and hero image extraction
+- feedparser's HTML sanitizer is patched to preserve lazy-load attributes so they survive the sanitization pass
 
-### Database Management (Admin Only)
-- Database status dashboard: schema version, table row counts, pending migrations
-- Export: JSON or ZIP download of configurable table sets
-- Import: file upload with conflict preview and skip/overwrite modes
-- Idempotent migration runner with version tracking table
+### HTML Sanitizer Pipeline
 
-### Operations
-- PostgreSQL-only backend (no SQLite support)
-- Docker Compose deployment: PostgreSQL 15 + Browserless Chrome + App
-- Health check endpoints for container orchestration
-- KEK (Key Encryption Key) stored outside the database via Docker Secrets or dev key files
+- `sanitize_content_html`: strict tag whitelist (p, span, a, img, ul, ol, li, h2–h6, figure, code, strong, em) produces clean RSS output
+- `clean_html_for_ai`: reduces full-page HTML to the relevant container before sending to the LLM, with separate list and content modes
+- Vue.js detection: `decode_vue_gallery` decodes `x-data` component JSON into standard HTML; `extract_template_html` handles Vue template structures
+
+### Multi-Provider AI with Ordered Fallback
+
+- Per-user provider profiles with drag-to-reorder priority; providers can be individually enabled or disabled
+- Fallback engine: works through the priority chain under a shared total deadline, classifying failures progressively
+- Model discovery and connection test built into the management UI; API key reveal is password-gated
+- SSRF protection: DNS resolution validation blocks private/LAN/cloud-metadata IPs for custom endpoints
+
+### KEK Envelope Encryption
+
+- API keys encrypted at rest using KEK/DEK envelope encryption — the KEK never touches the database
+- AAD binding (user, provider, protocol, base URL, version) prevents credential-swapping attacks even with database access
+- KEK is auto-generated on first startup; stored in a Docker volume or `.dev-secrets/` — no manual key setup
+- Fail-closed: if the KEK is unavailable and providers are configured, the application refuses to start
+
+### Crawl Auto-Repair
+
+- `RepairOrchestrator`: consecutive crawl failures automatically trigger AI re-analysis of the feed's source page
+- Full flow: failure counting → weekly budget check → AI re-analyze → evidence-based candidate validation → atomic rule promotion
+- Candidate rules are validated by re-parsing the live HTML before any promotion — old rules are preserved on any failure path
+- AI calls are never held inside a database transaction
+
+### Article Filter Engine
+
+- Recursive tri-state rule evaluation supporting both blacklist and whitelist modes
+- Field targeting: filter on title, content, or both; regex supported for pattern matching
+- Configured per-feed via the edit page — no global filter that affects all feeds
+
+### Crawl Infrastructure
+
+- Multi-method fetching: Scrapling as the default with Playwright (headless Chromium) as an automatic fallback
+- `asyncio.gather` + `Semaphore(3)` for parallel article fetching; browser instances are reused within a single crawl run
+- APScheduler with per-site refresh intervals and random jitter to prevent thundering-herd effects on shared origins
+- Debug output system captures per-stage intermediate artifacts for troubleshooting extraction issues
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![Analytics](screenshots/analytics.png) |
+| Dashboard — feed overview and system status | Analytics — article growth charts and statistics |
+| ![Feed Add](screenshots/feed-add.png) | ![AI Service](screenshots/ai-service.png) |
+| Add Feed — two-stage AI analysis with List/Content rules | AI Service — multi-provider management with fallback chain |
+| ![Articles](screenshots/articles.png) | ![Feed Edit](screenshots/feed-edit.png) |
+| Articles — full article list with search and filtering | Manage Feeds — feed list with actions |
+
+## Quick Start With Docker
+
+### Docker Compose Example
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: palimpsest-db
+    environment:
+      POSTGRES_USER: palimpsest
+      POSTGRES_PASSWORD: palimpsest
+      POSTGRES_DB: palimpsest
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U palimpsest -d palimpsest"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - palimpsest-network
+
+  chrome:
+    image: browserless/chrome:latest
+    container_name: palimpsest-chrome
+    environment:
+      MAX_CONCURRENT_SESSIONS: 10
+      CONNECTION_TIMEOUT: 300000
+    ports:
+      - "3000:3000"
+    networks:
+      - palimpsest-network
+
+  app:
+    image: jhangyu/palimpsest:latest
+    container_name: palimpsest-app
+    environment:
+      DATABASE_URL: postgresql://palimpsest:palimpsest@db:5432/palimpsest
+
+      # Browserless Chrome connection
+      CHROME_MODE: server
+      CHROME_WS_ENDPOINT: ws://chrome:3000
+      BROWSER_WS_URL: ws://chrome:3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CHROME_HOST: chrome
+      CHROME_PORT: 3000
+
+      # App settings
+      BACKEND_PORT: 8088
+      PALIMPSEST_DATA_DIR: /app/data
+      PALIMPSEST_LOG_DIR: /app/log
+
+      # KEK (Key Encryption Key) — auto-generated on first startup, no manual setup needed
+      LLM_KEK_PATH: /app/data/kek
+      LLM_KEK_VERSION: v1
+
+      # LLM provider settings
+      LLM_PROVIDER_PROFILES_ENABLED: "true"
+      LLM_FALLBACK_ENABLED: "true"
+      LLM_FALLBACK_PROTOCOL: openai
+      LLM_FALLBACK_MAX_TOKENS: "4096"
+      LLM_FALLBACK_THINKING: "false"
+      LLM_FALLBACK_EFFORT: low
+      # Uncomment and fill in to use a fallback LLM provider at startup:
+      # LLM_FALLBACK_BASE_URL: https://api.openai.com/v1
+      # LLM_FALLBACK_API_KEY: sk-your-key-here
+      # LLM_FALLBACK_MODEL: gpt-4o
+
+      # Auth settings
+      SESSION_COOKIE_SECURE: "false"
+      SESSION_TTL_HOURS: "24"
+      AUTH_ALLOW_PUBLIC_REGISTRATION: "false"
+      AUTH_DEV_EXPOSE_RESET_LINK: "true"
+
+      # CORS (leave empty to allow all origins, or set your frontend URL)
+      ALLOWED_ORIGINS: ""
+      FRONTEND_ORIGIN: ""
+    volumes:
+      - ./data/app:/app/data
+      - ./log:/app/log
+    ports:
+      - "8088:8088"
+    depends_on:
+      db:
+        condition: service_healthy
+      chrome:
+        condition: service_started
+    networks:
+      - palimpsest-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8088/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  palimpsest-network:
+    driver: bridge
+```
+
+### Start the Stack
+
+```bash
+docker compose up -d
+```
+
+### First-Run Setup
+
+Open [http://localhost:8088](http://localhost:8088) in your browser. When no users exist, the app automatically redirects to the first-run setup page where you can create the admin account.
+
+> The KEK (Key Encryption Key) keyring is auto-generated on first startup — no manual key file creation or keyring directory setup is needed.
+
+### Configure AI Provider (Optional)
+
+After logging in, go to **Settings → AI Service** to add LLM providers (OpenAI, Anthropic, Gemini, or any OpenAI-compatible endpoint).
+
+Alternatively, set the `LLM_FALLBACK_*` environment variables directly in `docker-compose.yml` before starting the stack:
+
+```yaml
+LLM_FALLBACK_BASE_URL: https://api.openai.com/v1
+LLM_FALLBACK_API_KEY: sk-your-key-here
+LLM_FALLBACK_MODEL: gpt-4o
+```
+
+### Services
+
+| Service | Port | URL |
+| --- | --- | --- |
+| App dashboard + API | 8088 | http://localhost:8088 |
+| Browserless Chrome | 3000 | http://localhost:3000 |
 
 ## Repository Layout
 
@@ -76,6 +221,7 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 │   │   ├── ai_provider_migrations.py     # AI provider schema and migration helpers
 │   │   ├── ai_providers.py               # Provider CRUD repository/service layer
 │   │   ├── auth.py                       # Argon2id hashing, sessions, CSRF, rate limits, dependencies
+│   │   ├── cdp_client.py                 # CDP (Chrome DevTools Protocol) client utilities
 │   │   ├── crawl_outcomes.py             # Typed outcome models and pure-function crawl classifier
 │   │   ├── crawl_repair_models.py        # Schema declarations and Pydantic models for auto-repair
 │   │   ├── crawl_repair_repository.py    # Transactional, concurrent-safe auto-repair state storage
@@ -87,11 +233,12 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 │   │   ├── db.py                         # SQLAlchemy 2.0 async engine, table definitions, metadata
 │   │   ├── debug.py                      # Debug writer with per-stage artifact output
 │   │   ├── email.py                      # Email sender (SMTP or dev-mode log output)
+│   │   ├── feed_parser.py                # RSS/Atom feed parser with feedparser integration and lazy-load attribute preservation
 │   │   ├── filter_engine.py              # Recursive tri-state article filter (blacklist/whitelist, regex)
 │   │   ├── logging_utils.py              # Unified logging utilities
 │   │   ├── ownership.py                  # Feed ownership authorization helpers
-│   │   ├── parser.py                     # Pure parsing layer — Scrapling-based article and listing parsers
-│   │   ├── sanitizer.py                  # HTML sanitizer with configurable tag whitelists
+│   │   ├── parser.py                     # Pure parsing layer — Scrapling-based article and listing parsers with lazy-load fallback
+│   │   ├── sanitizer.py                  # HTML sanitizer: tag whitelists, lazy-load image resolution, Vue gallery decoding
 │   │   ├── scraper.py                    # Scrapling fetcher abstraction with Playwright fallback
 │   │   ├── security_models.py            # Pydantic models for all auth/user/admin schemas
 │   │   ├── time_provider.py              # Deterministic clock abstraction for crawl auto-repair
@@ -127,29 +274,41 @@ AI-assisted RSS feed generator. Provide a target website URL, and the system aut
 │   ├── config/astro.config.mjs           # Astro configuration (Vite proxy, allowedHosts)
 │   ├── tools/dev.mjs                     # Dev server driver (Astro + CSS watch)
 │   ├── tools/css.mjs                     # CSS pipeline (SCSS -> PostCSS -> LightningCSS)
-│   ├── src/html/pages/                   # Astro page templates (41 pages)
+│   ├── src/html/pages/                   # Astro page templates
+│   │   ├── feeds/add.astro               # Add feed page
+│   │   ├── feeds/edit.astro              # Edit feed page
+│   │   ├── settings/database.astro       # Database management page (admin)
+│   │   ├── settings/users.astro          # User management page (admin)
+│   │   ├── users/ai-service.astro        # AI service configuration page
+│   │   ├── users/edit.astro              # Edit user page (admin)
+│   │   ├── users/profile.astro           # User profile page
+│   │   ├── users/security.astro          # Security settings page
+│   │   ├── analytics.astro               # Analytics dashboard page
+│   │   ├── articles.astro                # Article list page
+│   │   └── dashboard.astro               # Main dashboard page
+│   ├── src/html/components/              # Astro component library
+│   │   ├── feeds/FeedRulesEditor.astro   # Feed rules editor with CodeMirror
+│   │   └── app/CommandPalette.astro      # Command palette for quick navigation
 │   ├── src/html/layouts/                 # Layout components (admin layout, sidebar, head)
 │   ├── src/scripts/                      # TypeScript business logic (22 modules)
 │   ├── src/js/                           # Rollup IIFE bundles (dark mode, sidebar)
-│   ├── src/scss/                         # SCSS sources (gentelella + custom)
-│   └── tests/smoke.spec.ts               # Playwright E2E smoke test
-├── tests/                                # Backend test suite
-│   ├── conftest.py                       # Pytest fixtures (test DB, auth fixtures)
-│   ├── test_auth.py                      # Auth unit/integration tests
-│   ├── test_csrf_cors.py                 # CSRF/CORS tests
-│   ├── test_auth_rate_limits.py          # Rate limit tests
-│   ├── test_user_profile.py              # User profile tests
-│   ├── test_user_preferences.py          # Preferences tests
-│   ├── test_crawl_repair_*.py            # Crawl auto-repair tests (models, repository, service, integration)
-│   ├── test_crawl_outcomes.py            # Crawl outcome classifier tests
-│   ├── test_time_provider.py             # Time provider tests
-│   ├── test_llm_*.py                     # LLM adapter, vault, fallback, registry tests
-│   └── test_*_migration*.py              # Migration and site ownership tests
+│   └── src/scss/                         # SCSS sources (gentelella + custom)
+├── tests/                                # Backend and E2E test suite
+│   ├── stage1/                           # Unit tests
+│   │   ├── conftest.py                   # Pytest fixtures (test DB, auth fixtures)
+│   │   ├── test_auth.py                  # Auth unit/integration tests
+│   │   ├── test_crawl_repair_*.py        # Crawl auto-repair tests (models, repository, service, integration)
+│   │   ├── test_feed_parser.py           # Feed parser tests
+│   │   ├── test_llm_*.py                 # LLM adapter, vault, fallback, registry tests
+│   │   └── test_*_migration*.py          # Migration and site ownership tests
+│   └── stage2/                           # E2E and integration tests
+│       ├── e2e/                          # Playwright E2E tests (434 tests across 11 spec files)
+│       └── integration/                  # Shell-based integration tests
 ├── docs/                                 # AI development notes and task logs
 ├── Dockerfile                            # Multi-stage: frontend build + Python runtime
-├── docker-compose.yml                    # Production deployment (app image jhangyu/palimpsest:0.1.0)
+├── docker-compose.yml                    # Production deployment (app image jhangyu/palimpsest:latest)
 ├── docker-compose-dev.yml                # Development compose variant
-├── entrypoint.sh                         # Container startup: wait for DB/Chrome, validate KEK, launch uvicorn
+├── entrypoint.sh                         # Container startup: wait for DB/Chrome, auto-generate KEK if absent, launch uvicorn
 ├── restart.sh                            # Local dev startup helper (backend + Astro dev server)
 └── .env.example                          # Environment variable template
 ```
@@ -166,70 +325,15 @@ Ignored directories (not in version control):
 ### Docker Deployment
 
 - Docker and Docker Compose v2
-- A KEK keyring for AI provider encryption (see Quick Start)
 - Optionally, LLM provider API keys for AI features
 
 ### Local Development
 
-- Python 3.11+
-- Node.js 20+
+- Python 3.13+
+- Node.js 22+
 - npm
 - Playwright browser dependencies (`playwright install chromium`)
-- PostgreSQL 15+
-
-## Quick Start With Docker
-
-Pull the published image:
-
-```bash
-docker pull jhangyu/palimpsest:0.1.0
-```
-
-### 1. Prepare the KEK keyring
-
-AI provider credentials are encrypted with a KEK (Key Encryption Key) stored outside the database. Create a keyring directory with a versioned key file:
-
-```bash
-mkdir -p secrets/llm_kek
-# Generate a 32-byte random key (hex-encoded)
-openssl rand -hex 32 > secrets/llm_kek/v1.key
-# Secure the file
-chmod 600 secrets/llm_kek/v1.key
-```
-
-### 2. Configure environment
-
-Copy `.env.example` to `.env` and adjust as needed. At minimum, set the LLM fallback if you want AI analysis without configuring per-user providers:
-
-```yaml
-# docker-compose.yml environment section
-LLM_FALLBACK_ENABLED: "true"
-LLM_FALLBACK_PROTOCOL: openai
-LLM_FALLBACK_BASE_URL: https://api.openai.com/v1
-LLM_FALLBACK_API_KEY: sk-your-key-here
-LLM_FALLBACK_MODEL: gpt-4o-mini
-```
-
-Or configure providers per-user through the AI Service page after first login.
-
-### 3. Start the stack
-
-```bash
-docker compose up -d
-```
-
-### 4. First-run setup
-
-Open http://localhost:8088 and create the admin account via the first-run setup form. This endpoint is only available when the users table is empty.
-
-### 5. Services
-
-| Service | Port | URL |
-| --- | --- | --- |
-| App dashboard + API | 8088 | http://localhost:8088 |
-| Browserless Chrome | 3000 | http://localhost:3000 |
-
-PostgreSQL data is mounted from the host path configured in `docker-compose.yml`. The app container also bind-mounts `data/` and `log/` directories. Update host-side paths in `docker-compose.yml` if the project is moved.
+- PostgreSQL 17+
 
 ## Environment Variables
 
@@ -432,21 +536,6 @@ Expected local ports:
 | Backend API | 8088 | http://localhost:8088 |
 | Astro frontend (dev) | 5174 | http://localhost:5174 |
 
-Setup a local KEK for development:
-
-```bash
-mkdir -p .dev-secrets
-openssl rand -hex 32 > .dev-secrets/v1.key
-chmod 600 .dev-secrets/v1.key
-```
-
-Set in `.env`:
-
-```env
-LLM_KEK_PATH=.dev-secrets
-LLM_KEK_VERSION=v1
-```
-
 Manual startup:
 
 ```bash
@@ -478,23 +567,15 @@ export PYTHONPATH="$(pwd):$(pwd)/backend:$(pwd)/tests"
 python -m pytest tests/ -v
 
 # Run specific test suites
-python -m pytest tests/test_auth.py -v
-python -m pytest tests/test_crawl_repair_service.py -v
-python -m pytest tests/test_llm_provider_crud.py -v
-python -m pytest tests/test_llm_fallback.py -v
-```
-
-### Integration Smoke Tests
-
-Shell scripts in `tests/` verify basic API and service health:
-
-```bash
-./tests/test_all.sh
+python -m pytest tests/stage1/test_auth.py -v
+python -m pytest tests/stage1/test_crawl_repair_service.py -v
+python -m pytest tests/stage1/test_llm_provider_crud.py -v
+python -m pytest tests/stage1/test_llm_fallback.py -v
 ```
 
 ### Frontend E2E Tests
 
-Playwright smoke test for the Astro dashboard:
+Playwright E2E test suite (434 tests across 11 spec files):
 
 ```bash
 cd frontend-astro
@@ -504,7 +585,7 @@ npx playwright test
 
 ## Architecture Decisions
 
-- **PostgreSQL-only**: SQLite support has been removed. `DATABASE_URL` must point to PostgreSQL.
+- **PostgreSQL-only**: SQLite support has been removed. `DATABASE_URL` must point to PostgreSQL. PostgreSQL 17 is required.
 - **SQLAlchemy 2.0 async**: All database access uses the SQLAlchemy 2.0 `AsyncSession` API and Core expressions. Raw SQL has been eliminated from the application layer.
 - **Browser strategy**: Service mode (Browserless Chrome at `ws://chrome:3000`) in Docker; local mode (`CHROME_MODE=local`) for dev. Scrapling is the default fetcher; Playwright is used as a fallback. Browser connections are reused within a crawl run.
 - **Parallel crawling**: `asyncio.gather` + `Semaphore(3)` limits concurrent page fetches.
@@ -515,7 +596,10 @@ npx playwright test
 - **CSS pipeline**: SCSS -> sass-embedded + PostCSS + LightningCSS, independent of Vite. Dev mode auto-watches via `tools/dev.mjs`.
 - **CJK word count**: Shared `compute_visible_word_count()` helper. English words counted by token, CJK by character. Used in crawler inserts, updates, and backfill to ensure consistency.
 - **Timezone**: DB stores timezone-aware UTC. API bucketing converts to `Asia/Taipei` before grouping.
-- **KEK storage**: KEK lives outside the database (Docker Secret or local `.dev-secrets/`). If the KEK is unavailable at startup and providers exist, the app refuses to start (fail-closed).
+- **KEK auto-generation**: The KEK is auto-generated on first startup if not present. The app tries multiple candidate paths (`PALIMPSEST_DATA_DIR`, `/run/secrets`) and generates a key file at the first writable location. Manual keyring setup is no longer required. If the KEK is unavailable at startup and providers exist, the app still refuses to start (fail-closed).
+- **Feed parser**: `feed_parser.py` integrates feedparser for RSS/Atom feed ingestion. feedparser's `acceptable_attributes` is extended to preserve lazy-load attributes (`data-src`, `data-lazy`, `loading`, etc.) during content sanitization.
+- **Lazy-load resolution**: `_resolve_lazy_images()` is a shared helper applied at three pipeline points to normalize lazy-loaded images into standard `src` attributes before storage and delivery.
+- **Docker image**: The published image is tagged `latest` (`jhangyu/palimpsest:latest`). The Dockerfile build label reflects the current release version.
 
 ## Security
 
