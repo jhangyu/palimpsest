@@ -1,10 +1,46 @@
-"""Schema declarations, migration helpers, and Pydantic models for crawl auto-repair.
-
-This module intentionally does not import from or modify backend/main.py.
-The application entrypoint (A0) owns wiring these declarations into startup.
-
-Pattern: mirrors core/ai_provider_migrations.py — define tables separately,
-provide idempotent DDL expansion statements, and expose backfill helpers.
+"""
+---
+name: crawl_repair_models
+description: "SQLAlchemy table declarations, idempotent DDL migration, backfill helper, and Pydantic API schemas for crawl auto-repair state machine"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_repair_models.py
+functions:
+  - name: CrawlRepairTables
+    line: 61
+    purpose: "Frozen dataclass holding site_crawl_repair_states and crawl_repair_attempts Table objects"
+  - name: define_crawl_repair_tables
+    line: 67
+    purpose: "Define and return crawl-repair table declarations bound to SQLAlchemy metadata"
+  - name: migrate_crawl_repair_tables
+    line: 520
+    purpose: "Idempotent DDL migration: create tables, add columns, apply constraints"
+  - name: backfill_repair_states
+    line: 556
+    purpose: "Insert default list/content repair state rows for every site (ON CONFLICT DO NOTHING)"
+  - name: RepairKindStatusSchema
+    line: 617
+    purpose: "Pydantic: status for a single repair kind within one weekly window"
+  - name: FeedRepairStatusSchema
+    line: 634
+    purpose: "Pydantic: aggregated repair status for a feed (list + content)"
+  - name: SiteAutoRepairConfigSchema
+    line: 646
+    purpose: "Pydantic: per-site auto-repair configuration (enabled flag, weekly limit)"
+  - name: RepairAttemptSchema
+    line: 660
+    purpose: "Pydantic: sanitized summary of a single repair attempt"
+  - name: PauseStatus
+    line: 682
+    purpose: "Pydantic: feed-level routine pause status (routine_paused, blocking_kinds)"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

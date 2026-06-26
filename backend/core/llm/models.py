@@ -1,3 +1,32 @@
+"""
+---
+name: llm_models
+description: "Shared dataclasses and enums for the LLM subsystem: ProviderConfig, LLMGenerationRequest, LLMResponse, ProviderError, ProviderCapabilities"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_registry.py
+functions:
+  - name: ProviderConfig
+    line: 41
+    purpose: "Frozen config for a provider connection: base_url, model, timeout, response size limits"
+  - name: LLMGenerationRequest
+    line: 65
+    purpose: "Validated generation request: prompt, model, max_tokens, temperature, thinking, effort"
+  - name: LLMResponse
+    line: 92
+    purpose: "Parsed LLM response: text, model used, finish_reason"
+  - name: ProviderError
+    line: 105
+    purpose: "Typed provider error with code, message, status_code, and fallback disposition"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

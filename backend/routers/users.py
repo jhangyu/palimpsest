@@ -1,3 +1,50 @@
+"""
+---
+name: users_router
+description: "User self-service API routes: profile, email/username/password update, avatar management"
+type: router
+target:
+  layer: backend
+  domain: users
+spec_doc: null
+test_file: tests/stage1/test_user_management.py
+functions:
+  - name: get_current_user_profile
+    line: 90
+    purpose: "GET /users/me — return full current user profile"
+  - name: update_current_user_profile
+    line: 96
+    purpose: "PUT /users/me — update current user's full_name"
+  - name: update_current_user_email
+    line: 115
+    purpose: "PUT /users/me/email — set pending email and send verification link"
+  - name: update_current_user_username
+    line: 183
+    purpose: "PUT /users/me/username — change current user's username (uniqueness check)"
+  - name: update_current_user_password
+    line: 219
+    purpose: "PUT /users/me/password — change password, revoke all other sessions, rotate current session"
+  - name: update_current_user_preferences
+    line: 265
+    purpose: "PUT /users/me/preferences — update current user's preferences JSON blob"
+  - name: update_current_user_avatar
+    line: 279
+    purpose: "PUT /users/me/avatar — upload avatar (max 512KB, JPEG/PNG/WebP; Pillow re-encode)"
+  - name: delete_current_user_avatar
+    line: 338
+    purpose: "DELETE /users/me/avatar — clear avatar bytes and reset source to 'none'"
+  - name: get_current_user_avatar
+    line: 357
+    purpose: "GET /users/me/avatar — serve uploaded avatar bytes or redirect to Gravatar"
+  - name: update_avatar_source
+    line: 379
+    purpose: "PUT /users/me/avatar-source — set avatar source to 'none' or 'gravatar'"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from fastapi import APIRouter, HTTPException, Response, Request, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator

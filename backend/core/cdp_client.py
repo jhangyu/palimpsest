@@ -1,12 +1,65 @@
 # backend/core/cdp_client.py
 """
-Lightweight async CDP (Chrome DevTools Protocol) client.
-
-Replaces the heavy playwright package (~136MB with bundled Node.js) with a thin
-WebSocket-based CDP client.  The project already runs a remote Chrome container
-(browserless) at ws://chrome:3000, so we only need the *client* side.
-
-Dependencies: ``websockets`` (pure-Python, ~100KB).
+---
+name: cdp_client
+description: "Lightweight async CDP client over WebSocket: replaces Playwright (~136MB) with websockets-based CDP for remote Chrome (browserless) interaction"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: CDPError
+    line: 29
+    purpose: "Exception raised when a CDP command returns an error response"
+  - name: CDPConnection
+    line: 37
+    purpose: "Manages WebSocket to Chrome; dispatches messages to browser-level and session-level handlers"
+  - name: CDPConnection.send_browser
+    line: 71
+    purpose: "Send browser-level CDP command (no sessionId); awaitable with timeout"
+  - name: CDPConnection.send_session
+    line: 87
+    purpose: "Send session-level CDP command (with sessionId at top level)"
+  - name: _FlatSession
+    line: 149
+    purpose: "CDP session for a specific target, multiplexed on the browser WebSocket"
+  - name: _FlatSession.send
+    line: 191
+    purpose: "Send CDP command via this session; awaitable with timeout"
+  - name: CDPPage
+    line: 212
+    purpose: "Browser page/tab interface: goto, wait_for_load_state, content(), close()"
+  - name: CDPPage.goto
+    line: 258
+    purpose: "Navigate to URL; timeout in ms; waits for domcontentloaded or networkidle"
+  - name: CDPPage.wait_for_selector
+    line: 289
+    purpose: "Poll DOM until CSS selector matches at least one element"
+  - name: CDPPage.content
+    line: 307
+    purpose: "Return full outer-HTML of the page (mirrors Playwright page.content())"
+  - name: CDPContext
+    line: 336
+    purpose: "Logical BrowserContext: creates pages with shared UA, viewport, headers"
+  - name: CDPContext.new_page
+    line: 347
+    purpose: "Create new tab and apply context-level settings via CDP Emulation/Network domains"
+  - name: CDPBrowser
+    line: 399
+    purpose: "Top-level CDP browser client; connect() → new_context() → new_page() workflow"
+  - name: CDPBrowser.connect
+    line: 417
+    purpose: "Class method: connect to Chrome via CDP WebSocket endpoint"
+  - name: CDPBrowser.new_context
+    line: 433
+    purpose: "Create browser context with given user-agent, viewport, locale, etc."
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import asyncio

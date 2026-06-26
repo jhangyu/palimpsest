@@ -1,3 +1,32 @@
+"""
+---
+name: llm_endpoints
+description: "Provider endpoint constants and URL utilities: base URL normalization, API path joining, Gemini model canonicalization"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_endpoints.py
+functions:
+  - name: normalize_base_url
+    line: 14
+    purpose: "Canonicalize a provider base URL: strip trailing slashes, lowercase scheme/host, reject credentials/query/fragment"
+  - name: join_api_path
+    line: 60
+    purpose: "Join a normalized base URL with an API path, deduplicating overlapping path segments"
+  - name: canonicalize_gemini_model
+    line: 73
+    purpose: "Strip leading 'models/' prefix and whitespace from a Gemini model string"
+  - name: gemini_generation_path
+    line: 82
+    purpose: "Build the Gemini generateContent API path for a given model"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 import unicodedata

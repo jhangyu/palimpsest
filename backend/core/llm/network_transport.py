@@ -1,4 +1,26 @@
-"""HTTPX transport that connects only to SSRF-validated provider addresses."""
+"""
+---
+name: llm_network_transport
+description: "HTTPX transport layer that pins every outbound request to the SSRF-validated IP address resolved at request time"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_network_transport.py
+functions:
+  - name: VerifiedIPTransport
+    line: 23
+    purpose: "AsyncBaseTransport subclass: validates origin, resolves and pins IP, rewrites Host header and SNI per request"
+  - name: create_secure_client_factory
+    line: 95
+    purpose: "Return a ClientFactory that builds HTTPX clients backed by VerifiedIPTransport"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from __future__ import annotations
 

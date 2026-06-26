@@ -1,28 +1,80 @@
-"""Sites, RSS, crawl, and analyze endpoints.
-
-Extracted from backend/main.py — every function is a verbatim copy of the
-original logic.
+"""
+---
+name: sites_router
+description: "Sites, RSS feed, crawl, and AI-analyze API routes — core feed management endpoints"
+type: router
+target:
+  layer: backend
+  domain: sites
+spec_doc: null
+test_file: tests/stage1/test_site_crud.py
+functions:
+  - name: _record_crawl_attempt
+    line: 95
+    purpose: "Wrap crawl_site_logic with attempt record INSERT/UPDATE in crawl_attempts table"
+  - name: _run_analyze
+    line: 177
+    purpose: "Shared helper — fetch page, call AI provider, return rules dict for list or content mode"
+  - name: analyze_list_structure
+    line: 241
+    purpose: "POST /analyze/list — analyze website list-page structure via AI and return CSS/XPath rules"
+  - name: analyze_content_structure
+    line: 247
+    purpose: "POST /analyze/content — analyze website content-page structure via AI and return rules"
+  - name: preview_crawl
+    line: 253
+    purpose: "POST /crawl/preview — dry-run crawl preview supporting list/content/both modes"
+  - name: create_site
+    line: 279
+    purpose: "POST /sites/ — create site record and trigger initial background crawl"
+  - name: get_site
+    line: 320
+    purpose: "GET /sites/{site_id} — return full site details (owner/admin only)"
+  - name: update_site
+    line: 332
+    purpose: "PUT /sites/{site_id} — update site settings (url, name, rules, scrape_method, filter_rules)"
+  - name: duplicate_site
+    line: 353
+    purpose: "POST /sites/{site_id}/duplicate — clone site config without articles"
+  - name: list_sites
+    line: 381
+    purpose: "GET /sites/ — list all sites (summary columns only, no large rule JSON)"
+  - name: delete_site
+    line: 392
+    purpose: "DELETE /sites/{site_id} — delete site and all related articles, events, and crawl attempts"
+  - name: get_rss
+    line: 416
+    purpose: "GET /rss/{site_identifier} — return RSS 2.0 XML feed for a site (by name or ID)"
+  - name: trigger_crawl
+    line: 497
+    purpose: "POST /crawl/{site_id} — manually trigger a background crawl for a site"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from dateutil import parser as dateutil_parser
 from rfeed import Item, Feed, Enclosure
 from sqlalchemy import text
 
 from core.ai import analyze_with_providers
-from core.crawler import crawl_site_logic, _utcnow_iso as _utcnow_iso_impl
+from core.crawler import crawl_site_logic, force_refresh_all_articles, _utcnow_iso as _utcnow_iso_impl
 from core.scraper import fetch_page
 from core.debug import create_debug_writer
 from core.ownership import check_site_owner_or_admin
 from core.db import get_db, sites, articles, rss_query_events, crawl_attempts, ai_tables as _ai_tables
 from core.llm.service import NoProviderAvailableError
+from core.feed_parser import fetch_and_parse_feed, FeedParseError
 from routers._deps import (
     require_user, _csrf_dependency,
     log_with_time, normalize_site_name, get_site_by_name_or_id,
@@ -46,6 +98,9 @@ class SiteCreate(BaseModel):
     refresh_frequency: Optional[int] = 60
     scrape_method: Optional[str] = "scrapling"
     filter_rules: Optional[dict] = None
+    source_type: str = 'html'
+    rss_full_content: bool = False
+    website_url: Optional[str] = None
 
     @field_validator('url')
     @classmethod
@@ -53,6 +108,12 @@ class SiteCreate(BaseModel):
         if not v.startswith(('http://', 'https://')):
             raise ValueError('URL must start with http:// or https://')
         return v
+
+    @model_validator(mode='after')
+    def validate_rss_fields(self) -> 'SiteCreate':
+        if self.rss_full_content and self.source_type != 'rss':
+            raise ValueError('rss_full_content can only be True when source_type is rss')
+        return self
 
 class SiteUpdate(BaseModel):
     url: Optional[str] = None
@@ -62,25 +123,48 @@ class SiteUpdate(BaseModel):
     content_rules: Optional[dict] = None
     filter_rules: Optional[dict] = None
     scrape_method: Optional[str] = None
+    source_type: Optional[str] = None
+    rss_full_content: Optional[bool] = None
+    website_url: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_rss_fields(self) -> 'SiteUpdate':
+        if self.rss_full_content and self.source_type != 'rss':
+            raise ValueError('rss_full_content can only be True when source_type is rss')
+        return self
 
 class RulesInput(BaseModel):
     list_rules: dict
     content_rules: dict
 
+class FeedParseRequest(BaseModel):
+    url: str
+
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v.startswith(('http://', 'https://')):
+            raise ValueError('URL must start with http:// or https://')
+        return v
+
 class PreviewRequest(BaseModel):
     url: str
-    list_rules: dict
-    content_rules: dict
+    list_rules: Optional[dict] = None
+    content_rules: Optional[dict] = None
     filter_rules: Optional[dict] = None
     mode: Optional[str] = "both"  # "list", "content", or "both"
-    target_url: Optional[str] = None  # 用於 content 模式下的單篇文章測試
+    target_url: Optional[str] = None  # for content mode single-article testing
     debug: Optional[bool] = False
     scrape_method: Optional[str] = "scrapling"
+    source_type: str = 'html'
+
+class ForceRefreshRequest(BaseModel):
+    scope: Literal["current", "all_db"]
 
 
 # --- Shared helper for _record_crawl_attempt ---
 
-async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, filter_rules: dict | None = None, debug_writer=None, owner_user_id=None, db=None, kek_backend=None):
+async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_rules: dict, content_rules: dict, force_update: bool, scrape_method: str, filter_rules: dict | None = None, debug_writer=None, owner_user_id=None, db=None, kek_backend=None, source_type: str = 'html', rss_full_content: bool = False, skip_empty_content: bool = False):
     """Wrapper that records a crawl attempt around crawl_site_logic."""
     if db is None:
         from core.db import async_session_factory
@@ -98,6 +182,9 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
                 owner_user_id=owner_user_id,
                 db=_session,
                 kek_backend=kek_backend,
+                source_type=source_type,
+                rss_full_content=rss_full_content,
+                skip_empty_content=skip_empty_content,
             )
 
     attempt_id = None
@@ -132,6 +219,9 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
         owner_user_id=owner_user_id,
         ai_tables=_ai_tables,
         kek_backend=_kek_backend,
+        source_type=source_type,
+        rss_full_content=rss_full_content,
+        skip_empty_content=skip_empty_content,
     )
 
     if crawl_result is None:
@@ -177,7 +267,7 @@ async def _run_analyze(mode: str, url: str, debug: bool, current_user: dict, is_
     log_with_time(f"[{label}] Starting analysis for: {url}")
 
     fetch_start = time.time()
-    page = await fetch_page(url)
+    page = await fetch_page(url, fallback_playwright=True)
     fetch_duration = time.time() - fetch_start
     log_with_time(f"[{label}] fetch_page completed: {fetch_duration:.2f}s")
 
@@ -226,6 +316,31 @@ async def _run_analyze(mode: str, url: str, debug: bool, current_user: dict, is_
 
 # --- Endpoints ---
 
+@router.post("/feed/parse")
+async def parse_feed(req: FeedParseRequest, current_user: dict = Depends(require_user)):
+    """Fetch and parse an RSS/Atom feed URL, returning feed metadata and items."""
+    try:
+        result = await fetch_and_parse_feed(req.url)
+        return {
+            "success": True,
+            "feed_title": result.feed_title,
+            "feed_link": result.feed_link,
+            "item_count": result.item_count,
+            "has_full_content": result.has_full_content,
+            "items": [
+                {
+                    "title": item.title,
+                    "url": item.url,
+                    "pub_date": item.pub_date.isoformat() if item.pub_date else None,
+                    "author": item.author,
+                }
+                for item in result.items
+            ],
+        }
+    except FeedParseError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @router.post("/analyze/list")
 async def analyze_list_structure(url: str, debug: bool = False, current_user: dict = Depends(require_user), db=Depends(get_db), kek=Depends(require_kek)):
     """Parse website list page structure (calls AI)"""
@@ -240,15 +355,72 @@ async def analyze_content_structure(url: str, debug: bool = False, current_user:
 
 @router.post("/crawl/preview")
 async def preview_crawl(req: PreviewRequest, current_user: dict = Depends(require_user)):
-    """乾跑預覽爬蟲，支援 list / content / both 模式"""
+    """Dry-run crawl preview, supports list / content / both modes and rss source_type"""
     from core.crawler import test_crawl_logic
+    # RSS source_type: two paths depending on mode and content_rules
+    if req.source_type == 'rss':
+        if req.mode in (None, 'list') or not req.content_rules:
+            # Path A: list mode or no content_rules — just parse RSS feed
+            try:
+                result = await fetch_and_parse_feed(req.url)
+                items = [
+                    {
+                        "title": item.title,
+                        "url": item.url,
+                        "published_at": item.pub_date.isoformat() if item.pub_date else None,
+                        "author": item.author,
+                        "content": item.content,
+                    }
+                    for item in result.items
+                ]
+                return {"status": "success", "data": items, "feed_title": result.feed_title, "has_full_content": result.has_full_content}
+            except FeedParseError as e:
+                raise HTTPException(status_code=422, detail=str(e))
+
+        # Path B: mode == 'both' with content_rules — use RSS for URL list, scrape for content
+        try:
+            feed_result = await fetch_and_parse_feed(req.url)
+        except FeedParseError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        rss_meta_by_url = {
+            item.url: {
+                "title": item.title,
+                "published_at": item.pub_date.isoformat() if item.pub_date else None,
+            }
+            for item in feed_result.items
+        }
+        pre_built_articles = [{"url": item.url, "title": item.title} for item in feed_result.items[:10]]
+
+        dw = create_debug_writer(
+            req.debug or False, "preview",
+            req.url.replace("https://", "").replace("http://", "").split("/")[0][:30],
+        )
+        results = await test_crawl_logic(
+            req.url,
+            req.list_rules or {},
+            req.content_rules or {},
+            filter_rules=req.filter_rules,
+            mode="both",
+            pre_built_articles=pre_built_articles,
+            rss_meta_by_url=rss_meta_by_url,
+            debug_writer=dw,
+            scrape_method=req.scrape_method or "scrapling",
+        )
+        if isinstance(results, dict) and "articles" in results:
+            response = {"status": "success", "data": results["articles"], "filter_summary": results.get("filter_summary")}
+        else:
+            response = {"status": "success", "data": results}
+        if req.debug:
+            response["debug_dir"] = dw.debug_dir
+        return response
 
     dw = create_debug_writer(req.debug or False, "preview", req.url.replace("https://", "").replace("http://", "").split("/")[0][:30])
 
     results = await test_crawl_logic(
         req.url,
-        req.list_rules,
-        req.content_rules,
+        req.list_rules or {},
+        req.content_rules or {},
         filter_rules=req.filter_rules,
         mode=req.mode or "both",
         target_url=req.target_url,
@@ -284,6 +456,9 @@ async def create_site(
         refresh_frequency=site.refresh_frequency,
         scrape_method=site.scrape_method or "scrapling",
         owner_user_id=current_user["id"],
+        source_type=site.source_type,
+        rss_full_content=site.rss_full_content,
+        website_url=site.website_url,
     )
     result = await db.execute(query)
     await db.commit()
@@ -302,6 +477,8 @@ async def create_site(
         owner_user_id=current_user["id"],
         db=db,
         kek_backend=request.app.state.kek_backend,
+        source_type=site.source_type,
+        rss_full_content=site.rss_full_content,
     )
     return {"id": site_id, "status": "created and crawling started"}
 
@@ -333,6 +510,10 @@ async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict 
     if not values:
         return {"status": "no change"}
 
+    # When switching to html source_type, clear rss_full_content
+    if values.get('source_type') == 'html':
+        values['rss_full_content'] = False
+
     query = sites.update().where(sites.c.id == site_id).values(**values)
     await db.execute(query)
     await db.commit()
@@ -360,6 +541,9 @@ async def duplicate_site(site_id: int, current_user: dict = Depends(require_user
         consecutive_failure_count=0,
         scrape_method=site['scrape_method'] or "scrapling",
         owner_user_id=current_user["id"],
+        source_type=site.get('source_type', 'html'),
+        rss_full_content=site.get('rss_full_content', False),
+        website_url=site.get('website_url'),
     )
     result = await db.execute(new_query)
     await db.commit()
@@ -372,7 +556,7 @@ async def list_sites(current_user: dict = Depends(require_user), db=Depends(get_
     rows = (await db.execute(
         text(
             "SELECT id, name, url, refresh_frequency, scrape_method, "
-            "consecutive_failure_count, owner_user_id FROM sites"
+            "consecutive_failure_count, owner_user_id, source_type, website_url FROM sites"
         )
     )).mappings().all()
     return [dict(row) for row in rows]
@@ -458,9 +642,10 @@ async def get_rss(site_identifier: str, limit: int = 20, db=Depends(get_db)):
             enclosure=enclosure
         ))
 
+    channel_link = site.get('website_url') or site['url']
     feed = Feed(
         title=site['name'],
-        link=site['url'],
+        link=channel_link,
         description=f"RSS feed for {site['name']}",
         items=items
     )
@@ -491,8 +676,21 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    list_rules = site['list_rules'] if isinstance(site['list_rules'], dict) else json.loads(site['list_rules'])
-    content_rules = site['content_rules'] if isinstance(site['content_rules'], dict) else json.loads(site['content_rules'])
+    _raw_list = site['list_rules']
+    if not _raw_list:
+        list_rules = {}
+    elif isinstance(_raw_list, dict):
+        list_rules = _raw_list
+    else:
+        list_rules = json.loads(_raw_list)
+
+    _raw_content = site['content_rules']
+    if not _raw_content:
+        content_rules = {}
+    elif isinstance(_raw_content, dict):
+        content_rules = _raw_content
+    else:
+        content_rules = json.loads(_raw_content)
     _raw_filter = site.get('filter_rules')
     filter_rules = (
         _raw_filter if isinstance(_raw_filter, dict) else json.loads(_raw_filter)
@@ -518,6 +716,8 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
         owner_user_id=current_user["id"],
         db=db,
         kek_backend=request.app.state.kek_backend,
+        source_type=site.get('source_type', 'html'),
+        rss_full_content=site.get('rss_full_content', False),
     )
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [API] Background task added")
 
@@ -525,3 +725,67 @@ async def trigger_crawl(site_id: int, request: Request, background_tasks: Backgr
     if debug:
         response["debug_dir"] = dw.debug_dir
     return response
+
+@router.post("/sites/{site_id}/force-refresh", dependencies=[Depends(_csrf_dependency)])
+async def force_refresh_site(site_id: int, req: ForceRefreshRequest, request: Request, background_tasks: BackgroundTasks, current_user: dict = Depends(require_user), db=Depends(get_db)):
+    """Force refresh articles for a site (current crawl or all stored articles)."""
+    query = sites.select().where(sites.c.id == site_id)
+    site = (await db.execute(query)).mappings().first()
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    is_admin = "admin" in current_user.get("roles", [])
+    if not check_site_owner_or_admin(site, current_user["id"], is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to access this site")
+
+    _raw_list = site['list_rules']
+    if not _raw_list:
+        list_rules = {}
+    elif isinstance(_raw_list, dict):
+        list_rules = _raw_list
+    else:
+        list_rules = json.loads(_raw_list)
+
+    _raw_content = site['content_rules']
+    if not _raw_content:
+        content_rules = {}
+    elif isinstance(_raw_content, dict):
+        content_rules = _raw_content
+    else:
+        content_rules = json.loads(_raw_content)
+
+    _raw_filter = site.get('filter_rules')
+    filter_rules = (
+        _raw_filter if isinstance(_raw_filter, dict) else json.loads(_raw_filter)
+        if isinstance(_raw_filter, str) else None
+    )
+
+    if req.scope == "all_db":
+        background_tasks.add_task(
+            force_refresh_all_articles,
+            site_id=site['id'],
+            content_rules=content_rules,
+            scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
+            db=db,
+        )
+    else:
+        # scope == "current": re-crawl with force_update + skip_empty_content
+        background_tasks.add_task(
+            _record_crawl_attempt,
+            site_id=site['id'],
+            trigger_type="manual",
+            url=site['url'],
+            list_rules=list_rules,
+            content_rules=content_rules,
+            filter_rules=filter_rules,
+            force_update=True,
+            skip_empty_content=True,
+            scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
+            owner_user_id=current_user["id"],
+            db=db,
+            kek_backend=request.app.state.kek_backend,
+            source_type=site.get('source_type', 'html'),
+            rss_full_content=site.get('rss_full_content', False),
+        )
+
+    return {"status": "started", "scope": req.scope}

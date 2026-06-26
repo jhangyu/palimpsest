@@ -1,3 +1,50 @@
+"""
+---
+name: auth_router
+description: "Auth API routes: first-run setup, login, logout, session check, register, password reset, email verify"
+type: router
+target:
+  layer: backend
+  domain: auth
+spec_doc: null
+test_file: tests/stage1/test_auth.py
+functions:
+  - name: first_run_setup
+    line: 84
+    purpose: "POST /auth/first-run-setup — create first admin user when users table is empty"
+  - name: auth_login
+    line: 143
+    purpose: "POST /auth/login — authenticate credentials, set session+CSRF cookies"
+  - name: auth_logout
+    line: 191
+    purpose: "POST /auth/logout — revoke current session and clear cookies"
+  - name: auth_me
+    line: 207
+    purpose: "GET /auth/me — return current authenticated user profile (401 if unauthenticated)"
+  - name: auth_register
+    line: 215
+    purpose: "POST /auth/register — register new user (requires AUTH_ALLOW_PUBLIC_REGISTRATION=true)"
+  - name: auth_forgot_password
+    line: 287
+    purpose: "POST /auth/forgot-password — send password reset link; always returns generic success"
+  - name: auth_reset_password
+    line: 342
+    purpose: "POST /auth/reset-password — reset password via valid token; revoke all sessions"
+  - name: auth_verify_email
+    line: 402
+    purpose: "POST /auth/verify-email — verify pending email change via verification token"
+  - name: auth_resend_verification
+    line: 468
+    purpose: "POST /auth/resend-verification — resend email verification for pending email change"
+  - name: first_run_check
+    line: 520
+    purpose: "GET /auth/first-run-check — return {needs_setup: true} when no users exist"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from datetime import datetime, timedelta, timezone
 import os

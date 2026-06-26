@@ -1,4 +1,35 @@
-"""Analytics business logic — pure computation, no FastAPI dependencies."""
+"""
+---
+name: analytics_service
+description: "Analytics business logic — pure computation functions for overview dashboard and article listing"
+type: service
+target:
+  layer: backend
+  domain: analytics
+spec_doc: null
+test_file: null
+functions:
+  - name: _parse_iso_to_taipei_date
+    line: 40
+    purpose: "Parse ISO timestamp string and return Asia/Taipei date as YYYY-MM-DD"
+  - name: _get_date_range
+    line: 53
+    purpose: "Generate list of YYYY-MM-DD date strings for past N days in Asia/Taipei timezone"
+  - name: _get_week_boundaries
+    line: 58
+    purpose: "Return ISO week start/end boundaries for this week and last week in Asia/Taipei"
+  - name: compute_analytics_overview
+    line: 70
+    purpose: "Compute aggregated analytics: article counts, word count median, feed distribution, growth chart"
+  - name: compute_articles_list
+    line: 478
+    purpose: "Compute paginated article listing with today/week/month/all filter and ILIKE search"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 import statistics
 from collections import defaultdict

@@ -1,13 +1,50 @@
 # backend/core/crawl_outcomes.py
 """
-C1 — Typed outcome models and pure-function classifier for crawl results.
-
-These dataclasses and functions are pure (no I/O, no DB, no network) so they
-can be tested exhaustively in unit tests without any external dependencies.
-
-Sentinel strings (defined in core/parser.py, replicated here for classification):
-  "Parsing failed"                — body CSS selector found no element
-  "Vue template extraction failed" — is_vue_template=True but template is broken
+---
+name: crawl_outcomes
+description: "C1 typed outcome models and pure-function classifiers for crawl results: FetchOutcome, ListOutcome, ContentOutcome enums + classify_list_outcome / classify_content_batch"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_outcomes.py
+functions:
+  - name: FetchOutcome
+    line: 31
+    purpose: "Enum: result of a single fetch_page() call (SUCCESS, HTTP_ERROR, TIMEOUT, etc.)"
+  - name: ListOutcome
+    line: 40
+    purpose: "Enum: outcome of parsing the listing page (SUCCESS, ZERO_ITEMS, FETCH_FAILED)"
+  - name: ContentOutcome
+    line: 47
+    purpose: "Enum: aggregate outcome of content batch parse (SUCCESS, PARTIAL, ALL_FAILED, etc.)"
+  - name: FetchResult
+    line: 58
+    purpose: "Dataclass: outcome of a single fetch_page() call with metadata"
+  - name: ListExtractionResult
+    line: 85
+    purpose: "Dataclass: outcome of parse_listing() with valid_items and counts"
+  - name: ContentExtractionResult
+    line: 112
+    purpose: "Dataclass: outcome of parse_article() for a single article"
+  - name: ContentExtractionResult.is_effective
+    line: 139
+    purpose: "Property: True if content passes effective-content thresholds"
+  - name: is_valid_content
+    line: 146
+    purpose: "Pure function: determine if extracted content qualifies as effective (>=20 words or >=80 non-ws chars)"
+  - name: classify_list_outcome
+    line: 195
+    purpose: "Classify list fetch+parse into ListExtractionResult with appropriate outcome"
+  - name: classify_content_batch
+    line: 238
+    purpose: "Classify aggregate batch of ContentExtractionResult into ContentOutcome"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

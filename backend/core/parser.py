@@ -1,5 +1,33 @@
 # backend/core/parser.py
-"""Pure parsing layer — Scrapling-based article and listing parsers."""
+"""
+---
+name: parser
+description: "Pure parsing layer: Scrapling-based listing and article parsers; normalize_selector, parse_listing, parse_article with Vue template support"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: normalize_selector
+    line: 15
+    purpose: "Standardize CSS selector: fix smart quotes to ASCII quotes"
+  - name: extract_article_info
+    line: 26
+    purpose: "Extract URL and title from a single list item element using rules"
+  - name: parse_listing
+    line: 66
+    purpose: "Parse article list from Scrapling page object or raw HTML string using list_rules"
+  - name: parse_article
+    line: 132
+    purpose: "Parse article content/date/image/author from Scrapling page or raw HTML using content_rules"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from urllib.parse import urljoin
 from .vue_parser import (
     extract_vue_content,
@@ -182,10 +210,14 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
         img_selector = normalize_selector(content_rules.get('image', '')) or 'img'
         img_el = page.find(img_selector)
         if img_el:
+            raw_src = img_el.attrib.get('src', '')
             image_url = (
-                img_el.attrib.get('src', '')
+                (raw_src if raw_src.startswith('http') else '')
+                or img_el.attrib.get('data-original', '')
                 or img_el.attrib.get('data-src', '')
                 or img_el.attrib.get('data-lazy-src', '')
+                or img_el.attrib.get('data-lazy', '')
+                or raw_src
             )
             if image_url and not image_url.startswith('http'):
                 image_url = urljoin(article_url, image_url)

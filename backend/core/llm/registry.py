@@ -1,3 +1,23 @@
+"""
+---
+name: llm_registry
+description: "Provider factory registry: maps LLMProtocol enum to provider class, wires secure SSRF-safe client factory by default"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_registry.py
+functions:
+  - name: create_provider
+    line: 18
+    purpose: "Instantiate the correct provider class for a given LLMProtocol; inject secure client factory unless overridden"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 from .anthropic_provider import AnthropicProvider

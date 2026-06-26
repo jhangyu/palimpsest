@@ -1,7 +1,30 @@
 # backend/core/scraper.py
 """
-Scrapling 抓取抽象層。
-封裝 Scrapling Fetcher 作為預設抓取引擎，並保留 Playwright fallback。
+---
+name: scraper
+description: "Scrapling fetch abstraction layer: unified fetch_page() interface supporting scrapling (default) and playwright methods with shared thread pool and headers"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: _fetch_scrapling_sync
+    line: 32
+    purpose: "Synchronous Scrapling Fetcher.get() call; run via thread pool to avoid blocking event loop"
+  - name: fetch_page
+    line: 43
+    purpose: "Unified async fetch: scrapling (default) or playwright; supports fallback_playwright=True to retry with playwright on anti-bot status codes"
+constants:
+  - name: _FALLBACK_STATUSES
+    line: 50
+    purpose: "Set of HTTP status codes that trigger playwright fallback: 403, 429, 451, 503 (anti-bot signals)"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import asyncio
@@ -28,6 +51,11 @@ DEFAULT_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
+# Anti-bot HTTP status codes that trigger playwright fallback:
+# 403 Forbidden (WAF/bot detection), 429 Too Many Requests (rate limiting),
+# 451 Unavailable For Legal Reasons (geo-block), 503 Service Unavailable (Cloudflare JS challenge)
+_FALLBACK_STATUSES = {403, 429, 451, 503}
+
 
 def _fetch_scrapling_sync(url: str, headers: dict):
     """
@@ -40,7 +68,7 @@ def _fetch_scrapling_sync(url: str, headers: dict):
     return page
 
 
-async def fetch_page(url: str, method: str = "scrapling", headers: Optional[dict] = None):
+async def fetch_page(url: str, method: str = "scrapling", headers: Optional[dict] = None, fallback_playwright: bool = False):
     """
     統一抓取介面。
 
@@ -48,6 +76,7 @@ async def fetch_page(url: str, method: str = "scrapling", headers: Optional[dict
         url: 目標網址
         method: 抓取方式，'scrapling'（預設）或 'playwright'
         headers: 自訂 HTTP headers，將與預設 headers 合併（自訂優先）
+        fallback_playwright: scrapling 回傳 4xx/5xx 時自動改用 playwright 重試
 
     Returns:
         Scrapling page 物件（支援 .css()、.xpath()、.text、.attrib）。
@@ -66,6 +95,10 @@ async def fetch_page(url: str, method: str = "scrapling", headers: Optional[dict
                 partial(_fetch_scrapling_sync, url, merged_headers),
             )
             log_with_time(f"[Scraper] Status {page.status}: {url}")
+            if fallback_playwright and page.status in _FALLBACK_STATUSES:
+                log_with_time(f"[Scraper] Scrapling got {page.status}, falling back to playwright: {url}")
+                # fallback_playwright intentionally NOT passed: playwright is the terminal fallback
+                return await fetch_page(url, method="playwright", headers=headers)
             return page
         except Exception as e:
             log_with_time(f"[Scraper] Scrapling error for {url}: {e}")

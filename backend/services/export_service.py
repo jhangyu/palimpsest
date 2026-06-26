@@ -1,8 +1,46 @@
-"""Export/Import business logic for database management.
-
-Extracted from routers/database.py — pure service layer with no FastAPI dependencies.
-Service functions raise ValueError for business-rule violations; the router converts
-these to HTTPException.
+"""
+---
+name: export_service
+description: "Database export/import and status business logic — pure service layer with no FastAPI dependencies"
+type: service
+target:
+  layer: backend
+  domain: database
+spec_doc: null
+test_file: null
+functions:
+  - name: _ExportEncoder
+    line: 78
+    purpose: "Custom JSON encoder for export: handles datetime, date, and bytes fields"
+  - name: _serialize_row_for_export
+    line: 91
+    purpose: "Serialize a single database row dict to a JSON string for export"
+  - name: _coerce_datetime_fields
+    line: 96
+    purpose: "Coerce ISO 8601 datetime strings back to datetime objects before import INSERT"
+  - name: prepare_export
+    line: 116
+    purpose: "Validate requested tables, compute row counts, return (tables, version, counts)"
+  - name: stream_export_json
+    line: 152
+    purpose: "Async generator — stream JSON export in 1000-row batches to avoid memory spikes"
+  - name: parse_import_file
+    line: 192
+    purpose: "Parse and validate import file (JSON or ZIP); raises ValueError for invalid format"
+  - name: preview_import
+    line: 218
+    purpose: "Preview import: check schema compatibility and count new vs conflicting rows per table"
+  - name: execute_import
+    line: 345
+    purpose: "Execute import with FK ID remapping; supports skip or overwrite mode"
+  - name: compute_database_status
+    line: 597
+    purpose: "Compute DB status: schema version, table row counts, and pending migrations"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import asyncio

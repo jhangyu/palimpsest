@@ -1,29 +1,28 @@
-"""Article filter engine — recursive tri-state evaluation.
-
-Public API:
-    apply_filter(articles, filter_config, available_fields) -> (passed, filtered_out)
-
-Data structures expected in filter_config:
-    {
-        "mode": "blacklist" | "whitelist",
-        "match_whole_word": bool,
-        "root": FilterGroup
-    }
-
-    FilterGroup = {
-        "id": str,
-        "type": "group",
-        "operator": "and" | "or",
-        "children": list[FilterRule | FilterGroup]
-    }
-
-    FilterRule = {
-        "id": str,
-        "type": "rule",
-        "field": "title" | "content" | "title_content",
-        "match": "contains" | "not_contains" | "equals" | "starts_with" | "ends_with" | "regex",
-        "value": str
-    }
+"""
+---
+name: filter_engine
+description: "Recursive tri-state article filter engine: blacklist/whitelist mode with AND/OR groups, whole-word matching, regex with ReDoS protection"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: apply_filter
+    line: 227
+    purpose: "Apply filter config to an article list; return (passed, filtered_out) using tri-state deferred evaluation"
+  - name: evaluate_group
+    line: 174
+    purpose: "Recursively evaluate AND/OR group with tri-state (True/False/None-defer) semantics"
+  - name: evaluate_rule
+    line: 133
+    purpose: "Evaluate a single match rule against an article field; returns None when field is unavailable"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations
@@ -266,6 +265,9 @@ def apply_filter(
     root = filter_config.get('root')
 
     if not root:
+        return list(articles), []
+
+    if not root.get('children'):
         return list(articles), []
 
     # Pre-compile all regex patterns once for the entire article batch

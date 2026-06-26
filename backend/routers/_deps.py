@@ -1,7 +1,58 @@
-"""Shared dependencies and helper functions for all routers.
-
-Extracted from backend/main.py — every function is a verbatim copy of the
-original logic.
+"""
+---
+name: deps
+description: "Shared FastAPI dependency-injection functions and helper utilities used by all routers"
+type: deps
+target:
+  layer: backend
+  domain: shared
+spec_doc: null
+test_file: null
+functions:
+  - name: log_with_time
+    line: 92
+    purpose: "Timestamped print logger — prefixes messages with current datetime"
+  - name: get_current_user
+    line: 117
+    purpose: "FastAPI DI — resolve current user from session cookie; returns None if unauthenticated"
+  - name: require_user
+    line: 160
+    purpose: "FastAPI DI — raise 401 if user is not authenticated"
+  - name: require_admin
+    line: 167
+    purpose: "FastAPI DI — raise 403 if authenticated user lacks admin role"
+  - name: _session_ttl_hours
+    line: 178
+    purpose: "Return SESSION_TTL_HOURS env var as int (default 24)"
+  - name: require_kek
+    line: 186
+    purpose: "FastAPI DI — raise 503 if KEK backend is not configured"
+  - name: normalize_site_name
+    line: 198
+    purpose: "Normalize site name to URL-friendly format (lowercase, spaces→underscore)"
+  - name: get_site_by_name_or_id
+    line: 209
+    purpose: "Query site by numeric ID or normalized name (O(1) SQL lookup)"
+  - name: _create_session_and_cookies
+    line: 242
+    purpose: "Create auth session record and set session + CSRF cookies on response"
+  - name: _user_to_response
+    line: 266
+    purpose: "Serialize user DB row to standard response dict"
+  - name: _user_to_me_response
+    line: 284
+    purpose: "Serialize user DB row to 'me' response dict (adds pending_email, preferences)"
+  - name: _get_user_roles
+    line: 292
+    purpose: "Fetch list of role names for a given user_id"
+  - name: _csrf_dependency
+    line: 308
+    purpose: "FastAPI DI — validate CSRF token on state-changing routes"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import os
@@ -157,7 +208,7 @@ async def get_site_by_name_or_id(site_identifier: str, db):
 
     F-M013: Uses SQL WHERE clauses instead of fetching all rows (O(1) vs O(N)).
     """
-    _rss_cols = [sites.c.id, sites.c.name, sites.c.url]
+    _rss_cols = [sites.c.id, sites.c.name, sites.c.url, sites.c.website_url]
     # 先嘗試當作 ID 查詢
     try:
         site_id = int(site_identifier)

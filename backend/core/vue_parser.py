@@ -1,5 +1,42 @@
 # backend/core/vue_parser.py
-"""Shared Vue template JSON parsing utilities"""
+"""
+---
+name: vue_parser
+description: "Vue template JSON parsing utilities: extract JSON from <template> tags, strip Vue bindings, and extract date/image/author from parsed Vue data"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: strip_vue_bindings
+    line: 21
+    purpose: "Remove Vue binding syntax (:attr=, @click=, v-if=, etc.) from template text"
+  - name: extract_vue_json
+    line: 28
+    purpose: "Extract and return JSON content from <template> tags with depth tracking"
+  - name: parse_vue_json
+    line: 72
+    purpose: "Parse cleaned template content as JSON dict; returns None on error"
+  - name: extract_date_from_vue_data
+    line: 81
+    purpose: "Extract publication date string from parsed Vue JSON using priority key list"
+  - name: extract_image_from_vue_data
+    line: 89
+    purpose: "Extract image URL from parsed Vue JSON using priority key list"
+  - name: extract_author_from_vue_data
+    line: 97
+    purpose: "Extract author name from parsed Vue JSON using priority key list"
+  - name: extract_vue_content
+    line: 108
+    purpose: "Extract content HTML and full data dict from Vue template page"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 import re
 import json
 from typing import Optional, Tuple

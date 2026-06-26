@@ -1,4 +1,26 @@
-"""Analytics and articles endpoints."""
+"""
+---
+name: analytics_router
+description: "Analytics overview and paginated articles list API routes"
+type: router
+target:
+  layer: backend
+  domain: analytics
+spec_doc: null
+test_file: null
+functions:
+  - name: get_analytics_overview
+    line: 35
+    purpose: "GET /analytics/overview — return aggregated analytics dashboard data for N days"
+  - name: list_articles
+    line: 45
+    purpose: "GET /articles/list — paginated article listing with filter (today/week/month/all) and search"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from fastapi import APIRouter, Depends
 

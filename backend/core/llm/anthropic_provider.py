@@ -1,3 +1,29 @@
+"""
+---
+name: llm_anthropic_provider
+description: "Anthropic LLM provider: Messages API, adaptive and budget thinking modes, model capability detection (claude-3/4/opus/sonnet)"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_anthropic_provider.py
+functions:
+  - name: AnthropicProvider.list_models
+    line: 49
+    purpose: "Fetch model list from /v1/models and map to ModelInfo with Anthropic-specific capability detection"
+  - name: AnthropicProvider.generate
+    line: 77
+    purpose: "POST to /v1/messages; select adaptive vs budget thinking mode based on model pattern"
+  - name: AnthropicProvider.test_connection
+    line: 133
+    purpose: "Send minimal generation request to verify credentials and connectivity"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 import re

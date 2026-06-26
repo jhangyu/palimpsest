@@ -1,21 +1,44 @@
 # backend/core/time_provider.py
 """
-C1 — Deterministic time provider for crawl auto-repair.
-
-Provides a Clock protocol, SystemClock and FakeClock implementations, and
-the taipei_week_window() helper that determines the current Sunday-anchored
-week boundary in Asia/Taipei time.
-
-Design goals:
-  - All production code accepts a Clock instance via DI (never calls datetime.now() directly).
-  - Tests inject FakeClock with a fixed timestamp, making time-sensitive logic deterministic.
-  - taipei_week_window() is a pure function — no side effects, no I/O.
-
-Week definition (Decision Freeze, C0):
-  - Week starts on SUNDAY (weekday index 6 in Python's isoweekday(), or 6 for .weekday()).
-  - Timezone: Asia/Taipei (UTC+8, no DST).
-  - WeekWindow.start_utc is Sunday 00:00:00 Taipei time expressed in UTC (Sat 16:00:00 UTC).
-  - WeekWindow.end_utc is the following Sunday 00:00:00 Taipei time.
+---
+name: time_provider
+description: "C1 deterministic time provider: Clock protocol, SystemClock/FakeClock implementations, and taipei_week_window() for Sunday-anchored Asia/Taipei week buckets"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_time_provider.py
+functions:
+  - name: Clock
+    line: 38
+    purpose: "Protocol for injectable time providers (DI interface)"
+  - name: Clock.now_utc
+    line: 41
+    purpose: "Return current moment as timezone-aware UTC datetime"
+  - name: SystemClock
+    line: 46
+    purpose: "Production clock: delegates to datetime.now(timezone.utc)"
+  - name: FakeClock
+    line: 55
+    purpose: "Test clock: returns fixed UTC datetime; supports advance()"
+  - name: FakeClock.advance
+    line: 79
+    purpose: "Advance the fixed clock by seconds/minutes/hours (in-place)"
+  - name: WeekWindow
+    line: 87
+    purpose: "Frozen dataclass: Sunday-anchored week window with start_utc, end_utc, start_local_date"
+  - name: WeekWindow.contains
+    line: 103
+    purpose: "Return True if ts_utc falls within [start_utc, end_utc)"
+  - name: taipei_week_window
+    line: 112
+    purpose: "Pure function: compute current Sunday-anchored week window in Asia/Taipei time"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

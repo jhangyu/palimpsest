@@ -1,4 +1,48 @@
 # backend/core/crawler.py
+"""
+---
+name: crawler
+description: "Core crawl engine: Scrapling/Playwright page fetching, article extraction, DB persistence with force-update and filter support, and dry-run preview mode"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_characterization.py
+functions:
+  - name: _get_http_client
+    line: 36
+    purpose: "Lazily create and return shared httpx AsyncClient singleton (PERF-008)"
+  - name: _utcnow_iso
+    line: 54
+    purpose: "Return current UTC time as timezone-aware ISO string"
+  - name: _parse_pub_date
+    line: 59
+    purpose: "Convert raw date string or datetime to timezone-aware datetime"
+  - name: compute_visible_word_count
+    line: 73
+    purpose: "Compute visible word count from HTML; CJK chars counted individually"
+  - name: _require_playwright
+    line: 169
+    purpose: "Lazy-import playwright for CHROME_MODE=local; raises clear error if missing"
+  - name: get_page_content
+    line: 181
+    purpose: "Render URL via remote Chrome (CDP) or local Playwright; returns HTML string"
+  - name: get_page_content_on_page
+    line: 244
+    purpose: "Execute page navigation and content extraction on a given Page object"
+  - name: crawl_site_logic
+    line: 272
+    purpose: "Full crawl: fetch listing, extract articles, persist to DB with auto-repair trigger"
+  - name: test_crawl_logic
+    line: 625
+    purpose: "Dry-run preview crawl returning article list + filter summary; no DB writes"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 import os
 import re
 import asyncio
@@ -13,6 +57,8 @@ from core.db import sites, articles
 from core.scraper import fetch_page
 from core.parser import parse_listing, parse_article, normalize_selector
 from core.filter_engine import apply_filter
+from core.sanitizer import sanitize_content_html
+from core.feed_parser import fetch_and_parse_feed, FeedParseError
 
 
 def log_with_time(msg):
@@ -269,7 +315,23 @@ async def get_page_content_on_page(page, url, wait_for_selector=None, fast_mode=
     return await page.content()
 
 
-async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rules: dict, db, debug_writer=None, force_update: bool = False, scrape_method: str = "scrapling", owner_user_id=None, ai_tables=None, kek_backend=None, filter_rules: dict | None = None):
+async def crawl_site_logic(
+    site_id: int,
+    url: str,
+    list_rules: dict,
+    content_rules: dict,
+    db,
+    debug_writer=None,
+    force_update: bool = False,
+    scrape_method: str = "scrapling",
+    owner_user_id=None,
+    ai_tables=None,
+    kek_backend=None,
+    filter_rules: dict | None = None,
+    source_type: str = "html",
+    rss_full_content: bool = False,
+    skip_empty_content: bool = False,
+):
     """
     爬取網站邏輯，包含自動修復機制 (Scrapling 兩階段流程)
 
@@ -277,6 +339,9 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         force_update: 如果為 True，即使 URL 已存在也會用最新內容覆蓋（手動重爬模式）
                       如果為 False，會比對 published_at，只插入時間改變的文章（排程模式）
         scrape_method: 抓取方式，'scrapling'（預設）或 'playwright'
+        source_type: 'html' (default) or 'rss' — controls which Stage 1 path is taken
+        rss_full_content: When True and source_type='rss', use RSS content directly
+                          (skip Stage 2 page fetching)
 
     Returns:
         dict with keys: status, articles_found, articles_saved, articles_updated,
@@ -300,73 +365,244 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
     try:
         log_with_time(f"[Crawl] >>>>>>>> Starting crawl for site {site_id}: {url}")
 
-        # Stage 1: 取得列表頁
-        page = await fetch_page(url, method=scrape_method)
-        if page is None:
-            log_with_time(f"[Crawl] Failed to get page for site {site_id}")
-            result["status"] = "fail"
-            result["error_message"] = "Failed to fetch listing page"
-            return result
+        # articles_found and rss_items_by_url are populated by the appropriate
+        # Stage 1 path (RSS or HTML) and then consumed by the common Stage 2 code.
+        articles_found = []
+        rss_items_by_url: dict = {}  # populated in RSS non-full-content path for fallback
 
-        if debug_writer is not None:
-            debug_writer.save("01", "list_raw_html.html", page.html_content or "")
+        # ── RSS branch: replaces HTML Stage 1 (fetch_page + parse_listing) ──────
+        if source_type == "rss":
+            try:
+                feed_result = await fetch_and_parse_feed(url)
+            except FeedParseError as e:
+                log_with_time(f"[Crawl] RSS feed parse failed for site {site_id}: {e}")
+                result["status"] = "fail"
+                result["error_message"] = str(e)
+                return result
 
-        # 解析文章列表
-        articles_found = parse_listing(page, list_rules, url)
-        result["articles_found"] = len(articles_found)
-
-        # 自動修復邏輯
-        if len(articles_found) == 0:
-            log_with_time(f"[Crawl] Warning: No items found for site {site_id}. Rules might be broken.")
-            row = (await db.execute(
-                select(sites.c.consecutive_failure_count)
-                .where(sites.c.id == site_id)
-            )).mappings().first()
-            current_count = row['consecutive_failure_count'] if row else 0
-            new_count = current_count + 1
-            await db.execute(
-                sites.update()
-                .where(sites.c.id == site_id)
-                .values(consecutive_failure_count=new_count)
-            )
-            await db.commit()
-
-            if new_count >= FAILURE_THRESHOLD:
-                if owner_user_id is not None and ai_tables is not None and kek_backend is not None:
-                    from core.ai import analyze_with_providers
-                    try:
-                        new_list_rules = await analyze_with_providers(
-                            page.html_content or "", "list",
-                            user_id=owner_user_id, db=db,
-                            tables=ai_tables, kek_backend=kek_backend,
-                        )
-                    except Exception:
-                        new_list_rules = {}
-                else:
-                    log_with_time(f"[Crawl] Skipping auto-repair for site {site_id}: no owner context available")
-                    new_list_rules = {}
-                if new_list_rules and "item" in new_list_rules:
+            # Store website_url from feed-level metadata on the first crawl
+            # (only updates when website_url is currently NULL to avoid overwriting
+            #  a manually-set value).
+            if feed_result.feed_link:
+                try:
                     await db.execute(
-                        sites.update()
-                        .where(sites.c.id == site_id)
-                        .values(list_rules=json.dumps(new_list_rules), consecutive_failure_count=0)
+                        text(
+                            "UPDATE sites SET website_url = :wu "
+                            "WHERE id = :sid AND website_url IS NULL"
+                        ),
+                        {"wu": feed_result.feed_link, "sid": site_id},
                     )
                     await db.commit()
-                    list_rules = new_list_rules
-                    articles_found = parse_listing(page, list_rules, url)
-                    result["articles_found"] = len(articles_found)
+                except Exception as _wu_err:
+                    log_with_time(
+                        f"[Crawl] Warning: could not store website_url for site {site_id}: {_wu_err}"
+                    )
+                    try:
+                        await db.rollback()
+                    except Exception:
+                        pass
 
-            if len(articles_found) == 0:
+            rss_article_links = [
+                {"url": item.url, "title": item.title} for item in feed_result.items
+            ]
+            rss_items_by_url = {item.url: item for item in feed_result.items}
+            result["articles_found"] = len(rss_article_links)
+
+            if rss_full_content:
+                # ── Full-content mode: batch dedup → sanitize → insert ────────────
+                article_urls = [a["url"] for a in rss_article_links]
+                if not force_update and article_urls:
+                    existing_res = await db.execute(
+                        text("SELECT url FROM articles WHERE url = ANY(:urls)"),
+                        {"urls": article_urls},
+                    )
+                    existing_urls = {row[0] for row in existing_res}
+                    rss_article_links = [
+                        a for a in rss_article_links if a["url"] not in existing_urls
+                    ]
+
+                now_utc = _utc_now()
+                for link_info in rss_article_links:
+                    rss_item = rss_items_by_url[link_info["url"]]
+                    # Pre-strip script/style/iframe before sanitizing so that
+                    # their inner text (e.g. alert('xss')) is removed entirely.
+                    _raw = _SCRIPT_RE.sub('', rss_item.content) if rss_item.content else ""
+                    _raw = re.sub(r'<iframe\b[^>]*>.*?</iframe>', '', _raw, flags=re.S | re.I)
+                    content_html = sanitize_content_html(_raw) if _raw else ""
+                    word_count = _compute_wc(content_html)
+                    pub_date = (
+                        _parse_pub_date(rss_item.pub_date) if rss_item.pub_date else _utc_now()
+                    )
+
+                    try:
+                        if force_update:
+                            if skip_empty_content and not (content_html or "").strip():
+                                log_with_time(f"[Crawl] Force refresh skipped (empty content): {rss_item.url[:50]}")
+                                continue
+                            # INSERT OR UPDATE — preserve created_at on conflict
+                            await db.execute(
+                                text("""
+                                    INSERT INTO articles
+                                        (site_id, title, url, content, image_url,
+                                         published_at, created_at, updated_at,
+                                         word_count, author)
+                                    VALUES
+                                        (:sid, :title, :url, :content, :image_url,
+                                         :pub_date, :created_at, :updated_at,
+                                         :word_count, :author)
+                                    ON CONFLICT (url) DO UPDATE SET
+                                        site_id = :sid,
+                                        title = :title,
+                                        content = :content,
+                                        image_url = :image_url,
+                                        published_at = :pub_date,
+                                        updated_at = :updated_at,
+                                        word_count = :word_count,
+                                        author = :author
+                                """),
+                                {
+                                    "sid": site_id,
+                                    "title": rss_item.title,
+                                    "url": rss_item.url,
+                                    "content": content_html,
+                                    "image_url": rss_item.image_url,
+                                    "pub_date": pub_date,
+                                    "created_at": now_utc,
+                                    "updated_at": now_utc,
+                                    "word_count": word_count,
+                                    "author": rss_item.author,
+                                },
+                            )
+                            await db.commit()
+                            log_with_time(
+                                f"[Crawl] RSS full-content force updated: {rss_item.title[:30]}..."
+                            )
+                            result["articles_updated"] += 1
+                        else:
+                            await db.execute(
+                                articles.insert().values(
+                                    site_id=site_id,
+                                    title=rss_item.title,
+                                    url=rss_item.url,
+                                    content=content_html,
+                                    image_url=rss_item.image_url,
+                                    author=rss_item.author,
+                                    published_at=pub_date,
+                                    created_at=now_utc,
+                                    updated_at=now_utc,
+                                    word_count=word_count,
+                                )
+                            )
+                            await db.commit()
+                            log_with_time(
+                                f"[Crawl] RSS full-content saved: {rss_item.title[:30]}..."
+                            )
+                            result["articles_saved"] += 1
+                    except Exception as db_err:
+                        log_with_time(
+                            f"[Crawl] DB error saving RSS article {rss_item.url}: {db_err}"
+                        )
+                        try:
+                            await db.rollback()
+                        except Exception:
+                            pass
+                        result["articles_failed"] += 1
+
+                log_with_time(
+                    f"[Crawl] RSS full-content completed for site {site_id}: "
+                    f"saved={result['articles_saved']}, updated={result['articles_updated']}"
+                )
                 return result
-        else:
-            await db.execute(
-                sites.update()
-                .where(sites.c.id == site_id)
-                .values(consecutive_failure_count=0)
-            )
-            await db.commit()
 
-        # 過濾文章（排程模式：只抓不存在的）
+            else:
+                # ── Non-full-content mode: use RSS items as article list ───────────
+                # rss_items_by_url is populated above and accessible in the Stage 2
+                # fetch_and_save_content closure for pub_date/author fallback.
+                articles_found = rss_article_links
+
+                # Reset consecutive failure count: feed was successfully fetched
+                await db.execute(
+                    sites.update()
+                    .where(sites.c.id == site_id)
+                    .values(consecutive_failure_count=0)
+                )
+                await db.commit()
+
+                if not articles_found:
+                    return result
+
+        else:
+            # ── HTML path: existing Stage 1 code (fetch_page + parse_listing) ────
+            page = await fetch_page(url, method=scrape_method, fallback_playwright=True)
+            if page is None:
+                log_with_time(f"[Crawl] Failed to get page for site {site_id}")
+                result["status"] = "fail"
+                result["error_message"] = "Failed to fetch listing page"
+                return result
+
+            if debug_writer is not None:
+                debug_writer.save("01", "list_raw_html.html", page.html_content or "")
+
+            # 解析文章列表
+            articles_found = parse_listing(page, list_rules, url)
+            result["articles_found"] = len(articles_found)
+
+            # 自動修復邏輯
+            if len(articles_found) == 0:
+                log_with_time(
+                    f"[Crawl] Warning: No items found for site {site_id}. Rules might be broken."
+                )
+                row = (await db.execute(
+                    select(sites.c.consecutive_failure_count)
+                    .where(sites.c.id == site_id)
+                )).mappings().first()
+                current_count = row['consecutive_failure_count'] if row else 0
+                new_count = current_count + 1
+                await db.execute(
+                    sites.update()
+                    .where(sites.c.id == site_id)
+                    .values(consecutive_failure_count=new_count)
+                )
+                await db.commit()
+
+                if new_count >= FAILURE_THRESHOLD:
+                    if owner_user_id is not None and ai_tables is not None and kek_backend is not None:
+                        from core.ai import analyze_with_providers
+                        try:
+                            new_list_rules = await analyze_with_providers(
+                                page.html_content or "", "list",
+                                user_id=owner_user_id, db=db,
+                                tables=ai_tables, kek_backend=kek_backend,
+                            )
+                        except Exception:
+                            new_list_rules = {}
+                    else:
+                        log_with_time(
+                            f"[Crawl] Skipping auto-repair for site {site_id}: no owner context available"
+                        )
+                        new_list_rules = {}
+                    if new_list_rules and "item" in new_list_rules:
+                        await db.execute(
+                            sites.update()
+                            .where(sites.c.id == site_id)
+                            .values(list_rules=json.dumps(new_list_rules), consecutive_failure_count=0)
+                        )
+                        await db.commit()
+                        list_rules = new_list_rules
+                        articles_found = parse_listing(page, list_rules, url)
+                        result["articles_found"] = len(articles_found)
+
+                if len(articles_found) == 0:
+                    return result
+            else:
+                await db.execute(
+                    sites.update()
+                    .where(sites.c.id == site_id)
+                    .values(consecutive_failure_count=0)
+                )
+                await db.commit()
+
+        # ── Common path: dedup + Stage 1 filter + Stage 2 ───────────────────────
         # PERF-005: Batch existence check — one query instead of N individual queries
         if force_update:
             articles_to_crawl = list(articles_found)
@@ -397,7 +633,10 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
             except Exception as e:
                 log_with_time(f"[Crawl] filter_rules error at Stage 1, skipping: {e}")
 
-        log_with_time(f"[Crawl] Found {len(articles_to_crawl)} articles to crawl for site {site_id} (force_update={force_update})")
+        log_with_time(
+            f"[Crawl] Found {len(articles_to_crawl)} articles to crawl for site {site_id} "
+            f"(force_update={force_update})"
+        )
 
         if debug_writer is not None:
             debug_writer.save("02", "list_items.json", json.dumps(articles_to_crawl, ensure_ascii=False, indent=2))
@@ -461,7 +700,7 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                     a_page = Selector(_html) if _html else None
                     a_page_html = _html or ""
                 else:
-                    a_page = await fetch_page(a_url, method=scrape_method)
+                    a_page = await fetch_page(a_url, method=scrape_method, fallback_playwright=True)
                     a_page_html = getattr(a_page, 'html_content', '') if a_page is not None else ""
 
                 if a_page is None:
@@ -483,6 +722,17 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
 
                 if parsed_date:
                     pub_date = parsed_date
+
+                # RSS fallback: if content rules didn't extract pub_date / author,
+                # use values from the RSS feed item as a fallback.
+                if source_type == "rss" and rss_items_by_url:
+                    rss_item = rss_items_by_url.get(a_url)
+                    if rss_item:
+                        if not parsed_date and rss_item.pub_date:
+                            pub_date = rss_item.pub_date
+                        if not author and rss_item.author:
+                            author = rss_item.author
+
                 pub_date = _parse_pub_date(pub_date)
 
                 # Stage 2 Filter: apply full filter (title + content) before DB write
@@ -510,6 +760,9 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
                 async with _db_lock:
                     try:
                         if force_update:
+                            if skip_empty_content and not (content_text or "").strip():
+                                log_with_time(f"[Crawl] Force refresh skipped (empty content): {a_url[:50]}")
+                                return
                             # 手動重爬模式：INSERT OR UPDATE, preserve created_at on conflict
                             await db.execute(
                                 text("""
@@ -622,7 +875,84 @@ async def crawl_site_logic(site_id: int, url: str, list_rules: dict, content_rul
         return result
 
 
-async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filter_rules: dict | None = None, mode: str = "both", target_url: str | None = None, debug_writer=None, scrape_method: str = "scrapling") -> dict:
+async def force_refresh_all_articles(site_id: int, content_rules: dict, scrape_method: str, db) -> dict:
+    """Re-scrape ALL articles in DB for a site. Skip if content is empty after scraping."""
+    try:
+        rows = (await db.execute(
+            select(articles.c.url, articles.c.title).where(articles.c.site_id == site_id)
+        )).mappings().all()
+
+        semaphore = asyncio.Semaphore(3)
+        _db_lock = asyncio.Lock()
+        updated = 0
+        skipped_empty = 0
+        failed = 0
+
+        async def refresh_one(row):
+            nonlocal updated, skipped_empty, failed
+            a_url = row["url"]
+            async with semaphore:
+                a_page = await fetch_page(a_url, method=scrape_method, fallback_playwright=True)
+                if a_page is None:
+                    failed += 1
+                    return
+                try:
+                    content_text, parsed_date, image_url, author = parse_article(a_page, content_rules, a_url)
+                except Exception as parse_err:
+                    log_with_time(f"[ForceRefresh] Parse error for {a_url[:50]}: {parse_err}")
+                    failed += 1
+                    return
+                if not (content_text or "").strip():
+                    skipped_empty += 1
+                    return
+
+                # Extract title from content_rules title selector, fallback to existing
+                title = row["title"]
+                try:
+                    title_selector = normalize_selector(content_rules.get("title", ""))
+                    if title_selector:
+                        el = a_page.find(title_selector)
+                        if el and (el.text or "").strip():
+                            title = el.text.strip()
+                except Exception:
+                    pass  # keep existing title on any selector error
+
+                now_utc = datetime.now(timezone.utc)
+                wc = compute_visible_word_count(content_text)
+                pub_date = _parse_pub_date(parsed_date) if parsed_date else None
+
+                async with _db_lock:
+                    try:
+                        update_vals = {
+                            "content": content_text,
+                            "title": title,
+                            "image_url": image_url,
+                            "updated_at": now_utc,
+                            "word_count": wc,
+                            "author": author,
+                        }
+                        if pub_date:
+                            update_vals["published_at"] = pub_date
+                        await db.execute(
+                            articles.update().where(articles.c.url == a_url).values(**update_vals)
+                        )
+                        await db.commit()
+                        updated += 1
+                        log_with_time(f"[ForceRefresh] Updated: {a_url[:50]}")
+                    except Exception as e:
+                        await db.rollback()
+                        failed += 1
+                        log_with_time(f"[ForceRefresh] DB error for {a_url[:50]}: {e}")
+
+        await asyncio.gather(*[refresh_one(row) for row in rows])
+        log_with_time(f"[ForceRefresh] Site {site_id} all_db done: updated={updated}, skipped_empty={skipped_empty}, failed={failed}")
+        return {"articles_updated": updated, "articles_skipped_empty": skipped_empty, "articles_failed": failed}
+    except Exception as e:
+        log_with_time(f"[ForceRefresh] Unhandled error for site {site_id}: {e}")
+        return {"articles_updated": 0, "articles_skipped_empty": 0, "articles_failed": 0}
+
+
+async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filter_rules: dict | None = None, mode: str = "both", target_url: str | None = None, debug_writer=None, scrape_method: str = "scrapling", pre_built_articles: list | None = None, rss_meta_by_url: dict | None = None) -> dict:
     """乾跑預覽爬蟲，支援 list / content / both 模式
 
     Returns a dict with keys:
@@ -640,19 +970,23 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
 
         # --- LIST MODE ---
         if mode in ("list", "both"):
-            page = await fetch_page(url, method=scrape_method)
-            if page is None:
-                return {"articles": [{"error": "Failed to fetch list page"}], "filter_summary": None}
+            if pre_built_articles is not None:
+                new_articles = pre_built_articles
+                log_with_time(f"[Preview] Using {len(new_articles)} pre-built articles from RSS feed")
+            else:
+                page = await fetch_page(url, method=scrape_method, fallback_playwright=True)
+                if page is None:
+                    return {"articles": [{"error": "Failed to fetch list page"}], "filter_summary": None}
 
-            if debug_writer is not None:
-                debug_writer.save("01", "list_raw_html.html", page.html_content or "")
+                if debug_writer is not None:
+                    debug_writer.save("01", "list_raw_html.html", page.html_content or "")
 
-            new_articles = parse_listing(page, list_rules, url)
+                new_articles = parse_listing(page, list_rules, url)
 
-            if debug_writer is not None:
-                debug_writer.save("02", "list_items.json", json.dumps(new_articles, ensure_ascii=False, indent=2))
+                if debug_writer is not None:
+                    debug_writer.save("02", "list_items.json", json.dumps(new_articles, ensure_ascii=False, indent=2))
 
-            log_with_time(f"[Preview] Found {len(new_articles)} articles in list")
+                log_with_time(f"[Preview] Found {len(new_articles)} articles in list")
 
             # Stage 1 Filter: apply title-based filter before content fetch
             if filter_rules and new_articles:
@@ -678,7 +1012,7 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
             a_start = time.time()
             uhash = url_hash(a_url)
 
-            a_page = await fetch_page(a_url, method=scrape_method)
+            a_page = await fetch_page(a_url, method=scrape_method, fallback_playwright=True)
             if a_page is None:
                 return {"title": title, "url": a_url, "content": "Failed to fetch page", "published_at": "", "filtered": False}
 
@@ -689,6 +1023,13 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
             content_text, parsed_date, _, _ = parse_article(a_page, content_rules, a_url)
             if parsed_date:
                 pub_date = parsed_date
+            elif rss_meta_by_url and a_url in rss_meta_by_url:
+                rss_pub = rss_meta_by_url[a_url].get("published_at")
+                if rss_pub:
+                    try:
+                        pub_date = datetime.fromisoformat(rss_pub)
+                    except (ValueError, TypeError):
+                        pass
             pub_date = _parse_pub_date(pub_date)
 
             # 從 content_rules 的 title selector 提取真正標題（覆蓋佔位符）

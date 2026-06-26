@@ -1,3 +1,20 @@
+"""
+---
+name: llm
+description: "Public re-exports for the LLM subsystem: AnthropicProvider, GeminiProvider, OpenAIProvider, all model dataclasses, LLMProvider protocol, and create_provider factory"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: null
+functions: []
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from .anthropic_provider import AnthropicProvider
 from .base import ClientFactory, LLMProvider
 from .gemini_provider import GeminiProvider

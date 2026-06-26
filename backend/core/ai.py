@@ -1,3 +1,26 @@
+"""
+---
+name: ai
+description: "Top-level AI analysis orchestrator: cleans HTML, builds prompts, resolves provider chain, parses and validates CSS selectors"
+type: core
+target:
+  layer: backend
+  domain: ai-analysis
+spec_doc: null
+test_file: tests/stage1/test_llm_analyze_integration.py
+functions:
+  - name: log_with_time
+    line: 15
+    purpose: "Timestamped console logger used throughout analysis flow"
+  - name: analyze_with_providers
+    line: 19
+    purpose: "Orchestrate full AI analysis: sanitize HTML, build prompt, resolve chain, execute with fallback, parse rules"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 # backend/core/ai.py
 import json
 from datetime import datetime

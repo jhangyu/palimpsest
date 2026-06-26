@@ -1,5 +1,58 @@
 # backend/core/security_models.py
-"""Pydantic request/response models for auth, user, and admin endpoints."""
+"""
+---
+name: security_models
+description: "Pydantic request/response models for auth, user profile, and admin endpoints (21 models total)"
+type: core
+target:
+  layer: backend
+  domain: auth
+spec_doc: null
+test_file: tests/stage1/test_auth.py
+functions:
+  - name: LoginRequest
+    line: 9
+    purpose: "Request model: email + password login"
+  - name: RegisterRequest
+    line: 13
+    purpose: "Request model: new user registration"
+  - name: ForgotPasswordRequest
+    line: 25
+    purpose: "Request model: initiate password reset by email"
+  - name: ResetPasswordRequest
+    line: 28
+    purpose: "Request model: complete password reset with token"
+  - name: VerifyEmailRequest
+    line: 32
+    purpose: "Request model: verify email with token"
+  - name: UpdateProfileRequest
+    line: 41
+    purpose: "Request model: update full_name"
+  - name: UpdateEmailRequest
+    line: 44
+    purpose: "Request model: change email (requires current password)"
+  - name: ChangePasswordRequest
+    line: 51
+    purpose: "Request model: change password with current + new"
+  - name: UserResponse
+    line: 61
+    purpose: "Response model: public user fields for admin list views"
+  - name: UserMeResponse
+    line: 75
+    purpose: "Response model: full user profile including preferences and pending_email"
+  - name: AdminCreateUserRequest
+    line: 94
+    purpose: "Request model: admin creates new user with roles"
+  - name: AdminUserListResponse
+    line: 104
+    purpose: "Response model: paginated user list for admin"
+  # Total: 21 Pydantic models; main API models listed above
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from pydantic import BaseModel
 

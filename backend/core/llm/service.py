@@ -1,4 +1,29 @@
-"""LLM service layer: provider chain resolution and fallback execution."""
+"""
+---
+name: llm_service
+description: "LLM service layer: resolve per-user provider chain from DB + env fallback, execute generation with deadline-aware provider fallback"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_baseline_contract.py
+functions:
+  - name: resolve_chain
+    line: 98
+    purpose: "Build ordered list of RuntimeProfiles: decrypt user providers, append environment fallback if configured"
+  - name: build_environment_fallback
+    line: 213
+    purpose: "Construct synthetic RuntimeProfile from LLM_FALLBACK_* env vars or legacy MINIMAX_API_KEY"
+  - name: execute_with_fallback
+    line: 286
+    purpose: "Iterate provider chain; stop on STOP disposition, skip on FALLBACK; raise NoProviderAvailableError if all fail"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from __future__ import annotations
 

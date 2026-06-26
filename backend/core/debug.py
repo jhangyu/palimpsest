@@ -1,4 +1,39 @@
 # backend/core/debug.py
+"""
+---
+name: debug
+description: "Debug file writer utilities: DebugWriter saves crawl stage artifacts to timestamped directories; NullDebugWriter is a no-op for production"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: DebugWriter
+    line: 8
+    purpose: "Saves debug artifacts to log/debug/<date>/<operation>_<site>_<time>/ directory"
+  - name: DebugWriter.save
+    line: 20
+    purpose: "Write stage content to a named file within the debug directory"
+  - name: DebugWriter.debug_dir
+    line: 25
+    purpose: "Property: return debug directory path as string"
+  - name: NullDebugWriter
+    line: 30
+    purpose: "No-op debug writer for production; all methods are silent"
+  - name: create_debug_writer
+    line: 39
+    purpose: "Factory: return DebugWriter if debug=True, else NullDebugWriter"
+  - name: url_hash
+    line: 45
+    purpose: "MD5 hash of URL (first 8 hex chars) for file naming"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from pathlib import Path
 from datetime import datetime
 from hashlib import md5

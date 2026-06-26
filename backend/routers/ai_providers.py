@@ -1,6 +1,49 @@
-"""AI Provider management endpoints.
-
-Extracted from backend/main.py — all endpoint logic is a verbatim copy.
+"""
+---
+name: ai_providers_router
+description: "AI provider management API routes: CRUD, ordering, key reveal, model discovery, connection test"
+type: router
+target:
+  layer: backend
+  domain: ai_providers
+spec_doc: null
+test_file: tests/stage1/test_ai_provider_api.py
+functions:
+  - name: list_ai_providers
+    line: 93
+    purpose: "GET /settings/ai-providers — list all AI providers for the current user"
+  - name: get_ai_provider_runtime_status
+    line: 100
+    purpose: "GET /settings/ai-providers/runtime-status — return KEK availability and profile enable flag"
+  - name: discover_ai_models
+    line: 110
+    purpose: "POST /settings/ai-providers/actions/discover-models — fetch available models from provider endpoint"
+  - name: reorder_ai_providers
+    line: 127
+    purpose: "PUT /settings/ai-providers/order — reorder providers with optimistic-lock revision check"
+  - name: create_ai_provider
+    line: 142
+    purpose: "POST /settings/ai-providers — create a new AI provider and encrypt API key with KEK"
+  - name: update_ai_provider
+    line: 166
+    purpose: "PUT /settings/ai-providers/{provider_id} — update provider fields with revision guard"
+  - name: delete_ai_provider
+    line: 190
+    purpose: "DELETE /settings/ai-providers/{provider_id} — delete provider with revision guard"
+  - name: test_ai_provider
+    line: 207
+    purpose: "POST /settings/ai-providers/{provider_id}/test — test provider connection with a live request"
+  - name: reveal_ai_provider_key
+    line: 221
+    purpose: "POST /settings/ai-providers/{provider_id}/reveal — decrypt and return API key after password verify"
+  - name: toggle_ai_provider_enabled
+    line: 248
+    purpose: "PUT /settings/ai-providers/{provider_id}/enabled — enable or disable a provider"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import json

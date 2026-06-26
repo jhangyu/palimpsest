@@ -1,3 +1,29 @@
+"""
+---
+name: llm_base
+description: "Shared LLM HTTP provider base: LLMProvider protocol, BaseHTTPProvider with client caching, error normalization, response-size enforcement"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: null
+functions:
+  - name: LLMProvider
+    line: 48
+    purpose: "Structural Protocol defining list_models, generate, and test_connection interface"
+  - name: BaseHTTPProvider
+    line: 65
+    purpose: "Abstract base for HTTP-backed providers: manages client lifecycle, enforces size limits, maps HTTP errors to ProviderError"
+  - name: sorted_models
+    line: 278
+    purpose: "Deduplicate and sort model list up to max_models limit"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager

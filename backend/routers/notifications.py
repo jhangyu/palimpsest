@@ -1,4 +1,29 @@
-"""Notifications endpoint — surfaces recent crawl failure and AI re-analyze events."""
+"""
+---
+name: notifications_router
+description: "Notifications API route — surfaces recent crawl-failure and AI re-analyze events grouped by site"
+type: router
+target:
+  layer: backend
+  domain: notifications
+spec_doc: null
+test_file: null
+functions:
+  - name: _classify_error
+    line: 46
+    purpose: "Classify crawl error message as 'fail_access' or 'fail_crawl' by keyword matching"
+  - name: _to_iso
+    line: 56
+    purpose: "Convert datetime object or string to ISO 8601 string for consistent sort comparison"
+  - name: get_notifications
+    line: 65
+    purpose: "GET /api/notifications — return grouped crawl-failure and AI-repair events, sorted by time"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from typing import Optional
 

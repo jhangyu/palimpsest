@@ -1,4 +1,26 @@
-"""SSRF-safe provider base URL validation and verified destination metadata."""
+"""
+---
+name: llm_network_policy
+description: "SSRF-safe provider URL validation: DNS resolution, public IP enforcement, HTTPS requirement, per-CIDR allow-rules, redirect rejection"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_network_policy.py
+functions:
+  - name: validate_provider_base_url
+    line: 41
+    purpose: "Resolve hostname, validate all IPs are public (or in allow-list), return VerifiedDestination for IP pinning"
+  - name: reject_redirect
+    line: 116
+    purpose: "Raise NetworkPolicyError on any 3xx redirect status code"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from __future__ import annotations
 

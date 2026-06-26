@@ -1,8 +1,47 @@
 # backend/core/email.py
-"""Email sender abstraction for auth flows.
-
-Dev mode: writes links to log via print() and optionally to AUTH_DEV_RESET_LINK_FILE.
-Production: placeholder for SMTP integration (not implemented in Phase 1).
+"""
+---
+name: email
+description: "Email sender abstraction for auth flows: dev mode logs links to stdout/outbox file; production placeholder for SMTP integration"
+type: core
+target:
+  layer: backend
+  domain: email
+spec_doc: null
+test_file: null
+functions:
+  - name: EmailSender
+    line: 17
+    purpose: "Abstract base class defining email sender interface"
+  - name: EmailSender.send_reset_email
+    line: 21
+    purpose: "Send password reset email"
+  - name: EmailSender.send_invite_email
+    line: 26
+    purpose: "Send user invitation email"
+  - name: EmailSender.send_verification_email
+    line: 31
+    purpose: "Send email verification email"
+  - name: DevEmailSender
+    line: 36
+    purpose: "Dev implementation: logs links to stdout and optional outbox file"
+  - name: DevEmailSender.send_reset_email
+    line: 53
+    purpose: "Log/record reset link (only visible if AUTH_DEV_EXPOSE_RESET_LINK=true)"
+  - name: DevEmailSender.send_invite_email
+    line: 60
+    purpose: "Log/record invite link"
+  - name: DevEmailSender.send_verification_email
+    line: 67
+    purpose: "Log/record verification link"
+  - name: get_email_sender
+    line: 75
+    purpose: "Factory: return appropriate EmailSender based on environment"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import os

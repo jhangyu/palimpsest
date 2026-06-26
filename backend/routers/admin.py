@@ -1,3 +1,44 @@
+"""
+---
+name: admin_router
+description: "Admin API routes: user management (CRUD, role assignment) and site ownership transfer"
+type: router
+target:
+  layer: backend
+  domain: admin
+spec_doc: null
+test_file: tests/stage1/test_admin.py
+functions:
+  - name: admin_list_users
+    line: 66
+    purpose: "GET /admin/users — paginated user list with roles (single JOIN, no N+1)"
+  - name: admin_create_user
+    line: 103
+    purpose: "POST /admin/users — create user with invite-link password-reset flow (no plaintext password)"
+  - name: admin_get_user
+    line: 185
+    purpose: "GET /admin/users/{user_id} — return full user detail by ID"
+  - name: admin_update_user
+    line: 196
+    purpose: "PUT /admin/users/{user_id} — update full_name or status; revoke sessions on block"
+  - name: admin_delete_user
+    line: 237
+    purpose: "DELETE /admin/users/{user_id} — soft-block user, revoke sessions; gate on feed ownership"
+  - name: admin_update_user_roles
+    line: 279
+    purpose: "PUT /admin/users/{user_id}/roles — replace user roles (delete-then-insert)"
+  - name: admin_list_roles
+    line: 306
+    purpose: "GET /admin/roles — list all roles with per-role user counts"
+  - name: update_site_owner
+    line: 328
+    purpose: "PUT /admin/sites/{site_id}/owner — transfer site ownership to another active user"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime, timedelta, timezone
 

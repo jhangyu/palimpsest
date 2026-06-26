@@ -1,4 +1,35 @@
-"""Envelope encryption primitives for per-user LLM provider credentials."""
+"""
+---
+name: llm_vault
+description: "Envelope encryption for per-user LLM provider credentials: DEK generation, KEK wrap/unwrap, AES-256-GCM provider credential encryption with AAD binding"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_vault.py
+functions:
+  - name: wrap_user_dek
+    line: 79
+    purpose: "Wrap a plaintext DEK under the active KEK with user-bound AAD; return UserKeyEnvelope"
+  - name: unwrap_user_dek
+    line: 109
+    purpose: "Unwrap a UserKeyEnvelope to recover plaintext DEK; raise CredentialAuthenticationError on failure"
+  - name: encrypt_provider_credential
+    line: 124
+    purpose: "AES-256-GCM encrypt an API key with provider-identity AAD; return CredentialEnvelope"
+  - name: decrypt_provider_credential
+    line: 152
+    purpose: "AES-256-GCM decrypt a CredentialEnvelope; raise CredentialAuthenticationError on any failure"
+  - name: rewrap_user_dek
+    line: 197
+    purpose: "Re-wrap a user DEK under a new KEK version for key rotation"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from __future__ import annotations
 

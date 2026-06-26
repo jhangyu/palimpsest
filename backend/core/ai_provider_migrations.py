@@ -1,7 +1,34 @@
-"""Schema and migration helpers for per-user AI provider settings.
-
-This module intentionally does not register routes or mutate ``backend.main``.
-The application entrypoint owns wiring these declarations and statements.
+"""
+---
+name: ai_provider_migrations
+description: "Schema definitions, migration SQL, and legacy token migration helpers for per-user AI provider settings"
+type: core
+target:
+  layer: backend
+  domain: ai-provider
+spec_doc: null
+test_file: tests/stage1/test_ai_provider_migrations.py
+functions:
+  - name: define_ai_provider_tables
+    line: 64
+    purpose: "Declare SQLAlchemy Table objects for user_secret_keys and user_ai_providers"
+  - name: bootstrap_user_secret_key
+    line: 310
+    purpose: "Create one wrapped DEK for a user; idempotent via ON CONFLICT DO NOTHING"
+  - name: backfill_existing_user_secret_keys
+    line: 345
+    purpose: "Backfill missing user DEKs across all existing users"
+  - name: backfill_site_owners
+    line: 382
+    purpose: "Assign null site owners to the lowest-id active admin"
+  - name: migrate_legacy_ai_token
+    line: 603
+    purpose: "One-shot migration of a legacy PBKDF2 token into the vault-encrypted provider table"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

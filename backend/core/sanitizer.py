@@ -1,8 +1,59 @@
 # backend/core/sanitizer.py
 """
-HTML 淨化模組。
-從 ai.py 遷出的 HTML 操作函式，提供公開 API。
-所有函式使用 BS4，行為與原 ai.py 完全相同。
+---
+name: sanitizer
+description: "HTML sanitization module: sanitize_content_html keeps only allowed tags, clean_html_for_ai reduces HTML for LLM analysis, decode_vue_gallery converts Vue gallery components"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: null
+functions:
+  - name: _resolve_lazy_images
+    line: 83
+    purpose: "Shared helper: resolve lazy-load placeholder src to real URL from data-* attributes"
+  - name: sanitize_image_url
+    line: 93
+    purpose: "Remove query string/fragment after .jpg/.png/.webp in image URLs"
+  - name: sanitize_content_html
+    line: 105
+    purpose: "Sanitize HTML to allowed tags only (p, span, a, img, ul, ol, li, h2-h6, figure, code, strong, em) for RSS output"
+  - name: decode_vue_gallery
+    line: 186
+    purpose: "Convert Vue gallery <div x-data> component to standard ul/li/img HTML"
+  - name: clean_html_for_ai
+    line: 247
+    purpose: "Reduce HTML for AI analysis: list mode finds article container, content mode narrows to article body"
+  - name: extract_template_html
+    line: 371
+    purpose: "Extract the 'html' field from Vue <template> JSON with depth-tracking"
+  - name: detect_vue_template
+    line: 441
+    purpose: "Detect Vue template page and return (extracted_html, is_vue_template, field_name)"
+  - name: find_list_container
+    line: 452
+    purpose: "Heuristic: find element with the most <a> tags as list container"
+  - name: find_main_content
+    line: 466
+    purpose: "Heuristic: find element with the most text content as article body"
+  - name: limit_repeated_items
+    line: 480
+    purpose: "Keep only first N items of repeated same-class divs (reduces AI token count)"
+  - name: unwrap_single_child_divs
+    line: 515
+    purpose: "Remove single-child div wrappers without meaningful class/id"
+  - name: flatten_deep_nesting
+    line: 557
+    purpose: "Flatten divs nested deeper than max_depth by promoting children"
+  - name: convert_text_divs_to_p
+    line: 605
+    purpose: "Convert text-only divs (no child elements) to <p> tags"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import re
@@ -19,11 +70,27 @@ def log_with_time(msg):
 
 # ── 允許保留的標籤與屬性白名單 ──────────────────────────────────────────────────
 
-ALLOWED_CONTENT_TAGS = {'p', 'span', 'a', 'img', 'ul', 'li'}
+ALLOWED_CONTENT_TAGS = {
+    'p', 'span', 'a', 'img',
+    'ul', 'ol', 'li',
+    'h2', 'h3', 'h4', 'h5', 'h6',
+    'figure', 'code', 'strong', 'em',
+}
 ALLOWED_IMG_ATTRS = {'src', 'alt'}
 ALLOWED_A_ATTRS = {'href'}
 ALLOWED_UL_ATTRS = {'class'}   # ul 只允許 class（gallery 用）
 ALLOWED_LI_ATTRS = set()       # li 不允許屬性
+LAZY_SRC_ATTRS = ('data-original', 'data-src', 'data-lazy-src', 'data-lazy')
+
+
+def _resolve_lazy_images(soup) -> None:
+    """Resolve lazy-load placeholder src to real URL from data-* attributes."""
+    for img in soup.find_all('img'):
+        for attr in LAZY_SRC_ATTRS:
+            real_src = img.get(attr)
+            if real_src and str(real_src).startswith('http'):
+                img['src'] = str(real_src)
+                break
 
 
 def sanitize_image_url(url: str) -> str:
@@ -36,6 +103,86 @@ def sanitize_image_url(url: str) -> str:
     return re.sub(r'(?i)(\.(?:jpg|png|webp))[?#].*$', r'\1', url)
 
 
+# ── 內部共用 helper ──────────────────────────────────────────────────────────────
+
+def _decompose_noise(soup, include_header: bool = True) -> None:
+    """Remove common noise elements (script, style, nav, etc.) from soup in-place."""
+    tags = ["script", "style", "svg", "noscript", "iframe",
+            "footer", "nav", "aside", "form", "button",
+            "input", "select", "textarea"]
+    if include_header:
+        tags.append("header")
+    for element in soup(tags):
+        element.decompose()
+
+
+def _remove_comments(soup) -> None:
+    """Remove all HTML comments from soup in-place."""
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
+
+
+def _resolve_and_clean_lazy(soup) -> None:
+    """Resolve lazy-load src attrs then strip all LAZY_SRC_ATTRS from every img."""
+    _resolve_lazy_images(soup)
+    for img in soup.find_all('img'):
+        for attr in LAZY_SRC_ATTRS:
+            if attr in img.attrs:
+                del img.attrs[attr]
+
+
+def _sanitize_img_urls(soup) -> None:
+    """Clean img src URLs by removing query strings after common image extensions."""
+    for img in soup.find_all('img'):
+        src = img.get('src')
+        if src:
+            img['src'] = sanitize_image_url(str(src))
+
+
+def _compress_whitespace(html: str) -> str:
+    """Collapse tag-adjacent whitespace and multi-spaces, then strip."""
+    html = re.sub(r'>\s+<', '><', html)
+    html = re.sub(r'\s+', ' ', html)
+    return html.strip()
+
+
+def _clean_attributes(soup, keep_class_id: bool = False) -> None:
+    """
+    Enforce per-tag attribute whitelist across all tags in soup in-place.
+    Base rules: img→{src,alt}, a→{href}, ul→class(if gallery),
+                span→class(if caption), div→class(if credit), li→{}, others→{}.
+    When keep_class_id=True: additionally preserve class and id on every tag.
+    """
+    for tag in soup.find_all(True):
+        if not hasattr(tag, 'attrs') or not tag.attrs:
+            continue
+
+        tag_name = tag.name
+
+        if tag_name == 'img':
+            allowed = set(ALLOWED_IMG_ATTRS)
+        elif tag_name == 'a':
+            allowed = set(ALLOWED_A_ATTRS)
+        elif tag_name == 'ul':
+            classes = tag.attrs.get('class', [])
+            allowed = {'class'} if 'gallery' in classes else set()
+        elif tag_name == 'span':
+            classes = tag.attrs.get('class', [])
+            allowed = {'class'} if 'caption' in classes else set()
+        elif tag_name == 'div':
+            classes = tag.attrs.get('class', [])
+            allowed = {'class'} if 'credit' in classes else set()
+        elif tag_name == 'li':
+            allowed = set()
+        else:
+            allowed = set()
+
+        if keep_class_id:
+            allowed = allowed | {'class', 'id'}
+
+        tag.attrs = {k: v for k, v in tag.attrs.items() if k in allowed}
+
+
 # ── 核心淨化函式 ─────────────────────────────────────────────────────────────────
 
 def sanitize_content_html(html_content: str) -> str:
@@ -45,6 +192,9 @@ def sanitize_content_html(html_content: str) -> str:
     移除所有 class 屬性和非必要標籤。
     """
     soup = BeautifulSoup(html_content, 'html.parser')
+
+    _decompose_noise(soup, include_header=True)
+    _remove_comments(soup)
 
     # 收集需要移除的標籤（不在允許清單中的）
     to_remove = []
@@ -59,62 +209,11 @@ def sanitize_content_html(html_content: str) -> str:
     for tag in to_remove:
         tag.unwrap()
 
-    # 清理允許標籤的屬性
-    for tag in soup.find_all(True):
-        if not hasattr(tag, 'attrs') or not tag.attrs:
-            continue
+    _resolve_and_clean_lazy(soup)
+    _clean_attributes(soup, keep_class_id=False)
+    _sanitize_img_urls(soup)
 
-        tag_name = tag.name
-        allowed = None
-
-        if tag_name == 'img':
-            allowed = ALLOWED_IMG_ATTRS
-        elif tag_name == 'a':
-            allowed = ALLOWED_A_ATTRS
-        elif tag_name == 'ul':
-            # 只允許 ul 的 class 屬性，且僅當值為 gallery 時
-            allowed = ALLOWED_UL_ATTRS
-            if 'class' in tag.attrs:
-                classes = tag.attrs.get('class', [])
-                if 'gallery' not in classes:
-                    del tag.attrs['class']
-                    if not tag.attrs:
-                        continue
-        elif tag_name == 'li':
-            # li 不允許任何屬性
-            tag.attrs = {}
-        elif tag_name == 'div':
-            allowed = {'class'}
-        elif tag_name == 'span':
-            # span 只允許 class 屬性，且僅當值為 caption 時
-            allowed = {'class'}
-            if 'class' in tag.attrs:
-                classes = tag.attrs.get('class', [])
-                if 'caption' not in classes:
-                    del tag.attrs['class']
-                    if not tag.attrs:
-                        continue
-        else:
-            # 其他允許的標籤，清空所有屬性
-            pass
-
-        if allowed is not None:
-            tag.attrs = {
-                key: value for key, value in tag.attrs.items()
-                if key in allowed
-            }
-
-    # 清理 img src 中的圖片 URL query 參數
-    for img in soup.find_all('img'):
-        src = img.get('src')
-        if src:
-            img['src'] = sanitize_image_url(str(src))
-
-    # 處理空白的文字節點
-    result = str(soup)
-    result = re.sub(r'>\s+<', '><', result)
-    result = re.sub(r'\s+', ' ', result)
-    return result.strip()
+    return _compress_whitespace(str(soup))
 
 
 def decode_vue_gallery(html_content: str) -> str:
@@ -212,26 +311,25 @@ def clean_html_for_ai(html_content: str, mode: str = "list") -> str:
         )
         narrowed_html = str(content_el) if content_el else html_content
 
+        if content_el:
+            _heading_check = BeautifulSoup(narrowed_html, 'html.parser')
+            if not _heading_check.find(['h1', 'h2', 'h3']):
+                _full_soup = BeautifulSoup(html_content, 'html.parser')
+                _page_h1 = _full_soup.find('h1')
+                if _page_h1:
+                    narrowed_html = str(_page_h1) + narrowed_html
+
         # 用 BeautifulSoup 做噪音移除（與 list mode 一致）
         soup = BeautifulSoup(narrowed_html, 'html.parser')
 
         # 移除干擾元素（比 list mode 少移除 header — 文章可能有標題在 header 內）
-        for element in soup(["script", "style", "svg", "noscript", "iframe",
-                             "footer", "nav", "aside", "form", "button",
-                             "input", "select", "textarea"]):
-            element.decompose()
+        _decompose_noise(soup, include_header=False)
+        _remove_comments(soup)
 
-        # 移除註解
-        for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
-            comment.extract()
-
-        # 清理屬性，保留 class, id, href, src, alt（content 需要 img 資訊）
-        for tag in soup.recursiveChildGenerator():
-            if hasattr(tag, 'attrs'):
-                tag.attrs = {
-                    k: v for k, v in tag.attrs.items()
-                    if k in ['class', 'id', 'href', 'src', 'alt', 'datetime']
-                }
+        # 解析 lazy-load 圖片、清理 data-* 屬性，並保留 class/id 供 AI 分析
+        _resolve_and_clean_lazy(soup)
+        _clean_attributes(soup, keep_class_id=True)
+        _sanitize_img_urls(soup)
 
         # 不移除 img/video — AI 需要看到圖片結構來生成 selector
         # 不 unwrap 行內標籤 — 保留完整結構供 AI 分析
@@ -240,19 +338,14 @@ def clean_html_for_ai(html_content: str, mode: str = "list") -> str:
         cleaned = str(content)
         cleaned = unwrap_single_child_divs(cleaned)
         cleaned = flatten_deep_nesting(cleaned)
-        cleaned = re.sub(r'\s+', ' ', cleaned)
-        return cleaned.strip() if cleaned else ""
+        return _compress_whitespace(cleaned) if cleaned else ""
 
     # 標準清洗流程
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # 移除干擾元素
-    for element in soup(["script", "style", "svg", "noscript", "iframe", "footer", "header", "nav", "aside", "form", "button", "input", "select", "textarea"]):
-        element.decompose()
-
-    # 移除註解
-    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
-        comment.extract()
+    # 移除干擾元素（含 header）
+    _decompose_noise(soup, include_header=True)
+    _remove_comments(soup)
 
     # 移除行內標籤但保留文字
     for tag in soup.find_all(["i", "em", "strong", "b", "u", "s", "small", "mark"]):
@@ -262,13 +355,10 @@ def clean_html_for_ai(html_content: str, mode: str = "list") -> str:
     for tag in soup.find_all(["video", "audio", "canvas", "path", "circle", "rect", "line", "polygon"]):
         tag.decompose()
 
-    # 清理屬性，只保留 class, id, href
-    for tag in soup.recursiveChildGenerator():
-        if hasattr(tag, 'attrs'):
-            tag.attrs = {
-                key: value for key, value in tag.attrs.items()
-                if key in ['class', 'id', 'href', 'src', 'alt', 'datetime']
-            }
+    # 解析 lazy-load 圖片、清理 data-* 屬性，並保留 class/id 供 AI 分析
+    _resolve_and_clean_lazy(soup)
+    _clean_attributes(soup, keep_class_id=True)
+    _sanitize_img_urls(soup)
 
     if mode == "list":
         content = find_list_container(soup)
@@ -282,10 +372,7 @@ def clean_html_for_ai(html_content: str, mode: str = "list") -> str:
     cleaned = flatten_deep_nesting(cleaned)
     cleaned = convert_text_divs_to_p(cleaned)
 
-    cleaned = re.sub(r'\s+', ' ', cleaned)
-    cleaned = cleaned.strip()
-
-    return cleaned
+    return _compress_whitespace(cleaned)
 
 
 def extract_template_html(html_content: str) -> Optional[str]:

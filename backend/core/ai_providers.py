@@ -1,7 +1,49 @@
-"""Provider CRUD service for per-user AI provider management.
-
-Pure service layer with dependency-injected db, tables, and key backend.
-Does NOT define routes — route wiring is done in ``backend.main``.
+"""
+---
+name: ai_providers
+description: "AI provider CRUD: create/read/update/delete configs with DEK-encrypted API keys, optimistic-concurrency reorder, toggle, health test, model discovery"
+type: core
+target:
+  layer: backend
+  domain: ai-provider
+spec_doc: null
+test_file: tests/stage1/test_ai_provider_api.py
+functions:
+  - name: list_user_providers
+    line: 221
+    purpose: "Return all providers for a user ordered by (priority, id), masked metadata only"
+  - name: create_provider
+    line: 234
+    purpose: "Insert new AI provider record with DEK-encrypted API key via vault"
+  - name: update_provider
+    line: 320
+    purpose: "Patch provider fields with revision-based optimistic concurrency; re-encrypt key if AAD changes"
+  - name: delete_provider
+    line: 451
+    purpose: "Delete provider with ownership and revision check"
+  - name: reorder_providers
+    line: 478
+    purpose: "Atomic priority reorder: validate all IDs match user set, no duplicates, bump revisions"
+  - name: discover_models
+    line: 534
+    purpose: "Discover available models from a provider endpoint using stored or supplied API key"
+  - name: test_provider_connection
+    line: 586
+    purpose: "Test live connection using stored credentials and update health metadata"
+  - name: reveal_api_key
+    line: 647
+    purpose: "Decrypt and return full API key; caller is responsible for rate-limit and audit"
+  - name: toggle_provider_enabled
+    line: 670
+    purpose: "Enable or disable a provider and return updated masked record"
+  - name: get_runtime_status
+    line: 694
+    purpose: "Return enabled provider chain plus environment fallback status"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

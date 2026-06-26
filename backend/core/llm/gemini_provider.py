@@ -1,3 +1,29 @@
+"""
+---
+name: llm_gemini_provider
+description: "Google Gemini LLM provider: generateContent API, budget and level thinking modes, model listing with supportedGenerationMethods filter"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_gemini_provider.py
+functions:
+  - name: GeminiProvider.list_models
+    line: 45
+    purpose: "Fetch model list from /v1beta/models, filter by generateContent support, map to ModelInfo"
+  - name: GeminiProvider.generate
+    line: 80
+    purpose: "POST to generateContent endpoint; configure thinkingConfig for budget or level mode"
+  - name: GeminiProvider.test_connection
+    line: 141
+    purpose: "Send minimal generation request to verify credentials and connectivity"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 import re

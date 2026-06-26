@@ -1,28 +1,31 @@
 """
-scheduler.py — APScheduler factory and PostgreSQL advisory lock helpers.
-
-Interface contract:
-  - create_scheduler(database_url) -> AsyncIOScheduler
-      Returns an AsyncIOScheduler with persistent SQLAlchemy job store when
-      database_url is provided, or in-memory store otherwise.
-
-  - async acquire_scheduler_lock(db) -> bool
-      Attempts to acquire a cluster-wide PostgreSQL advisory lock so that only
-      one worker runs scheduled jobs.  Returns True if the lock was acquired.
-      db must be an AsyncSession or AsyncConnection (SQLAlchemy 2.0 async).
-
-  - async release_scheduler_lock(db) -> None
-      Releases the advisory lock previously acquired by this session.
-      Safe to call even if the lock is not held (PostgreSQL will ignore it).
-      Must use the same db instance that acquired the lock.
-
-  - setup_jobs(scheduler, crawl_fn, cleanup_fn) -> None
-      Registers the two standard interval jobs on *scheduler*.
-      crawl_fn  — async callable, runs every 1 h with ±300 s jitter.
-      cleanup_fn — async callable, runs every 24 h with ±3600 s jitter.
-
-All dependencies are passed as parameters; this module does NOT import from
-main.py.
+---
+name: scheduler
+description: "APScheduler factory and PostgreSQL advisory-lock helpers for single-worker scheduled jobs"
+type: scheduler
+target:
+  layer: backend
+  domain: scheduling
+spec_doc: null
+test_file: null
+functions:
+  - name: create_scheduler
+    line: 40
+    purpose: "Return an AsyncIOScheduler with optional persistent SQLAlchemy job store"
+  - name: acquire_scheduler_lock
+    line: 72
+    purpose: "Try to acquire a PostgreSQL session-level advisory lock; returns True if acquired"
+  - name: release_scheduler_lock
+    line: 95
+    purpose: "Release the PostgreSQL session-level advisory lock (safe to call if not held)"
+  - name: setup_jobs
+    line: 116
+    purpose: "Register crawl (1h) and cleanup (24h) interval jobs on the scheduler"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore

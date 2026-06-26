@@ -1,16 +1,72 @@
 # backend/core/auth.py
-"""Core authentication and security helpers.
-
-- Argon2id password hashing
-- Session token generation + SHA-256 hashing
-- Cookie helpers (session + CSRF)
-- CSRF double-submit validation
-- Origin/Referer allowlist
-- FastAPI dependencies: get_current_user(), require_user(), require_admin()
-- Rate limit helpers (DB-backed auth_rate_limits)
-- Username/password validation
-- Reset/verification token generation
-- Session cleanup
+"""
+---
+name: auth
+description: "Authentication core: Argon2id password hashing, session/CSRF/reset token generation, cookie helpers, CSRF validation, DB-backed rate limiting, FastAPI dependency factories"
+type: core
+target:
+  layer: backend
+  domain: auth
+spec_doc: null
+test_file: tests/stage1/test_auth.py
+functions:
+  - name: hash_password
+    line: 42
+    purpose: "Hash plaintext password with Argon2id (async, thread pool executor)"
+  - name: verify_password
+    line: 52
+    purpose: "Verify plaintext against Argon2id hash; returns True/False"
+  - name: generate_session_token
+    line: 74
+    purpose: "Generate 256-bit URL-safe random session token"
+  - name: hash_token
+    line: 79
+    purpose: "SHA-256 hash a token for DB storage"
+  - name: generate_csrf_token
+    line: 86
+    purpose: "Generate URL-safe CSRF token"
+  - name: generate_reset_token
+    line: 93
+    purpose: "Generate URL-safe password reset / verification token"
+  - name: validate_csrf
+    line: 161
+    purpose: "Validate CSRF double-submit: cookie vs X-CSRF-Token header"
+  - name: check_origin
+    line: 186
+    purpose: "Check Origin/Referer header against configured allowlist"
+  - name: validate_username
+    line: 235
+    purpose: "Validate username: lowercase English, 1-20 chars, not reserved"
+  - name: validate_password
+    line: 259
+    purpose: "Validate password: 8-20 chars"
+  - name: check_rate_limit
+    line: 291
+    purpose: "DB-backed rate limit check; returns (allowed, retry_after_seconds)"
+  - name: record_attempt
+    line: 347
+    purpose: "Record a failed auth attempt for rate limiting"
+  - name: clear_rate_limit
+    line: 404
+    purpose: "Clear rate limit record on successful auth"
+  - name: cleanup_expired_sessions
+    line: 420
+    purpose: "Delete expired/revoked auth sessions; returns count deleted"
+  - name: make_get_current_user
+    line: 471
+    purpose: "Factory: create get_current_user FastAPI dependency (TTL-cached session JOIN)"
+  - name: make_require_user
+    line: 524
+    purpose: "Factory: create require_user FastAPI dependency (raises 401 if unauthenticated)"
+  - name: make_require_admin
+    line: 534
+    purpose: "Factory: create require_admin FastAPI dependency (raises 403 if not admin)"
+  # Total: ~29 functions/helpers; main public API listed above
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import asyncio

@@ -1,7 +1,18 @@
 # backend/core/crypto.py
-"""AES-GCM encryption/decryption helpers — ai_tokens vault removed (#24).
-
-All token encryption functions were tied to the deprecated user_ai_tokens flow
-and have been removed. If vault encryption is needed in future, reintroduce
-encrypt_token / decrypt_token with PBKDF2-HMAC-SHA256 + AES-GCM-256.
+"""
+---
+name: crypto
+description: "AES-GCM encryption helpers placeholder — vault functions removed in #24; all user_ai_tokens encryption was deprecated"
+type: core
+target:
+  layer: backend
+  domain: auth
+spec_doc: null
+test_file: tests/stage1/test_kek_lifecycle.py
+functions: []
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """

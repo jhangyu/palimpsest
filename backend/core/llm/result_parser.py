@@ -1,9 +1,34 @@
-# backend/core/llm/result_parser.py
 """
-Provider-agnostic prompt building and response parsing utilities.
-
-Extracted from backend/core/ai.py so that any LLM provider can reuse
-the same prompt templates and the same parsing / validation logic.
+---
+name: llm_result_parser
+description: "Provider-agnostic prompt builders and LLM response parser: CSS selector prompts for list/content pages, JSON extraction, rule validation"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_result_parser.py
+functions:
+  - name: build_list_selector_prompt
+    line: 12
+    purpose: "Build the LLM prompt for CSS selector extraction from a list/index page HTML snippet"
+  - name: build_content_selector_prompt
+    line: 43
+    purpose: "Build the LLM prompt for CSS selector extraction from an article content page HTML snippet"
+  - name: parse_selector_response
+    line: 76
+    purpose: "Strip think-blocks and markdown fences, locate JSON object, parse and return selector dict"
+  - name: validate_list_rules
+    line: 111
+    purpose: "Assert that parsed list rules contain all required non-empty string fields: container, item, title, link"
+  - name: validate_content_rules
+    line: 138
+    purpose: "Assert that parsed content rules contain required fields (title, body) and optional fields (date, image, author)"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 import json
 import re
@@ -150,8 +175,8 @@ def validate_content_rules(rules: dict) -> dict:
     Raises:
         ValueError: If any required field is missing or not a string.
     """
-    required_fields = ("title", "body")
-    optional_fields = ("date", "image", "author")
+    required_fields = ("body",)
+    optional_fields = ("title", "date", "image", "author")
     all_fields = required_fields + optional_fields
 
     # Check all fields are present and are strings

@@ -1,60 +1,28 @@
-"""Crawl auto-repair integration packet for main.py (A0).
-
-This module provides the three hooks that A0 needs to wire crawl auto-repair
-into the application startup lifecycle:
-
-    register_crawl_repair_tables(metadata)  → CrawlRepairTables
-    run_crawl_repair_migration(sync_engine, log_fn)
-    run_crawl_repair_backfill(session, log_fn)
-
-Wiring example (backend/main.py):
-----------------------------------------------------------------------
-from core.crawl_repair_startup import (
-    register_crawl_repair_tables,
-    run_crawl_repair_migration,
-    run_crawl_repair_backfill,
-)
-from core.crawl_repair_repository import RepairStateRepository
-
-# ── Module-level initialisation (before lifespan) ──────────────────
-_repair_tables = register_crawl_repair_tables(metadata)
-repair_repo    = RepairStateRepository(_repair_tables)
-
-# ── Inside lifespan (after sync_engine is created) ─────────────────
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    sync_engine = sqlalchemy.create_engine(sync_url)
-
-    await asyncio.to_thread(metadata.create_all, sync_engine)
-    await asyncio.to_thread(_run_schema_migration, sync_engine)
-    await asyncio.to_thread(run_crawl_repair_migration, sync_engine, log_with_time)
-
-    async with async_session_factory() as session:
-        result = await run_crawl_repair_backfill(session, log_with_time)
-        log_with_time(f"[Startup] Crawl repair backfill: {result}")
-
-    yield
-----------------------------------------------------------------------
-
-Export / import (pg_dump / pg_restore):
-    Tables added by this module:
-        site_crawl_repair_states
-        crawl_repair_attempts
-    Columns added to existing tables:
-        sites.auto_repair_enabled
-        sites.auto_repair_weekly_limit
-        sites.list_rules_revision
-        sites.content_rules_revision
-        crawl_attempts.owner_user_id
-        crawl_attempts.routine_skip_reason
-        crawl_attempts.list_outcome / content_outcome
-        crawl_attempts.list_structural_failure / content_structural_failure
-        crawl_attempts.content_parse_eligible / succeeded / structural_failed
-        crawl_attempts.auto_repair_kind / auto_repair_attempt_id
-
-    All new columns have DEFAULT values or are nullable, so a pg_dump
-    taken before this migration is fully restorable against a schema that
-    includes these columns (Release A backward-compat guarantee).
+"""
+---
+name: crawl_repair_startup
+description: "Integration packet for main.py (A0): three startup hooks to wire crawl auto-repair — register tables, run DDL migration, and backfill repair state rows"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_repair_startup.py
+functions:
+  - name: register_crawl_repair_tables
+    line: 83
+    purpose: "Register crawl repair table declarations onto shared SQLAlchemy metadata; call once at module import"
+  - name: run_crawl_repair_migration
+    line: 100
+    purpose: "Run idempotent Release-A DDL migration (IF NOT EXISTS / PL/pgSQL DO blocks)"
+  - name: run_crawl_repair_backfill
+    line: 129
+    purpose: "Backfill site_crawl_repair_states rows for all sites (ON CONFLICT DO NOTHING)"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

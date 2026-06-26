@@ -1,3 +1,29 @@
+"""
+---
+name: llm_openai_provider
+description: "OpenAI-compatible LLM provider: chat completions, model listing, reasoning model capability detection (o-series, gpt-5)"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_llm_openai_provider.py
+functions:
+  - name: OpenAIProvider.list_models
+    line: 44
+    purpose: "Fetch model list from /v1/models and map to ModelInfo with capability detection"
+  - name: OpenAIProvider.generate
+    line: 72
+    purpose: "POST to /v1/chat/completions; select max_completion_tokens vs max_tokens based on reasoning model detection"
+  - name: OpenAIProvider.test_connection
+    line: 121
+    purpose: "Send minimal generation request to verify credentials and connectivity"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from __future__ import annotations
 
 import re

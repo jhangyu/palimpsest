@@ -1,4 +1,26 @@
-"""Key-encryption backends for LLM provider credentials."""
+"""
+---
+name: llm_key_backends
+description: "KEK-based key encryption backends: FileKeyEncryptionBackend reads versioned AES-256-GCM keys from a Docker Secret directory"
+type: core
+target:
+  layer: backend
+  domain: llm
+spec_doc: null
+test_file: tests/stage1/test_kek_lifecycle.py
+functions:
+  - name: FileKeyEncryptionBackend
+    line: 51
+    purpose: "Load versioned 256-bit KEKs from a permission-hardened directory; wrap/unwrap DEKs with AES-256-GCM"
+  - name: FileKeyEncryptionBackend.generate_keyring
+    line: 142
+    purpose: "Create a new keyring directory with mode 0o700 and write a random base64-encoded 32-byte KEK"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 
 from __future__ import annotations
 

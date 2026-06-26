@@ -1,4 +1,54 @@
 # backend/main.py
+"""
+---
+name: main
+description: "FastAPI application entry-point: lifespan (migrations, KEK, scheduler), CORS/logging middleware, router registration"
+type: entry_point
+target:
+  layer: backend
+  domain: app
+spec_doc: null
+test_file: null
+functions:
+  - name: _run_schema_migration_on_conn
+    line: 98
+    purpose: "DDL helper — ALTER TABLE, CREATE TABLE (auth), indexes, role seeding on a sync connection"
+  - name: _run_all_migrations
+    line: 278
+    purpose: "Run all DDL migrations (schema, AI providers, crawl-repair, filter_rules) via async engine"
+  - name: _run_startup_backfills
+    line: 318
+    purpose: "Non-critical startup backfills (user secret keys, site owners, repair states) as background task"
+  - name: _backfill_articles
+    line: 353
+    purpose: "Backfill NULL created_at / updated_at / word_count for existing articles (500 rows/run)"
+  - name: scheduled_crawl_job
+    line: 422
+    purpose: "Scheduler job — crawl all sites in parallel with semaphore(5)"
+  - name: _cleanup_job
+    line: 460
+    purpose: "Scheduler job — remove expired auth sessions and password-reset tokens"
+  - name: lifespan
+    line: 475
+    purpose: "FastAPI lifespan context: migrations, KEK init, scheduler lock, backfill tasks, graceful shutdown"
+  - name: global_exception_handler
+    line: 656
+    purpose: "Global 500 exception handler — returns JSON error with CORS headers for credentialed origins"
+  - name: request_logging_middleware
+    line: 697
+    purpose: "HTTP middleware — logs method, path, status code, and duration for every request"
+  - name: health_check
+    line: 738
+    purpose: "GET /health — DB connectivity probe for container orchestration (returns 503 on error)"
+  - name: serve_frontend
+    line: 752
+    purpose: "GET /{full_path:path} — serve built Astro SPA from FRONTEND_DIR with path-traversal guard"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
+"""
 from dotenv import load_dotenv
 
 # Load .env file
@@ -250,12 +300,49 @@ async def _run_all_migrations() -> None:
         await conn.run_sync(migrate_crawl_repair_tables)
         log_with_time("[Migration] Crawl repair schema expansion completed.")
 
+    # Post-commit migrations: crawl_repair_tables commits the transaction,
+    # so subsequent DDL must use a fresh connection.
+    async with engine.begin() as conn2:
         # Filter rules column
         try:
-            await conn.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
+            await conn2.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
         except Exception as e:
             log_with_time(f"[Migration] filter_rules column note: {e}")
         log_with_time("[Migration] Filter rules schema migration completed.")
+
+        # RSS input source columns
+        try:
+            await conn2.execute(text(
+                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS source_type VARCHAR NOT NULL DEFAULT 'html'"
+            ))
+        except Exception as e:
+            log_with_time(f"[Migration] source_type column note: {e}")
+        try:
+            await conn2.execute(text(
+                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS rss_full_content BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+        except Exception as e:
+            log_with_time(f"[Migration] rss_full_content column note: {e}")
+        try:
+            await conn2.execute(text(
+                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS website_url VARCHAR"
+            ))
+        except Exception as e:
+            log_with_time(f"[Migration] website_url column note: {e}")
+        try:
+            await conn2.execute(text("""
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_sites_source_type') THEN
+        ALTER TABLE sites ADD CONSTRAINT ck_sites_source_type CHECK (source_type IN ('html', 'rss'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_sites_rss_full_content') THEN
+        ALTER TABLE sites ADD CONSTRAINT ck_sites_rss_full_content CHECK (rss_full_content = FALSE OR source_type = 'rss');
+    END IF;
+END $$
+"""))
+        except Exception as e:
+            log_with_time(f"[Migration] RSS source constraints note: {e}")
+        log_with_time("[Migration] RSS input source columns migration completed.")
 
     log_with_time("[Migration] All migrations completed.")
 
@@ -395,6 +482,8 @@ async def scheduled_crawl_job():
                     scrape_method=site['scrape_method'] if site['scrape_method'] else "scrapling",
                     owner_user_id=site.get("owner_user_id"),
                     kek_backend=app.state.kek_backend,
+                    source_type=site.get('source_type', 'html'),
+                    rss_full_content=site.get('rss_full_content', False),
                 )
             except Exception as e:
                 print(f"[Scheduler] Error crawling site {site['id']}: {e}")

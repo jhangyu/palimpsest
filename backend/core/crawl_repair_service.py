@@ -1,15 +1,46 @@
-"""Crawl auto-repair orchestrator service.
-
-RepairOrchestrator coordinates the complete repair flow:
-  failure counting → AI analyze → candidate validation → atomic rule promotion.
-
-Design principles:
-  - Delegates all DB access to RepairStateRepository (no raw SQL here).
-  - Delegates AI calls to an AIAnalyzeProvider protocol (keeps service testable).
-  - AI calls are NEVER held inside a DB transaction.
-  - Candidate rules must pass evidence-based validation before promotion.
-  - Old rules are preserved on any failure path.
-  - Budget enforcement is delegated to the repository layer.
+"""
+---
+name: crawl_repair_service
+description: "Crawl auto-repair orchestrator: coordinates failure counting → AI analyze → candidate validation → atomic rule promotion via RepairOrchestrator"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_repair_service.py
+functions:
+  - name: AIAnalyzeProvider
+    line: 33
+    purpose: "Protocol for AI analyze calls — keeps orchestrator testable via DI"
+  - name: AIAnalyzeProvider.analyze_structure
+    line: 38
+    purpose: "Return candidate rules dict for given HTML; empty dict on failure"
+  - name: RepairResult
+    line: 53
+    purpose: "Dataclass: outcome of handle_structural_failure() with action, failure_count, new_rules"
+  - name: RepairOrchestrator
+    line: 68
+    purpose: "Central coordinator: failure counting, AI call, validation, rule promotion"
+  - name: RepairOrchestrator.__init__
+    line: 77
+    purpose: "Initialize with CrawlRepairTables and optional Clock (defaults to SystemClock)"
+  - name: RepairOrchestrator.handle_structural_failure
+    line: 89
+    purpose: "Full repair flow: disabled check → rollover → increment → budget check → AI → validate → promote"
+  - name: RepairOrchestrator.handle_success
+    line: 243
+    purpose: "Reset consecutive failure counter on successful parse"
+  - name: RepairOrchestrator.validate_list_candidate
+    line: 256
+    purpose: "Validate list candidate by re-parsing HTML evidence with proposed rules"
+  - name: RepairOrchestrator.validate_content_candidate
+    line: 282
+    purpose: "Validate content candidate by re-parsing article HTML samples"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations
@@ -101,11 +132,15 @@ class RepairOrchestrator:
         ai_provider: Optional[AIAnalyzeProvider] = None,
         ai_tables=None,
         kek_backend=None,
+        source_type: str = "html",
     ) -> RepairResult:
         """Orchestrate the full repair flow for a structural failure.
 
         Steps:
         1. If auto-repair disabled -> return disabled.
+        1a. If source_type == 'rss' and repair_kind == 'list' -> return disabled
+            (RSS feeds use the feed parser, not HTML list rules; list repair
+            is meaningless and must never be triggered for RSS sources).
         2. Weekly rollover + increment failure counter.
         3. If count < 3 -> return counted.
         4. If count >= 3 and ai_provider available:
@@ -115,6 +150,16 @@ class RepairOrchestrator:
            d. Complete attempt with appropriate status.
         5. If count >= 3 but no ai_provider -> return counted.
         """
+        # Guard: RSS sites never trigger list-type structural repair.
+        # The feed parser replaces the HTML listing stage entirely, so there
+        # is no "list rules" to repair for an RSS source.
+        if source_type == "rss" and repair_kind == "list":
+            logger.debug(
+                "Skipping list repair for RSS site_id=%s (source_type='rss')",
+                site_id,
+            )
+            return RepairResult(action="disabled")
+
         if not auto_repair_enabled:
             return RepairResult(action="disabled")
 

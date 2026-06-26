@@ -1,16 +1,67 @@
-"""Crawl auto-repair state repository.
-
-Provides transactional, concurrent-safe access to site_crawl_repair_states
-and crawl_repair_attempts tables.
-
-Design principles (from plan sections 10, 11):
-- DB locks protect only state transitions and promotions; never include network
-  or AI calls inside a transaction.
-- Fixed lock ordering: always acquire list state before content state to prevent
-  deadlocks when both kinds are locked in the same transaction.
-- Use SELECT … FOR UPDATE to serialize concurrent writers on the same (site, kind).
-- Reserve a weekly attempt BEFORE calling AI; commit the reservation, THEN call AI.
-- Completion uses attempt_id + state revision CAS (compare-and-swap) guard.
+"""
+---
+name: crawl_repair_repository
+description: "Async repository for crawl auto-repair state: transactional access to site_crawl_repair_states and crawl_repair_attempts with SELECT FOR UPDATE and fixed lock ordering"
+type: core
+target:
+  layer: backend
+  domain: crawl
+spec_doc: null
+test_file: tests/stage1/test_crawl_repair_repository.py
+functions:
+  - name: RepairBudgetExhaustedError
+    line: 38
+    purpose: "Exception: all weekly repair attempts have been used for a site+kind"
+  - name: AttemptAlreadyFinalizedError
+    line: 42
+    purpose: "Exception: complete_repair_attempt called on already-terminal attempt"
+  - name: AttemptNotFoundError
+    line: 46
+    purpose: "Exception: repair attempt row not found"
+  - name: RepairStateRepository
+    line: 58
+    purpose: "Async repository; every method accepts AsyncSession; caller owns transactions"
+  - name: RepairStateRepository.get_state
+    line: 77
+    purpose: "Get or lazy-create repair state row; FOR UPDATE if for_update=True"
+  - name: RepairStateRepository.lazy_weekly_rollover
+    line: 151
+    purpose: "Reset weekly counters when week_start_at differs from current week"
+  - name: RepairStateRepository.increment_failure
+    line: 206
+    purpose: "Increment consecutive_failure_count by 1; returns new count"
+  - name: RepairStateRepository.reset_failure
+    line: 263
+    purpose: "Reset failure count to 0 on successful extraction"
+  - name: RepairStateRepository.reserve_repair_attempt
+    line: 314
+    purpose: "Atomic: lock state, check budget, insert attempt row as 'reserved'"
+  - name: RepairStateRepository.complete_repair_attempt
+    line: 431
+    purpose: "Finalize attempt with terminal status; guards against double-completion"
+  - name: RepairStateRepository.pause_feed
+    line: 513
+    purpose: "Set repair_status to paused_until_next_week for a site+kind"
+  - name: RepairStateRepository.clear_block
+    line: 550
+    purpose: "Clear block and reset to healthy (manual rule save path)"
+  - name: RepairStateRepository.get_feed_pause_status
+    line: 588
+    purpose: "Return effective routine pause status for the whole feed"
+  - name: RepairStateRepository.get_repair_attempts
+    line: 658
+    purpose: "Return recent repair attempts for a site, newest first"
+  - name: RepairStateRepository.recover_stale_attempt
+    line: 721
+    purpose: "Finalize stale 'reserved' attempt as 'aborted_internal_error'"
+  - name: _lock_ordered_kinds
+    line: 782
+    purpose: "Return ('list', 'content') — canonical lock acquisition order to prevent deadlocks"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 from __future__ import annotations

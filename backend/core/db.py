@@ -1,7 +1,34 @@
-"""Database connection, metadata, and all SQLAlchemy table definitions.
-
-Extracted from backend/main.py to serve as the single source of truth
-for schema objects shared across routers.
+"""
+---
+name: db
+description: "Database connection, metadata, and all SQLAlchemy table definitions; single source of truth for schema objects shared across routers"
+type: core
+target:
+  layer: backend
+  domain: db
+spec_doc: null
+test_file: tests/stage1/test_database_router.py
+functions:
+  - name: set_kek_backend
+    line: 194
+    purpose: "Module-level setter for KEK backend (used by test fixtures)"
+  - name: set_llm_profiles_enabled
+    line: 198
+    purpose: "Module-level setter for LLM profiles enabled flag (used by test fixtures)"
+  - name: get_db
+    line: 209
+    purpose: "FastAPI dependency: inject AsyncSession from async_session_factory"
+  - name: get_kek_dep
+    line: 215
+    purpose: "FastAPI dependency: inject KEK backend from app.state"
+  - name: get_llm_profiles_enabled_dep
+    line: 220
+    purpose: "FastAPI dependency: inject LLM profiles enabled flag from app.state"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import os
@@ -22,6 +49,9 @@ engine = create_async_engine(DATABASE_URL, pool_size=5, max_overflow=15)
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 metadata = sqlalchemy.MetaData()
 
+import databases
+database = databases.Database(DATABASE_URL)
+
 # ---------------------------------------------------------------------------
 # Database Schema
 # ---------------------------------------------------------------------------
@@ -38,6 +68,10 @@ sites = sqlalchemy.Table(
     sqlalchemy.Column("refresh_frequency", sqlalchemy.Integer, default=60), # In minutes
     sqlalchemy.Column("scrape_method", sqlalchemy.String, default="scrapling"),
     sqlalchemy.Column("owner_user_id", sqlalchemy.Integer, nullable=True),
+    # RSS input source columns
+    sqlalchemy.Column("source_type", sqlalchemy.String, server_default="'html'"),
+    sqlalchemy.Column("rss_full_content", sqlalchemy.Boolean, server_default="false"),
+    sqlalchemy.Column("website_url", sqlalchemy.String, nullable=True),
 )
 
 articles = sqlalchemy.Table(

@@ -1,6 +1,37 @@
-"""Database management endpoints.
-
-Extracted from backend/main.py — all endpoint logic is a verbatim copy.
+"""
+---
+name: database_router
+description: "Database management API routes: schema status, migrations, export (ZIP/JSON), and import"
+type: router
+target:
+  layer: backend
+  domain: database
+spec_doc: null
+test_file: tests/stage1/test_database_router.py
+functions:
+  - name: _run_schema_migration
+    line: 55
+    purpose: "Sync idempotent schema upgrade helper (ALTER TABLE, CREATE TABLE, indexes, role seeding)"
+  - name: database_status
+    line: 233
+    purpose: "GET /settings/database/status — return schema version, table row counts, pending migrations"
+  - name: database_migrate
+    line: 239
+    purpose: "POST /settings/database/migrate — execute all pending schema migrations in a transaction"
+  - name: database_export
+    line: 274
+    purpose: "GET /settings/database/export — export tables as ZIP (default) or JSON file download"
+  - name: database_import_preview
+    line: 323
+    purpose: "POST /settings/database/import/preview — validate import file and return conflict counts"
+  - name: database_import
+    line: 353
+    purpose: "POST /settings/database/import — import data from JSON/ZIP with skip or overwrite mode"
+run:
+  command: "uvicorn backend.main:app --reload --port 8088"
+  env:
+    DATABASE_URL: "postgresql+asyncpg://palimpsest:pass@localhost:5432/palimpsest"
+---
 """
 
 import io
