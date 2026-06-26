@@ -398,7 +398,7 @@ async function throwOnError(res: Response, options?: { skipRedirectOn401?: boole
     // 401 → redirect to login (unless caller opts out, e.g. password verification endpoints)
     if (res.status === 401 && !options?.skipRedirectOn401) {
       const currentPath = window.location.pathname
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       const loginPath = `${pagesPrefix}/authentication/modern/login`
       if (currentPath !== loginPath) {
         window.location.href = loginPath

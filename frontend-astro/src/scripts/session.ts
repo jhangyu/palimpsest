@@ -147,7 +147,7 @@ export function renderCurrentUser(user: AuthUser): void {
         // Even if the API call fails, redirect to login
       }
       _currentUser = null
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/authentication/modern/login`
     })
   })

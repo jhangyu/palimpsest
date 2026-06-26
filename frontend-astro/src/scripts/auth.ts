@@ -134,7 +134,7 @@ function setSubmitLoading(form: HTMLFormElement): () => void {
  * with inputs named "email" and "password".
  */
 export function initLoginPage(): void {
-  const apiBase = (import.meta as any).env?.DEV ? 'http://localhost:8088' : ''
+  const apiBase = (import.meta as ImportMeta).env.DEV ? 'http://localhost:8088' : ''
 
   fetch(`${apiBase}/auth/first-run-check`, { credentials: 'include' })
     .then(res => res.json())
@@ -177,7 +177,7 @@ export function initLoginPage(): void {
     const restoreBtn = setSubmitLoading(form)
     try {
       await api.login(data)
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/dashboard`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed. Please try again.'
@@ -235,7 +235,7 @@ export function initRegisterPage(): void {
     const restoreBtn = setSubmitLoading(form)
     try {
       await api.register(data)
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/dashboard`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed. Please try again.'
@@ -356,7 +356,7 @@ export function initResetPasswordPage(): void {
     try {
       await api.resetPassword(data)
       // Redirect to login with a success hint
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/authentication/modern/login?reset=success`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Password reset failed. Please try again.'
@@ -381,7 +381,7 @@ export function initResetPasswordPage(): void {
  * and optionally "full_name".
  */
 export function initSetupPage(): void {
-  const API_BASE = (import.meta as { env: { DEV: boolean } }).env.DEV ? 'http://localhost:8088' : ''
+  const API_BASE = (import.meta as ImportMeta).env.DEV ? 'http://localhost:8088' : ''
 
   const form = document.querySelector<HTMLFormElement>('#setup-form, form')
   const setupDoneAlert = document.getElementById('setup-done-alert')
@@ -458,7 +458,7 @@ export function initSetupPage(): void {
       }
 
       // Success — redirect to login with setup success hint
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/authentication/modern/login?setup=success`
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Setup failed. Please try again.'

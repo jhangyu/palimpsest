@@ -14,23 +14,6 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 // Configuration for linting tasks
 const CONFIG = {
   tasks: {
-    lock: {
-      name: 'Lockfile',
-      description: 'Package lockfile validation',
-      cmd: 'lockfile-lint',
-      args: [
-        '--allowed-hosts',
-        'npm',
-        '--allowed-schemes',
-        'https:',
-        '--empty-hostname',
-        'false',
-        '--type',
-        'npm',
-        '--path',
-        'package-lock.json'
-      ]
-    },
     js: {
       name: 'ESLint',
       description: 'JavaScript lints fixes',

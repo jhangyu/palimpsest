@@ -390,7 +390,7 @@ export function initFeedWizard(): void {
         }
       })
       alert('Feed created successfully!')
-      const pagesPrefix = (import.meta as any).env?.DEV ? '' : '/pages'
+      const pagesPrefix = (import.meta as ImportMeta).env.DEV ? '' : '/pages'
       window.location.href = `${pagesPrefix}/dashboard`
     } catch (err: unknown) {
       alert('Error saving: ' + (err instanceof Error ? err.message : String(err)) + '\n(Make sure rules are valid JSON)')
