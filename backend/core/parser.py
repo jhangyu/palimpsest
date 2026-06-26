@@ -145,10 +145,13 @@ def parse_listing(page, list_rules: dict, base_url: str) -> list[dict]:
             title = ""
             if title_selector:
                 title_el = item.find(title_selector)
-                title = title_el.text.strip() if title_el else ""
+                if title_el:
+                    # .text returns only direct text; fall back to get_all_text()
+                    # for elements like <h2><a>Title</a></h2> where .text is empty
+                    title = title_el.text.strip() or title_el.get_all_text().strip()
 
             if not title:
-                title = (link_el.text or "").strip() or "No Title"
+                title = (link_el.text or "").strip() or link_el.get_all_text().strip() or "No Title"
 
             results.append({"url": article_url, "title": title})
         except (AttributeError, ValueError):

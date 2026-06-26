@@ -906,16 +906,24 @@ async def force_refresh_all_articles(site_id: int, content_rules: dict, scrape_m
                     skipped_empty += 1
                     return
 
-                # Extract title from content_rules title selector, fallback to existing
+                # Always re-extract title from article page; fall back to existing
                 title = row["title"]
                 try:
                     title_selector = normalize_selector(content_rules.get("title", ""))
                     if title_selector:
                         el = a_page.find(title_selector)
-                        if el and (el.text or "").strip():
-                            title = el.text.strip()
+                        if el:
+                            extracted = (el.text or "").strip() or el.get_all_text().strip()
+                            if extracted:
+                                title = extracted
+                    if not title or title == "No Title":
+                        h1 = a_page.find('h1')
+                        if h1:
+                            extracted = (h1.text or "").strip() or h1.get_all_text().strip()
+                            if extracted:
+                                title = extracted
                 except Exception:
-                    pass  # keep existing title on any selector error
+                    pass
 
                 now_utc = datetime.now(timezone.utc)
                 wc = compute_visible_word_count(content_text)
@@ -1032,16 +1040,22 @@ async def test_crawl_logic(url: str, list_rules: dict, content_rules: dict, filt
                         pass
             pub_date = _parse_pub_date(pub_date)
 
-            # 從 content_rules 的 title selector 提取真正標題（覆蓋佔位符）
-            title_selector = normalize_selector(content_rules.get('title', ''))
-            if title_selector:
-                title_el = a_page.find(title_selector)
-                if title_el:
-                    extracted = (title_el.text or "").strip()
-                    if not extracted and title_el.tag == 'img':
-                        extracted = (title_el.attrib.get('alt', '')).strip()
-                    if extracted:
-                        title = extracted
+            # Only use content_rules title selector as FALLBACK when listing title is "No Title"
+            if title == "No Title":
+                try:
+                    title_selector = normalize_selector(content_rules.get('title', ''))
+                    if title_selector:
+                        title_el = a_page.find(title_selector)
+                        if title_el:
+                            extracted = (title_el.text or "").strip()
+                            if not extracted:
+                                extracted = (title_el.get_all_text(separator=" ") or "").strip()
+                            if not extracted and title_el.tag == 'img':
+                                extracted = (title_el.attrib.get('alt', '')).strip()
+                            if extracted:
+                                title = extracted
+                except Exception:
+                    pass  # keep listing title on any selector error
             if title == "Content Test" or title == "No Title":
                 h1 = a_page.find('h1')
                 if h1:
