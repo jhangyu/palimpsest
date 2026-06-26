@@ -1,38 +1,29 @@
+/*
+---
+name: feed-wizard
+description: "Feed creation wizard: AI-analyze list and content URLs, preview crawl results via CodeMirror, and save a new site with validated JSON rules"
+type: script
+target:
+  layer: frontend
+  domain: feed
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/feeds.spec.ts
+functions:
+  - name: renderPreviewTable
+    line: 34
+    purpose: "Render crawl preview items into a Bootstrap striped table with title, URL/time, and content"
+  - name: initFeedWizard
+    line: 84
+    purpose: "Page entry point: wire analyze, test, toggle-rules, and save buttons with CodeMirror editors"
+---
+*/
 import { api } from '@/scripts/api'
 import type { PreviewItem, PreviewCrawlPayload } from '@/scripts/api'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
-
-// ---------------------------------------------------------------------------
-// CodeMirror minimal interface (loaded as global script, not typed package)
-// ---------------------------------------------------------------------------
-interface CodeMirrorEditor {
-  getValue(): string
-  setValue(value: string): void
-  refresh(): void
-  on(event: string, handler: () => void): void
-}
+import { parseSafe, setLoading, applySourceTypeUi, initCodeMirror, type SourceTypeState, type SourceTypeElements } from './feed-rules-core'
 
 const DEFAULT_LIST_RULES = '{\n  "container": "",\n  "item": "",\n  "title": "",\n  "link": ""\n}'
 const DEFAULT_CONTENT_RULES = '{\n  "title": "",\n  "body": "",\n  "date": "",\n  "image": "",\n  "author": "",\n  "is_vue_template": false,\n  "vue_json_field": ""\n}'
-
-function parseSafe(str: string): Record<string, unknown> {
-  try {
-    return JSON.parse(str)
-  } catch {
-    return {}
-  }
-}
-
-/** Set a button to loading state and return a restore function */
-function setLoading(btn: HTMLButtonElement, loadingHtml: string): () => void {
-  const original = btn.innerHTML
-  btn.disabled = true
-  btn.innerHTML = loadingHtml
-  return () => {
-    btn.innerHTML = original
-    btn.disabled = false
-  }
-}
 
 function renderPreviewTable(
   container: HTMLElement,
@@ -88,15 +79,16 @@ export function initFeedWizard(): void {
   if (!root || root.dataset.inited) return
   root.dataset.inited = 'true'
 
+  // RSS source type state
+  let sourceType: 'html' | 'rss' = 'html'
+  let rssFullContent = false
+  let rssHasFullContent = false
+
   // Form elements
   const inputUrl = root.querySelector<HTMLInputElement>('#wizard-url')!
   const inputName = root.querySelector<HTMLInputElement>('#wizard-name')!
-  const inputSampleUrl = root.querySelector<HTMLInputElement>('#wizard-sample-url')!
+  const inputSampleUrl = root.querySelector<HTMLInputElement>('#input-sample-url')!
   const checkDebug = root.querySelector<HTMLInputElement>('#wizard-debug')!
-
-  // CodeMirror container elements
-  const cmListRulesEl = root.querySelector<HTMLElement>('#cm-wizard-list-rules')!
-  const cmContentRulesEl = root.querySelector<HTMLElement>('#cm-wizard-content-rules')!
 
   // Buttons
   const btnAnalyzeList = root.querySelector<HTMLButtonElement>('#btn-analyze-list')!
@@ -116,27 +108,54 @@ export function initFeedWizard(): void {
   const debugBanner = root.querySelector<HTMLElement>('#debug-banner')!
   const debugBannerPath = root.querySelector<HTMLElement>('#debug-banner-path')!
 
-  // Initialize CodeMirror editors with default values
-  let cmListRules: CodeMirrorEditor | null = null
-  let cmContentRules: CodeMirrorEditor | null = null
+  // RSS toggle DOM refs
+  const sourceTypeHtml = root.querySelector<HTMLButtonElement>('#source-type-html')!
+  const sourceTypeRss = root.querySelector<HTMLButtonElement>('#source-type-rss')!
+  const rssFullContentWrapper = root.querySelector<HTMLElement>('#rss-full-content-wrapper')!
+  const rssFullContentCheck = root.querySelector<HTMLInputElement>('#rss-full-content-check')!
+  const rssFullContentInfo = root.querySelector<HTMLElement>('#rss-full-content-info')!
+  const listRulesSection = root.querySelector<HTMLElement>('#list-rules-section')!
+  const contentRulesSection = root.querySelector<HTMLElement>('#content-rules-section')!
 
-  const CM = (window as unknown as Record<string, unknown>).CodeMirror as
-    | ((el: HTMLElement, opts: Record<string, unknown>) => CodeMirrorEditor)
-    | undefined
-  if (CM) {
-    const cmOpts = {
-      mode: { name: 'javascript', json: true },
-      theme: 'default',
-      lineNumbers: true,
-      lineWrapping: true,
-      tabSize: 2,
-      indentWithTabs: false,
-      matchBrackets: true,
-      readOnly: false
+  // Initialize CodeMirror editors via shared module
+  const cmListRules = initCodeMirror('cm-list-rules', DEFAULT_LIST_RULES)
+  const cmContentRules = initCodeMirror('cm-content-rules', DEFAULT_CONTENT_RULES)
+
+  // Helper: build state/elements objects and call shared applySourceTypeUi
+  function callApplyUi(): void {
+    const state: SourceTypeState = { sourceType, rssFullContent, rssHasFullContent }
+    const els: SourceTypeElements = {
+      sourceTypeHtml,
+      sourceTypeRss,
+      listRulesSection,
+      contentRulesSection,
+      analyzeListBtn: btnAnalyzeList,
+      testListBtn: btnTestList,
+      testBothBtn: btnTestBoth,
+      rssFullContentWrapper
     }
-    cmListRules = CM(cmListRulesEl, { ...cmOpts, value: DEFAULT_LIST_RULES })
-    cmContentRules = CM(cmContentRulesEl, { ...cmOpts, value: DEFAULT_CONTENT_RULES })
+    applySourceTypeUi(state, els)
   }
+
+  // HTML/RSS toggle click handlers
+  sourceTypeHtml?.addEventListener('click', () => {
+    sourceType = 'html'
+    rssFullContent = false
+    rssHasFullContent = false
+    if (rssFullContentCheck) rssFullContentCheck.checked = false
+    callApplyUi()
+  })
+
+  sourceTypeRss?.addEventListener('click', () => {
+    sourceType = 'rss'
+    callApplyUi()
+  })
+
+  // Full content checkbox handler
+  rssFullContentCheck?.addEventListener('change', () => {
+    rssFullContent = rssFullContentCheck.checked
+    callApplyUi()
+  })
 
   // Rules panel toggle — simple d-none toggle, panel visible by default
   let rulesExpanded = true
@@ -255,7 +274,8 @@ export function initFeedWizard(): void {
         list_rules: parseSafe(listRulesStr),
         content_rules: parseSafe(contentRulesStr),
         mode,
-        target_url: targetUrl || undefined
+        target_url: targetUrl || undefined,
+        source_type: sourceType
       }
       const res = await api.previewCrawl(payload, checkDebug.checked)
 
@@ -281,7 +301,42 @@ export function initFeedWizard(): void {
   }
 
   // Test buttons
-  btnTestList.addEventListener('click', () => runPreview('list'))
+  btnTestList.addEventListener('click', async () => {
+    if (sourceType === 'rss') {
+      const url = inputUrl.value.trim()
+      if (!url) { alert('Please enter a URL'); return }
+      // Show preview section and loading state
+      previewSection.classList.remove('d-none')
+      previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      previewBody.innerHTML = ''
+      previewError.classList.add('d-none')
+      previewLoading.classList.remove('d-none')
+      previewLoading.querySelector('.preview-loading-text')!.textContent = 'Parsing RSS feed...'
+      debugBanner.classList.add('d-none')
+      try {
+        const result = await api.parseFeed(url)
+        renderPreviewTable(previewBody, result.items.map(item => ({
+          title: item.title,
+          url: item.url,
+          published_at: item.pub_date
+        })), 'list')
+        // Update full content detection
+        rssHasFullContent = result.has_full_content
+        if (rssHasFullContent && rssFullContentInfo) {
+          rssFullContentInfo.textContent = `Feed contains full article content (${result.item_count} items)`
+          rssFullContentInfo.style.display = ''
+        }
+        callApplyUi()
+      } catch (e: unknown) {
+        previewError.textContent = e instanceof Error ? e.message : 'Failed to parse RSS feed'
+        previewError.classList.remove('d-none')
+      } finally {
+        previewLoading.classList.add('d-none')
+      }
+    } else {
+      runPreview('list')
+    }
+  })
   btnTestContent.addEventListener('click', () =>
     runPreview('content', inputSampleUrl.value.trim() || undefined)
   )
@@ -301,12 +356,25 @@ export function initFeedWizard(): void {
 
     let parsedList: Record<string, unknown>
     let parsedContent: Record<string, unknown>
-    try {
-      parsedList = JSON.parse(listRulesStr)
-      parsedContent = JSON.parse(contentRulesStr)
-    } catch {
-      alert('Rules must be valid JSON. Please check your list and content rules.')
-      return
+    if (sourceType === 'rss') {
+      parsedList = {}
+    } else {
+      try {
+        parsedList = JSON.parse(listRulesStr)
+      } catch {
+        alert('Rules must be valid JSON. Please check your list rules.')
+        return
+      }
+    }
+    if (sourceType === 'rss' && rssFullContent) {
+      parsedContent = {}
+    } else {
+      try {
+        parsedContent = JSON.parse(contentRulesStr)
+      } catch {
+        alert('Rules must be valid JSON. Please check your content rules.')
+        return
+      }
     }
 
     const restore = setLoading(
@@ -315,7 +383,7 @@ export function initFeedWizard(): void {
     )
     try {
       await api.createSite({
-        site: { url, name, refresh_frequency: 60 },
+        site: { url, name, refresh_frequency: 60, source_type: sourceType, rss_full_content: rssFullContent },
         rules: {
           list_rules: parsedList,
           content_rules: parsedContent

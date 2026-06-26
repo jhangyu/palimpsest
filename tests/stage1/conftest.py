@@ -23,10 +23,23 @@ when DATABASE_URL (or TEST_DATABASE_URL) is set.  Falls back to
 ``pytest.skip`` when no database is available, keeping unit-only runs green.
 """
 import os
+import re
 import uuid
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
+
+# ---------------------------------------------------------------------------
+# Auto-load test-env.sh so tests work without manual `source test-env.sh`
+# ---------------------------------------------------------------------------
+_test_env_path = Path(__file__).resolve().parent.parent / "scripts" / "test-env.sh"
+if _test_env_path.exists():
+    for _line in _test_env_path.read_text().splitlines():
+        _m = re.match(r'^export\s+(\w+)="(.+)"', _line)
+        if _m and _m.group(1) not in os.environ:
+            _val = re.sub(r'\$\{(\w+)\}', lambda g: os.environ.get(g.group(1), ''), _m.group(2))
+            os.environ[_m.group(1)] = _val
 
 # ---------------------------------------------------------------------------
 # Real admin guard — tests must NEVER delete or modify this account.
@@ -41,6 +54,15 @@ REAL_ADMIN_EMAIL: str = os.environ.get("ADMIN_EMAIL", "jhangyu@gmail.com")
 # Allow a dedicated test DB; fall back to the app default.
 if os.environ.get("TEST_DATABASE_URL"):
     os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+
+_resolved_url = os.environ.get("DATABASE_URL", "")
+if ":5432/" in _resolved_url and "/palimpsest_test" not in _resolved_url:
+    import warnings
+    warnings.warn(
+        "DATABASE_URL appears to point at the production database (port 5432, not palimpsest_test). "
+        "Set TEST_DATABASE_URL to a test database to avoid polluting production data.",
+        stacklevel=1,
+    )
 
 # Disable LLM-provider-profile subsystem to avoid requiring a KEK keyring.
 os.environ.setdefault("LLM_PROVIDER_PROFILES_ENABLED", "false")
@@ -72,9 +94,72 @@ def test_db_url():
         "TEST_DATABASE_URL",
         os.environ.get(
             "DATABASE_URL",
-            "postgresql+asyncpg://postgres:postgres@localhost:5432/palimpsest_test",
+            "postgresql+asyncpg://palimpsest:testpass123@localhost:5433/palimpsest_test",
         ),
     )
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def cleanup_test_database():
+    """Wipe test data at session START and END.
+
+    Runs before any other session fixtures create data (no dependencies),
+    and again after all session fixtures have torn down.  Uses its own
+    engine so it is independent of the ``db`` fixture lifecycle.
+
+    Tables are deleted in FK-safe order; missing tables are silently ignored.
+    The ``roles`` table is intentionally preserved — it is seeded by the
+    ``db`` fixture and must survive for the whole session.
+    """
+    db_url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if not db_url:
+        yield
+        return
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import text
+
+    # Deletion order respects FK constraints (child tables before parents).
+    _TABLES = [
+        "rss_query_events",       # → sites
+        "articles",               # → sites
+        "crawl_repair_attempts",  # → crawl_repair_states / sites
+        "crawl_repair_states",    # → sites
+        "crawl_attempts",         # → sites
+        "sites",
+        "user_secret_keys",       # → users
+        "user_ai_providers",      # → users / ai_providers
+        "ai_providers",
+        "auth_sessions",          # → users  (CASCADE)
+        "password_reset_tokens",  # → users  (CASCADE)
+        "email_verification_tokens",  # → users  (CASCADE)
+        "auth_rate_limits",
+        "user_roles",             # → users, roles  (CASCADE)
+        "users",
+    ]
+
+    async def _cleanup(eng):
+        async with eng.begin() as conn:
+            for table in _TABLES:
+                try:
+                    await conn.execute(text(f"DELETE FROM {table}"))
+                except Exception:
+                    pass  # Table may not exist yet or FK violation — skip
+
+    _engine = create_async_engine(db_url)
+    try:
+        await _cleanup(_engine)
+    except Exception:
+        pass
+
+    yield
+
+    try:
+        await _cleanup(_engine)
+    except Exception:
+        pass
+    finally:
+        await _engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -237,6 +322,16 @@ async def _seed_user(
 async def _delete_user(db, user_id: int) -> None:
     """Remove a seeded user and all dependent rows (sessions, roles, etc.)."""
     from core.db import auth_sessions, user_roles, users
+
+    # Clean up AI provider data (written by KEK/provider tests)
+    try:
+        await db.execute("DELETE FROM user_ai_providers WHERE owner_user_id = :uid", {"uid": user_id})
+    except Exception:
+        pass  # Table may not exist in minimal test setups
+    try:
+        await db.execute("DELETE FROM user_secret_keys WHERE user_id = :uid", {"uid": user_id})
+    except Exception:
+        pass  # Table may not exist in minimal test setups
 
     await db.execute(
         auth_sessions.delete().where(auth_sessions.c.user_id == user_id)

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>Article Page — Missing Body Selector</title></head>
+<body>
+  <!-- Sentinel failure: the expected body selector (div.article-body) does not exist.
+       parse_article() with content_rules={"body": "div.article-body"} will return
+       content_text = "Parsing failed" (the sentinel string defined in parser.py line 174).
+       This simulates a site redesign that removed or renamed the content container. -->
+  <main>
+    <div class="new-content-wrapper">
+      <div class="story-text">
+        <p>Article content is here but under a different class name.</p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

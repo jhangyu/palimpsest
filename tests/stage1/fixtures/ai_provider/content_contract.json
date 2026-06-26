@@ -1,0 +1,47 @@
+{
+  "contract_version": 1,
+  "mode": "content",
+  "source": {
+    "implementation": "backend/core/ai.py:analyze_structure",
+    "route": "POST /analyze/content"
+  },
+  "prompt": {
+    "required_fragments": [
+      "You are a CSS selector expert.",
+      "extract the article content structure",
+      "title: selector for the article headline/heading element",
+      "body: selector for the MAIN article content area",
+      "date: selector for the publication date element",
+      "image: selector for the hero/cover image",
+      "author: selector for the article author name",
+      "Return ONLY raw JSON, no markdown, no explanation:",
+      "\"title\": \"...\"",
+      "\"body\": \"...\"",
+      "\"date\": \"...\"",
+      "\"image\": \"...\"",
+      "\"author\": \"...\"",
+      "HTML:"
+    ],
+    "input_html": "<article class=\"post\"><h1 class=\"post-title\">Title</h1><time class=\"published\" datetime=\"2026-06-18\">June 18</time><span class=\"author-name\">Author</span><img class=\"hero-image\" src=\"hero.jpg\"><div class=\"article-body\"><p>Body</p></div></article>"
+  },
+  "normalized_rules": {
+    "title": "h1.post-title",
+    "body": "div.article-body",
+    "date": "time.published[datetime]",
+    "image": "img.hero-image",
+    "author": "span.author-name"
+  },
+  "route_response": {
+    "rules": {
+      "title": "h1.post-title",
+      "body": "div.article-body",
+      "date": "time.published[datetime]",
+      "image": "img.hero-image",
+      "author": "span.author-name"
+    }
+  },
+  "optional_vue_fields": {
+    "is_vue_template": true,
+    "vue_json_field": "html"
+  }
+}

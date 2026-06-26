@@ -1,3 +1,31 @@
+/*
+---
+name: charts
+description: "ECharts wrapper: initialize, update, and theme-refresh line/bar/pie/doughnut charts using CSS token colors; auto-resizes on container size changes"
+type: script
+target:
+  layer: frontend
+  domain: analytics
+spec_doc: null
+test_file: null
+functions:
+  - name: tokens
+    line: 40
+    purpose: "Read CSS custom properties to derive chart color tokens from the current theme"
+  - name: buildOption
+    line: 51
+    purpose: "Build an ECharts option configuration for line, bar, pie, or doughnut chart type"
+  - name: initCharts
+    line: 111
+    purpose: "Initialize all .chart elements not yet marked with data-inited attribute"
+  - name: updateChart
+    line: 131
+    purpose: "Update or initialize a single chart element with new data, type, and stacked flag"
+  - name: refreshChartsTheme
+    line: 146
+    purpose: "Re-render all initialized charts using current CSS token values after theme change"
+---
+*/
 /* global getComputedStyle, ResizeObserver */
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart } from 'echarts/charts'

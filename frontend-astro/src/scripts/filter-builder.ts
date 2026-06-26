@@ -1,3 +1,55 @@
+/*
+---
+name: filter-builder
+description: "Visual filter rule builder: manages a recursive AND/OR group tree with field/match/value selectors; renders to DOM and exposes FilterConfig read/write/init API"
+type: script
+target:
+  layer: frontend
+  domain: filter
+spec_doc: null
+test_file: null
+functions:
+  - name: createDefaultFilterConfig
+    line: 40
+    purpose: "Create a default FilterConfig with blacklist mode and an empty root AND group"
+  - name: findGroup
+    line: 59
+    purpose: "Recursively find a FilterGroup node by ID within the config tree"
+  - name: findRule
+    line: 70
+    purpose: "Recursively find a FilterRule node by ID within the config tree"
+  - name: findParentOf
+    line: 81
+    purpose: "Find the parent FilterGroup that directly contains a child node with the given ID"
+  - name: moveItem
+    line: 92
+    purpose: "Move a child item up or down within its parent group and re-render"
+  - name: renderRule
+    line: 129
+    purpose: "Generate HTML for a single filter rule row with field, match, value, and move/delete buttons"
+  - name: renderFilterGroup
+    line: 180
+    purpose: "Recursively generate HTML for a filter group node and all its children"
+  - name: render
+    line: 237
+    purpose: "Re-render the entire filter builder into the root DOM element from current config"
+  - name: handleClick
+    line: 267
+    purpose: "Delegated click handler for add-rule, add-group, delete, move, and toggle-operator actions"
+  - name: handleChange
+    line: 335
+    purpose: "Delegated change/input handler for mode radio, whole-word checkbox, and rule field selects"
+  - name: initFilterBuilder
+    line: 373
+    purpose: "Initialize or re-initialize the filter builder with config; bind delegated event listeners once"
+  - name: getFilterConfig
+    line: 394
+    purpose: "Return a deep copy of the current FilterConfig or null if not initialized"
+  - name: setFilterConfig
+    line: 402
+    purpose: "Replace the current config with a deep copy and re-render the builder"
+---
+*/
 import type { FilterConfig, FilterRule, FilterGroup } from './api'
 import { escapeAttr } from '@/scripts/utils'
 
@@ -372,7 +424,8 @@ export function initFilterBuilder(
  * Returns a deep copy of the current FilterConfig, or null if none is set.
  */
 export function getFilterConfig(): FilterConfig | null {
-  return _config ? (JSON.parse(JSON.stringify(_config)) as FilterConfig) : null
+  if (!_config || !_config.root?.children?.length) return null
+  return JSON.parse(JSON.stringify(_config)) as FilterConfig
 }
 
 /**

@@ -1,4 +1,14 @@
 ---
+// ---
+// name: _topbar
+// description: "Topbar partial: sidebar toggle, search trigger, theme switch, notifications dropdown, user profile offcanvas"
+// type: partial
+// target:
+//   layer: frontend
+//   domain: navigation
+// spec_doc: null
+// test_file: null
+// ---
 import { getPathPrefix } from '../../../../utils/path.js'
 ---
 
@@ -74,7 +84,7 @@ import { getPathPrefix } from '../../../../utils/path.js'
           </div>
 
           <!-- Notifications List -->
-          <div class="notifications-list" data-simplebar>
+          <div class="notifications-list">
             <div class="text-center text-muted py-3">
               <i class="ri-notification-off-line fs-4"></i>
               <p class="small mb-0 mt-1">No new notifications</p>

@@ -1,3 +1,31 @@
+/*
+---
+name: session
+description: "Session bootstrap: fetch and cache the current authenticated user, update DOM with user data, and apply role-based UI gating per page load"
+type: script
+target:
+  layer: frontend
+  domain: auth
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/auth.spec.ts
+functions:
+  - name: initSession
+    line: 50
+    purpose: "Fetch current user from GET /auth/me, cache it, render DOM, and apply role gating; redirect on 401"
+  - name: getCurrentUser
+    line: 72
+    purpose: "Return cached AuthUser or null if initSession has not been called"
+  - name: isAdmin
+    line: 77
+    purpose: "Return true if the current cached user has the admin role"
+  - name: renderCurrentUser
+    line: 99
+    purpose: "Update topbar name/email/avatar DOM elements and wire logout button click handlers"
+  - name: applyRoleGating
+    line: 162
+    purpose: "Show or hide nav elements based on user roles using data-requires-role attribute"
+---
+*/
 /**
  * session.ts — Session bootstrap module
  *

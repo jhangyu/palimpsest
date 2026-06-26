@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Full Content RSS Feed</title>
+    <link>https://fullcontent.example.com</link>
+    <description>RSS feed with full content:encoded in each item</description>
+    <item>
+      <title>Full Article One</title>
+      <link>https://fullcontent.example.com/article-1</link>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+      <author>author@fullcontent.example.com (Author One)</author>
+      <description>Short teaser for article one.</description>
+      <content:encoded><![CDATA[<p>This is the full content of article one. It contains multiple paragraphs with detailed information about the topic at hand.</p><p>The second paragraph goes into more depth, exploring the nuances and subtleties of the subject matter. There is plenty of text here to exceed the 200-character threshold that triggers full content detection.</p><p>And here is a third paragraph with even more content, including a <a href="https://fullcontent.example.com/ref">reference link</a> and an image: <img src="https://fullcontent.example.com/img1.jpg" alt="Image One"/>.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Full Article Two</title>
+      <link>https://fullcontent.example.com/article-2</link>
+      <pubDate>Tue, 02 Jan 2024 11:00:00 +0000</pubDate>
+      <author>author@fullcontent.example.com (Author Two)</author>
+      <description>Short teaser for article two.</description>
+      <content:encoded><![CDATA[<p>This is the full content of article two. It provides an in-depth analysis of a related but distinct topic, covering all the major points and sub-points.</p><p>The content continues here with substantial material that demonstrates the breadth of coverage. This article is particularly long because the subject warrants extensive treatment, including historical background, current analysis, and future outlook.</p><p>References: <a href="https://fullcontent.example.com/ref2">Source A</a>, <a href="https://fullcontent.example.com/ref3">Source B</a>.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Full Article Three</title>
+      <link>https://fullcontent.example.com/article-3</link>
+      <pubDate>Wed, 03 Jan 2024 12:00:00 +0000</pubDate>
+      <author>author@fullcontent.example.com (Author Three)</author>
+      <description>Short teaser for article three.</description>
+      <content:encoded><![CDATA[<p>Full article three starts here with a comprehensive introduction that sets the stage for all that follows. The writing is detailed, thorough, and leaves nothing to the imagination.</p><p>In this second section, we examine the technical details. This includes code snippets, data tables, and graphical representations of key metrics. All of these elements contribute to making this one of the more complete articles on the topic.</p><p>Concluding thoughts: the future is bright and the road ahead is long. Stay tuned for more updates on this evolving story.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>

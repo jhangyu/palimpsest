@@ -1,3 +1,34 @@
+/*
+---
+name: dashboard
+description: "Dashboard page: fetches site list and renders metric cards and a feed table; handles copy-RSS-URL, trigger-crawl, and delete-site inline actions"
+type: script
+target:
+  layer: frontend
+  domain: dashboard
+spec_doc: null
+test_file: null
+functions:
+  - name: normalizeUrl
+    line: 22
+    purpose: "Normalize a site name to a URL-safe slug for RSS feed endpoint paths"
+  - name: renderMetricCards
+    line: 29
+    purpose: "Render summary metric cards (total feeds, system status, active services) into container"
+  - name: renderFeedTable
+    line: 76
+    purpose: "Render the feed table with site list, RSS URL links, and action buttons"
+  - name: showToast
+    line: 143
+    purpose: "Display a temporary toast notification at bottom-right of the page"
+  - name: bindActions
+    line: 152
+    purpose: "Delegate click events for copy-RSS, trigger-crawl, and delete-site table row actions"
+  - name: initDashboard
+    line: 198
+    purpose: "Page entry point: render loading state, bind actions, and load sites from API"
+---
+*/
 import { api, type Site } from '@/scripts/api'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
 

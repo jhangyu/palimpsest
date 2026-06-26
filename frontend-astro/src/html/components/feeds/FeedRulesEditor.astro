@@ -1,0 +1,191 @@
+---
+// ---
+// name: FeedRulesEditor
+// description: "Shared feed rules editing component: list/content rule AI generation buttons, RSS full content toggle, CodeMirror JSON editors, and rules panel toggle — used by both add.astro and edit.astro"
+// type: component
+// target:
+//   layer: frontend
+//   domain: feeds
+// spec_doc: null
+// test_file: null
+// ---
+
+interface Props {
+  cmListId?: string
+  cmContentId?: string
+  sampleUrlId?: string
+}
+
+const {
+  cmListId = 'cm-list-rules',
+  cmContentId = 'cm-content-rules',
+  sampleUrlId = 'input-sample-url'
+} = Astro.props
+---
+
+<!-- Step 1: List Rules — IMPORTANT: buttons are OUTSIDE #list-rules-section to avoid being disabled in RSS mode -->
+<div class="mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <label class="form-label mb-0 fw-semibold">1. List Rules (AI Generation)</label>
+    <div class="d-flex gap-2">
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        id="btn-test-list"
+        type="button"
+        title="Test list extraction"
+      >
+        <i class="ri-file-list-line me-1"></i> Test List
+      </button>
+      <button class="btn btn-sm btn-primary" id="btn-analyze-list" type="button">
+        <i class="ri-brain-line me-1"></i> Analyze List
+      </button>
+    </div>
+  </div>
+  <div id="list-rules-section">
+    <p class="text-muted small mb-0">
+      Click Analyze to automatically extract list selectors from the Target URL above.
+    </p>
+  </div>
+</div>
+<hr />
+
+<!-- Step 2: Content Rules — wrapped in #content-rules-section (disabled when rss_full_content) -->
+<div id="content-rules-section">
+  <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <label class="form-label mb-0 fw-semibold">2. Content Rules (AI Generation)</label>
+      <div class="d-flex gap-2">
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          id="btn-test-content"
+          type="button"
+          title="Test content extraction"
+        >
+          <i class="ri-article-line me-1"></i> Test Content
+        </button>
+        <button class="btn btn-sm btn-primary" id="btn-analyze-content" type="button">
+          <i class="ri-brain-line me-1"></i> Analyze Content
+        </button>
+      </div>
+    </div>
+    <div class="mt-2">
+      <input
+        type="url"
+        class="form-control"
+        id={sampleUrlId}
+        placeholder="Sample Article URL (e.g. https://example.com/blog/post-1)"
+      />
+    </div>
+  </div>
+</div>
+<hr />
+
+<!-- RSS Full Content (hidden by default, shown in RSS mode) -->
+<div id="rss-full-content-wrapper" class="mb-3" style="display:none;">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="rss-full-content-check" />
+    <label class="form-check-label" for="rss-full-content-check">
+      Use RSS Full Content <small class="text-muted">(skip content extraction)</small>
+    </label>
+  </div>
+  <small id="rss-full-content-info" class="text-muted d-block mt-1" style="display:none;"></small>
+</div>
+
+<!-- Rules JSON Panel -->
+<div id="rules-panel" class="mb-3">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">List Rules JSON</label>
+      <div id={cmListId} class="cm-editor-wrapper border rounded" style="min-height:200px"></div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Content Rules JSON</label>
+      <div id={cmContentId} class="cm-editor-wrapper border rounded" style="min-height:200px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Slot for page-specific content (e.g. filter builder on edit page) -->
+<slot name="after-rules" />
+
+<!-- Toggle Rules button -->
+<div class="d-flex justify-content-end mb-3">
+  <button id="btn-toggle-rules" class="btn btn-sm btn-outline-secondary" type="button">
+    <i class="ri-code-line me-1"></i> Hide Rules JSON
+  </button>
+</div>
+
+<!-- CodeMirror CDN -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+/>
+<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
+></script>
+<script
+  is:inline
+  src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"
+></script>
+
+<style is:global>
+  .disabled-section {
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* CodeMirror JSON editor — theme-aware base (class-based, no ID interpolation) */
+  .cm-editor-wrapper .CodeMirror {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+  }
+  .cm-editor-wrapper .CodeMirror-gutters {
+    background-color: var(--bs-tertiary-bg);
+    border-right-color: var(--bs-border-color);
+  }
+  .cm-editor-wrapper .CodeMirror-linenumber {
+    color: var(--bs-secondary-color);
+  }
+  .cm-editor-wrapper .CodeMirror-cursor {
+    border-left-color: var(--bs-body-color);
+  }
+  .cm-editor-wrapper .CodeMirror-selected {
+    background-color: var(--bs-primary-bg-subtle);
+  }
+
+  /* JSON token colors — light mode */
+  .cm-editor-wrapper .cm-string {
+    color: #0a3069;
+  }
+  .cm-editor-wrapper .cm-string.cm-property {
+    color: #0550ae;
+  }
+  .cm-editor-wrapper .cm-number {
+    color: #0550ae;
+  }
+  .cm-editor-wrapper .cm-atom {
+    color: #cf222e;
+  }
+  .cm-editor-wrapper .CodeMirror-matchingbracket {
+    color: #1a7f37;
+    font-weight: bold;
+  }
+
+  /* JSON token colors — dark mode */
+  [data-bs-theme='dark'] .cm-editor-wrapper .cm-string {
+    color: #a5d6ff;
+  }
+  [data-bs-theme='dark'] .cm-editor-wrapper .cm-string.cm-property {
+    color: #79c0ff;
+  }
+  [data-bs-theme='dark'] .cm-editor-wrapper .cm-number {
+    color: #79c0ff;
+  }
+  [data-bs-theme='dark'] .cm-editor-wrapper .cm-atom {
+    color: #ff7b72;
+  }
+  [data-bs-theme='dark'] .cm-editor-wrapper .CodeMirror-matchingbracket {
+    color: #7ee787;
+    font-weight: bold;
+  }
+</style>

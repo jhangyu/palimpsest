@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>Empty Category Page</title></head>
+<body>
+  <!-- Legitimate empty page: the container and item structure are present
+       but there are genuinely no articles (new category, off-season, etc.).
+       This is NOT a selector failure — the rules are correct, the bucket is just empty.
+       parse_listing() will return [] with 0 items, which is a valid outcome. -->
+  <main>
+    <ul class="article-list">
+      <!-- No li.article-item children — container exists but is empty -->
+    </ul>
+    <p class="empty-notice">No articles available in this category yet.</p>
+  </main>
+</body>
+</html>

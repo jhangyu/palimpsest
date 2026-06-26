@@ -1,3 +1,58 @@
+/*
+---
+name: api
+description: "Central typed API client: CSRF-aware fetch wrapper, cache integration, and typed methods for all backend endpoints (auth, sites, analytics, users, admin, database)"
+type: script
+target:
+  layer: frontend
+  domain: api-client
+spec_doc: null
+test_file: null
+functions:
+  - name: getCsrfToken
+    line: 338
+    purpose: "Read csrf_token cookie value set by the server"
+  - name: stateChangingHeaders
+    line: 349
+    purpose: "Build headers with Content-Type and X-CSRF-Token for state-changing requests"
+  - name: csrfHeader
+    line: 365
+    purpose: "Build CSRF-only headers (no Content-Type) for FormData multipart requests"
+  - name: throwOnError
+    line: 376
+    purpose: "Assert response is OK; redirect to login on 401, throw structured error on failure"
+  - name: api.login
+    line: 409
+    purpose: "POST /auth/login — authenticate user and return AuthUser"
+  - name: api.logout
+    line: 420
+    purpose: "POST /auth/logout — terminate current session"
+  - name: api.getMe
+    line: 429
+    purpose: "GET /auth/me — fetch current authenticated user"
+  - name: api.getSites
+    line: 470
+    purpose: "GET /sites/ — list all sites with in-memory TTL cache"
+  - name: api.createSite
+    line: 568
+    purpose: "POST /sites/ — create new site with list/content rules payload"
+  - name: api.previewCrawl
+    line: 580
+    purpose: "POST /crawl/preview — preview crawl results with given rules"
+  - name: api.getAnalyticsOverview
+    line: 594
+    purpose: "GET /analytics/overview — fetch analytics summary and chart data"
+  - name: api.getDatabaseStatus
+    line: 788
+    purpose: "GET /settings/database/status — fetch DB schema version and migration state"
+  - name: api.exportDatabase
+    line: 814
+    purpose: "GET /settings/database/export — trigger file download of exported tables"
+  - name: api.importDatabase
+    line: 852
+    purpose: "POST /settings/database/import — import database file with skip or overwrite conflict mode"
+---
+*/
 /* global fetch */
 import { getCached, setCache, invalidateCache } from '@/scripts/cache'
 
@@ -75,6 +130,9 @@ export interface Site {
   filter_rules?: FilterConfig | null
   scrape_method?: string
   consecutive_failure_count?: number
+  source_type?: 'html' | 'rss'
+  rss_full_content?: boolean
+  website_url?: string
 }
 
 export interface AnalyzeResult {
@@ -107,6 +165,8 @@ export interface CreateSitePayload {
     name: string
     refresh_frequency: number
     scrape_method?: string
+    source_type?: 'html' | 'rss'
+    rss_full_content?: boolean
   }
   rules: {
     list_rules: Record<string, unknown>
@@ -127,6 +187,21 @@ export interface PreviewCrawlPayload {
   mode?: string
   target_url?: string
   scrape_method?: string
+  source_type?: 'html' | 'rss'
+}
+
+export interface FeedParseResponse {
+  success: boolean
+  feed_title?: string
+  feed_link?: string
+  item_count: number
+  has_full_content: boolean
+  items: Array<{
+    title: string
+    url: string
+    pub_date?: string
+    author?: string
+  }>
 }
 
 // --- Articles Types ---
@@ -473,6 +548,16 @@ export const api = {
     await throwOnError(res)
   },
 
+  forceRefresh: async (siteId: number, scope: 'current' | 'all_db'): Promise<void> => {
+    const res = await fetch(`${API_BASE}/sites/${siteId}/force-refresh`, {
+      method: 'POST',
+      headers: stateChangingHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ scope })
+    })
+    await throwOnError(res)
+  },
+
   analyzeList: async (url: string, debug = false): Promise<AnalyzeResult> => {
     const debugParam = debug ? '&debug=true' : ''
     const res = await fetch(
@@ -805,6 +890,17 @@ export const api = {
       credentials: 'include',
       headers: csrfHeader(),
       body: form
+    })
+    await throwOnError(res)
+    return res.json()
+  },
+
+  parseFeed: async (url: string): Promise<FeedParseResponse> => {
+    const res = await fetch(`${API_BASE}/feed/parse`, {
+      method: 'POST',
+      headers: stateChangingHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ url })
     })
     await throwOnError(res)
     return res.json()

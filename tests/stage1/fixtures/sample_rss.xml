@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test RSS Feed</title>
+    <link>https://example.com</link>
+    <description>A test RSS feed with 5 items</description>
+    <item>
+      <title>Article One</title>
+      <link>https://example.com/article-1</link>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+      <author>author@example.com (Alice Author)</author>
+      <description>Short description for article one.</description>
+    </item>
+    <item>
+      <title>Article Two</title>
+      <link>https://example.com/article-2</link>
+      <pubDate>Tue, 02 Jan 2024 11:00:00 +0000</pubDate>
+      <author>author@example.com (Bob Writer)</author>
+      <description>Short description for article two.</description>
+    </item>
+    <item>
+      <title>Article Three</title>
+      <link>https://example.com/article-3</link>
+      <pubDate>Wed, 03 Jan 2024 12:00:00 +0000</pubDate>
+      <author>author@example.com (Carol Scribe)</author>
+      <description>Short description for article three.</description>
+    </item>
+    <item>
+      <title>Article Four</title>
+      <link>https://example.com/article-4</link>
+      <pubDate>Thu, 04 Jan 2024 13:00:00 +0000</pubDate>
+      <author>author@example.com (Dave Pen)</author>
+      <description>Short description for article four.</description>
+    </item>
+    <item>
+      <title>Article Five</title>
+      <link>https://example.com/article-5</link>
+      <pubDate>Fri, 05 Jan 2024 14:00:00 +0000</pubDate>
+      <author>author@example.com (Eve Ink)</author>
+      <description>Short description for article five.</description>
+    </item>
+  </channel>
+</rss>

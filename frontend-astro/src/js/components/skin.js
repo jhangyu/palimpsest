@@ -152,12 +152,17 @@ export function updateSkinAccordionIcons() {
   documentElement.style.setProperty('--skin-accordion-btn-active-icon', activeIconSVG)
 }
 
+let themeObserver = null
+
 /**
  * Initialize skin theme observer to watch for theme changes
  * When data-bs-theme attribute changes, update skin elements accordingly
  */
 export function initSkinThemeObserver() {
-  const observer = new window.MutationObserver((mutations) => {
+  if (themeObserver) {
+    themeObserver.disconnect()
+  }
+  themeObserver = new window.MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
         // Theme changed, update skin elements with new theme
@@ -169,10 +174,21 @@ export function initSkinThemeObserver() {
   })
 
   // Watch for attribute changes on the document element
-  observer.observe(document.documentElement, {
+  themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-bs-theme']
   })
+}
+
+/**
+ * Cleanup the skin theme observer
+ * Call this before re-initializing to prevent observer accumulation
+ */
+export function cleanupSkin() {
+  if (themeObserver) {
+    themeObserver.disconnect()
+    themeObserver = null
+  }
 }
 
 /**

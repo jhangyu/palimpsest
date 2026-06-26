@@ -1,3 +1,61 @@
+/*
+---
+name: ai-service
+description: "AI provider settings page: full CRUD for AI providers with CSRF security, optimistic revision-conflict handling, model discovery, secure API key reveal, and runtime chain status"
+type: script
+target:
+  layer: frontend
+  domain: api-client
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/ai-service.spec.ts
+functions:
+  - name: listProviders
+    line: 173
+    purpose: "GET /settings/ai-providers — list providers with in-memory TTL cache"
+  - name: createProvider
+    line: 184
+    purpose: "POST /settings/ai-providers — create a new AI provider record"
+  - name: updateProvider
+    line: 206
+    purpose: "PUT /settings/ai-providers/:id — update provider fields with revision conflict check"
+  - name: deleteProvider
+    line: 232
+    purpose: "DELETE /settings/ai-providers/:id — delete provider by ID with revision check"
+  - name: testProvider
+    line: 243
+    purpose: "POST /settings/ai-providers/:id/test — test provider connection and return health status"
+  - name: revealProviderKey
+    line: 253
+    purpose: "POST /settings/ai-providers/:id/reveal — decrypt and return API key after password verification"
+  - name: setProviderEnabled
+    line: 267
+    purpose: "PUT /settings/ai-providers/:id/enabled — toggle provider enabled state"
+  - name: reorderProviders
+    line: 279
+    purpose: "PUT /settings/ai-providers/order — reorder provider priority with revision conflict check"
+  - name: discoverModels
+    line: 294
+    purpose: "POST /settings/ai-providers/actions/discover-models — scan available models for a protocol"
+  - name: showToast
+    line: 314
+    purpose: "Display a temporary floating toast alert at bottom-right of the page"
+  - name: openProviderModal
+    line: 627
+    purpose: "Open Bootstrap modal for add or edit provider with scan-models and test-connection support"
+  - name: openRevealKeyModal
+    line: 886
+    purpose: "Open modal to reveal encrypted API key after password entry; clears plaintext on close"
+  - name: openTestResultModal
+    line: 1012
+    purpose: "Open modal that auto-runs provider connection test and displays pass/fail result"
+  - name: loadRuntimeStatus
+    line: 1099
+    purpose: "Fetch and render the active provider chain and environment fallback status banner"
+  - name: initAIServicePage
+    line: 1161
+    purpose: "Page entry point: initialize provider list, wire add-provider button, and handle table actions"
+---
+*/
 /* global fetch */
 /**
  * ai-service.ts — Settings / AI Service page handler

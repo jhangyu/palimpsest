@@ -32,7 +32,17 @@ test('homepage loads', async ({ page }) => {
 test('no console errors', async ({ page }) => {
   const errors: string[] = []
   page.on('console', msg => {
-    if (msg.type() === 'error') errors.push(msg.text())
+    if (msg.type() === 'error') {
+      const text = msg.text()
+      // Filter out 404s from backend API/proxy endpoints — these only resolve
+      // when the backend is running and are not frontend JS health issues.
+      // Real resource failures (missing JS chunks, CSS, images) must still surface.
+      if (
+        text.startsWith('Failed to load resource:') &&
+        (text.includes('localhost:8088') || text.includes('/api/'))
+      ) return
+      errors.push(text)
+    }
   })
   await page.goto('/')
   await page.waitForLoadState('networkidle')

@@ -1,22 +1,34 @@
 import { defineConfig } from '@playwright/test'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const STORAGE_STATE = path.resolve(__dirname, 'tests/.auth/session.json')
+const STORAGE_STATE = path.resolve(__dirname, '../tests/stage2/e2e/.auth/session.json')
+
+const testEnvPath = path.resolve(__dirname, '../tests/scripts/test-env.sh')
+if (fs.existsSync(testEnvPath)) {
+  const content = fs.readFileSync(testEnvPath, 'utf-8')
+  for (const line of content.split('\n')) {
+    const m = line.match(/^export\s+(\w+)="(.+)"/)
+    if (m && !process.env[m[1]]) {
+      process.env[m[1]] = m[2].replace(/\$\{(\w+)\}/g, (_, k) => process.env[k] ?? '')
+    }
+  }
+}
 
 export default defineConfig({
-  testDir: './tests',
-  timeout: 30000,
+  testDir: '../tests/stage2/e2e',
+  timeout: 10000,
   preserveOutput: 'never',
   fullyParallel: true,
-  workers: 2,
+  workers: 8,
   expect: {
-    timeout: 10000
+    timeout: 5000
   },
   reporter: [
     ['list'],
-    ['json', { outputFile: 'test-results/stage2-results.json' }]
+    ['json', { outputFile: '../tests/stage2/results/stage2-results.json' }]
   ],
   use: {
     baseURL: 'http://localhost:5174',

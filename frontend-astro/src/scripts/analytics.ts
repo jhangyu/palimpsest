@@ -1,3 +1,43 @@
+/*
+---
+name: analytics
+description: "Analytics page runtime: fetches /analytics/overview and populates summary KPI info-boxes, ECharts charts, latest-articles table, and feed-events leaderboards"
+type: script
+target:
+  layer: frontend
+  domain: analytics
+spec_doc: null
+test_file: null
+functions:
+  - name: fmtNumber
+    line: 36
+    purpose: "Format a number with locale thousands separator; return em-dash for null/undefined"
+  - name: fmtPct
+    line: 41
+    purpose: "Format a percentage with sign prefix (e.g. +12% or -5%)"
+  - name: fmtMinutes
+    line: 47
+    purpose: "Format a minute count into human-readable hours and minutes string"
+  - name: fmtTime
+    line: 65
+    purpose: "Format ISO timestamp to Taiwan locale short date-time string"
+  - name: initAnalytics
+    line: 90
+    purpose: "Page entry point: fetch analytics overview for 30 days and populate all sections"
+  - name: populateSummary
+    line: 110
+    purpose: "Render summary KPI values and trend indicators into info-box DOM elements"
+  - name: populateCharts
+    line: 148
+    purpose: "Initialize or update all ECharts chart instances with analytics data"
+  - name: populateLatestArticles
+    line: 188
+    purpose: "Render latest articles into the table body with links and formatted timestamps"
+  - name: populateFeedEvents
+    line: 208
+    purpose: "Render feed event leaderboard tables and event summary count cards"
+---
+*/
 /**
  * Analytics page runtime: fetches /analytics/overview and populates
  * info-boxes, charts, and the latest-articles table.

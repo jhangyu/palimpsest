@@ -1,3 +1,25 @@
+/*
+---
+name: table
+description: "Generic TanStack Table initializer: auto-discovers [data-table] elements and builds sortable, filterable, paginated tables with optional row selection and CSV export"
+type: script
+target:
+  layer: frontend
+  domain: table
+spec_doc: null
+test_file: null
+functions:
+  - name: initTables
+    line: 34
+    purpose: "Initialize all [data-table] elements as TanStack tables with search input and pagination"
+  - name: buildPageNumbers
+    line: 354
+    purpose: "Build page number array with ellipsis placeholders (-1) for pagination button rendering"
+  - name: exportCSV
+    line: 372
+    purpose: "Export all filtered rows from a typed TanStack table to a downloadable CSV file"
+---
+*/
 import {
   createTable,
   getCoreRowModel,

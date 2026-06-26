@@ -1,4 +1,14 @@
 ---
+// ---
+// name: _sidebar
+// description: "Admin sidebar partial: logo, scrollable nav tree, mini-toggle, and sidebar footer with user menu"
+// type: partial
+// target:
+//   layer: frontend
+//   domain: navigation
+// spec_doc: null
+// test_file: null
+// ---
 import Logo from './_sidebar/_logo.astro'
 import NavTree from './_sidebar/_nav-tree.astro'
 import Footer from './_sidebar/_footer.astro'
@@ -24,7 +34,7 @@ const { currentPath } = Astro.props
   </div>
 
   <!-- Scrollable Navigation -->
-  <div class="sidebar-content" data-simplebar>
+  <div class="sidebar-content">
     <NavTree currentPath={currentPath} />
   </div>
   <Footer />

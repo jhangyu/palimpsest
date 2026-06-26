@@ -1,3 +1,49 @@
+/*
+---
+name: articles
+description: "Articles page runtime: fetches article list from API and builds a TanStack Table with filter tabs, search, word-count range filter, pagination, and CSV export"
+type: script
+target:
+  layer: frontend
+  domain: table
+spec_doc: null
+test_file: null
+functions:
+  - name: feedBadgeColor
+    line: 46
+    purpose: "Deterministic badge color derived from feed name hash for consistent visual identity"
+  - name: fmtTime
+    line: 54
+    purpose: "Format ISO timestamp to Taiwan locale short date-time string"
+  - name: renderCell
+    line: 99
+    purpose: "Render a table cell with custom HTML for title (with thumbnail), feed badge, or word count"
+  - name: buildPageNumbers
+    line: 136
+    purpose: "Build page number array with ellipsis placeholders (-1) for pagination controls"
+  - name: initArticles
+    line: 157
+    purpose: "Page entry point: fetch articles and initialize the table with toolbar binding"
+  - name: updateFilterCounts
+    line: 183
+    purpose: "Update filter tab badge counts from API filter_counts response"
+  - name: bindFilterTabs
+    line: 194
+    purpose: "Attach click handlers to filter tabs that reload data and rebuild the table"
+  - name: buildArticlesTable
+    line: 237
+    purpose: "Create and render TanStack Table with sorting, filtering, and pagination"
+  - name: exportCSV
+    line: 496
+    purpose: "Export current filtered table rows to a downloadable CSV file"
+  - name: populateFeedFilter
+    line: 529
+    purpose: "Populate the feed source filter dropdown with unique feed names from data"
+  - name: bindToolbar
+    line: 545
+    purpose: "Bind search input, export button, apply-filter, and reset-filter controls to the table"
+---
+*/
 /**
  * Articles page runtime: fetches /articles/list and renders a
  * TanStack Table with filter tabs, search, pagination, and CSV export.

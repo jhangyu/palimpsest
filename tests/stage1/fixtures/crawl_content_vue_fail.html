@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>Vue Template Page — Malformed</title></head>
+<body>
+  <!-- Vue template failure: is_vue_template=True but the template content is
+       malformed (not valid JSON after Vue binding stripping).
+       extract_vue_content() returns (None, None), so parse_article() sets
+       content_text = "Vue template extraction failed" (parser.py line 162).
+
+       The <template> tag is present but contains invalid JSON structure. -->
+  <div id="app">
+    <template id="article-data">
+      { this is not valid json at all: broken template content }
+    </template>
+  </div>
+</body>
+</html>

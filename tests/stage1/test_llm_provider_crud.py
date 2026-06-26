@@ -1049,7 +1049,17 @@ class TestToggleProviderEnabled:
 class TestGetRuntimeStatus:
     @pytest.mark.asyncio
     async def test_empty(self, db, tables, backend):
-        result = await get_runtime_status(db, tables, backend, user_id=1)
+        # Override all fallback-related env vars to ensure environment_fallback
+        # is None regardless of what is set on the host machine.
+        with patch.dict(os.environ, {
+            "MINIMAX_API_KEY": "",
+            "LLM_FALLBACK_ENABLED": "false",
+            "LLM_FALLBACK_PROTOCOL": "",
+            "LLM_FALLBACK_BASE_URL": "",
+            "LLM_FALLBACK_API_KEY": "",
+            "LLM_FALLBACK_MODEL": "",
+        }):
+            result = await get_runtime_status(db, tables, backend, user_id=1)
         assert result["profiles_enabled"] is False
         assert result["chain"] == []
         assert result["environment_fallback"] is None

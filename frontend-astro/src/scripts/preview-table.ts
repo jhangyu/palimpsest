@@ -1,3 +1,31 @@
+/*
+---
+name: preview-table
+description: "Crawl preview table helpers: render PreviewItem results into a Bootstrap table with filter strike-through and summary banner, plus loading, error, and debug-dir states"
+type: script
+target:
+  layer: frontend
+  domain: table
+spec_doc: null
+test_file: null
+functions:
+  - name: renderPreview
+    line: 30
+    purpose: "Render crawl preview items into a striped table with filtered-item indicators and filter summary banner"
+  - name: showLoading
+    line: 162
+    purpose: "Show a centered spinner with a mode-appropriate loading message"
+  - name: showError
+    line: 181
+    purpose: "Display a danger alert with safely escaped error message inside the container"
+  - name: clearPreview
+    line: 193
+    purpose: "Clear all child content from the preview container element"
+  - name: showDebugBanner
+    line: 202
+    purpose: "Prepend a debug-dir info banner with copy-to-clipboard button to the container"
+---
+*/
 import type { PreviewItem } from './api'
 import { escapeHtml } from '@/scripts/utils'
 

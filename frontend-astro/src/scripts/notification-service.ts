@@ -1,3 +1,37 @@
+/*
+---
+name: notification-service
+description: "Notification dropdown service: polls backend for recent crawl failure notifications, filters by user preferences, updates badge count, and polls every 60 seconds"
+type: script
+target:
+  layer: frontend
+  domain: notification
+spec_doc: null
+test_file: null
+functions:
+  - name: relativeTime
+    line: 51
+    purpose: "Convert an ISO timestamp to human-readable relative time string (e.g. '5m ago', '2h ago')"
+  - name: fetchNotifications
+    line: 66
+    purpose: "GET /api/notifications — fetch recent notification list, returning empty array on error"
+  - name: fetchPrefs
+    line: 76
+    purpose: "GET /api/users/me — extract notification preference flags from user profile"
+  - name: renderNotifications
+    line: 87
+    purpose: "Render notification items into .notifications-list element with icons and relative times"
+  - name: updateBadge
+    line: 117
+    purpose: "Show or hide the notification badge element with the current count"
+  - name: refresh
+    line: 135
+    purpose: "Fetch notifications and prefs in parallel, filter by preferences, and re-render"
+  - name: initNotificationDropdown
+    line: 147
+    purpose: "Initialize notification polling: immediate fetch plus 60-second interval; cleans up previous timer"
+---
+*/
 /* global fetch */
 
 interface Notification {

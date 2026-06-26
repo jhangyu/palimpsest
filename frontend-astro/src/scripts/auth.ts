@@ -1,3 +1,40 @@
+/*
+---
+name: auth
+description: "Auth page handlers: login, register, forgot-password, reset-password, and first-run setup form submission with inline error/success display"
+type: script
+target:
+  layer: frontend
+  domain: auth
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/auth.spec.ts
+functions:
+  - name: showFormError
+    line: 55
+    purpose: "Display an error alert inside a form using .auth-form-error element"
+  - name: showFormSuccess
+    line: 71
+    purpose: "Display a success alert inside a form using .auth-form-success element"
+  - name: clearFormErrors
+    line: 86
+    purpose: "Hide and clear all error/success alert elements inside a form"
+  - name: initLoginPage
+    line: 124
+    purpose: "Attach submit handler to login form; calls api.login and redirects to dashboard on success"
+  - name: initRegisterPage
+    line: 191
+    purpose: "Attach submit handler to register form; calls api.register and redirects on success"
+  - name: initForgotPasswordPage
+    line: 248
+    purpose: "Attach submit handler to forgot-password form; calls api.forgotPassword with generic success message"
+  - name: initResetPasswordPage
+    line: 303
+    purpose: "Attach submit handler to reset-password form; reads token from URL query string"
+  - name: initSetupPage
+    line: 371
+    purpose: "Attach submit handler to first-run setup form; POSTs to /auth/first-run-setup"
+---
+*/
 /* global fetch */
 /**
  * auth.ts — Auth page handlers (login / register / forgot / reset / setup)

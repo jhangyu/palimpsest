@@ -11,10 +11,8 @@
 export function initNavigation() {
   const navTree = document.querySelector(".nav-tree")
 
-  if (!navTree) {
-    // console.warn("Navigation tree element '.nav-tree' not found.")
-    return
-  }
+  if (!navTree || navTree.dataset.navInitialized) return
+  navTree.dataset.navInitialized = "true"
 
   navTree.addEventListener("click", (event) => {
     const link = event.target.closest(".nav-link")
@@ -38,7 +36,7 @@ export function initNavigation() {
       siblingSubmenus.forEach((sibling) => {
         if (sibling !== navItem) {
           sibling.classList.remove("open")
-          const chevron = sibling.querySelector(".bi-chevron-right")
+          const chevron = sibling.querySelector(".ri-arrow-right-s-line")
           if (chevron) chevron.style.transform = ""
         }
       })
@@ -48,9 +46,14 @@ export function initNavigation() {
     navItem.classList.toggle("open")
 
     // Update chevron rotation
-    const chevronIcon = link.querySelector(".bi-chevron-right")
+    const chevronIcon = link.querySelector(".ri-arrow-right-s-line")
     if (chevronIcon) {
       chevronIcon.style.transform = navItem.classList.contains("open") ? "rotate(90deg)" : ""
     }
   })
+}
+
+export function cleanupNavigation() {
+  const navTree = document.querySelector(".nav-tree")
+  if (navTree) delete navTree.dataset.navInitialized
 }

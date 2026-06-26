@@ -1,3 +1,34 @@
+/*
+---
+name: cmdk
+description: "Command palette (⌘K / Ctrl+K): fuzzy-search navigation items with keyboard navigation (arrows/Enter/Escape), debounced input, and SPA cleanup support"
+type: script
+target:
+  layer: frontend
+  domain: cmdk
+spec_doc: null
+test_file: null
+functions:
+  - name: fuzzyScore
+    line: 55
+    purpose: "Score a query against text using substring and sequential character matching"
+  - name: filterItems
+    line: 72
+    purpose: "Filter and rank NAV_ITEMS by combined title and description fuzzy score"
+  - name: debounce
+    line: 89
+    purpose: "Debounce a zero-argument function with a millisecond delay"
+  - name: renderResults
+    line: 94
+    purpose: "Render filtered CmdkItem list as Bootstrap list-group links with active highlight"
+  - name: initCommandPalette
+    line: 108
+    purpose: "Initialize command palette: wire keyboard shortcuts, input debounce, and click delegation"
+  - name: destroyCommandPalette
+    line: 215
+    purpose: "Remove event listeners and reset data-inited for SPA navigation teardown"
+---
+*/
 /* global HTMLElement, requestAnimationFrame */
 
 interface CmdkItem {

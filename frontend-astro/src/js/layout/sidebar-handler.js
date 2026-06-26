@@ -1,7 +1,11 @@
 // Sidebar handling functionality
+let resizeHandler = null
+
 export const initSidebar = () => {
   const sidebarToggle = document.getElementById("sidebar-toggle")
   const sidebar = document.querySelector(".sidebar")
+  if (!sidebar || sidebar.dataset.sidebarInitialized) return
+  sidebar.dataset.sidebarInitialized = "true"
   const mainContent = document.querySelector(".main-content")
   const overlay = document.querySelector(".sidebar-overlay")
 
@@ -22,10 +26,18 @@ export const initSidebar = () => {
   overlay?.addEventListener("click", toggleSidebar)
 
   // Reset sidebar state on window resize
-  window.addEventListener("resize", () => {
+  resizeHandler = () => {
     if (window.innerWidth > 1200) {
       overlay?.classList.remove("show")
       sidebar?.classList.remove("open")
     }
-  })
+  }
+  window.addEventListener("resize", resizeHandler)
+}
+
+export const cleanupSidebar = () => {
+  if (resizeHandler) {
+    window.removeEventListener("resize", resizeHandler)
+    resizeHandler = null
+  }
 }

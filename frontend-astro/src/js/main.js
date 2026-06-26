@@ -1,15 +1,13 @@
 import * as bootstrap from 'bootstrap/dist/js/bootstrap.esm.js'
-import SimpleBar from 'simplebar'
 import { darkMode } from './layout/dark-mode.js'
-import { initSidebar } from './layout/sidebar-handler.js'
-import { initSidebarMini } from './layout/sidebar-mini-handler.js'
-import { initNavigation } from './layout/nav-handler.js'
+import { initSidebar, cleanupSidebar } from './layout/sidebar-handler.js'
+import { initSidebarMini, cleanupSidebarMini } from './layout/sidebar-mini-handler.js'
+import { initNavigation, cleanupNavigation } from './layout/nav-handler.js'
 import { initPasswordWrapper } from './components/password.js'
-import { initSkin, updateSkin } from './components/skin.js'
+import { initSkin, updateSkin, cleanupSkin } from './components/skin.js'
 
-// Expose bootstrap and simplebar globally for inline scripts
+// Expose bootstrap globally for inline scripts
 window.bootstrap = bootstrap
-window.SimpleBar = SimpleBar
 
 // Create the theme module
 const PalimpsestAdmin = (function () {
@@ -30,22 +28,30 @@ const PalimpsestAdmin = (function () {
     })
   }
 
-  // Initialize SimpleBar on elements with data-simplebar attribute
-  function initSimpleBar() {
-    document.querySelectorAll('[data-simplebar]').forEach((element) => {
-      new SimpleBar(element)
+  function cleanupAll() {
+    // Dispose all Bootstrap Tooltip instances
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+      bootstrap.Tooltip.getInstance(el)?.dispose()
     })
+    // Dispose all Bootstrap Popover instances
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach((el) => {
+      bootstrap.Popover.getInstance(el)?.dispose()
+    })
+    cleanupSidebar()
+    cleanupSidebarMini()
+    cleanupNavigation()
+    cleanupSkin()
   }
 
   function initializeAll() {
     try {
+      cleanupAll()
       darkMode()
       initSidebar()
       initSidebarMini()
       initNavigation()
       initPasswordWrapper()
       initBootstrap()
-      initSimpleBar()
       initSkin()
       initialized = true
     } catch (error) {
@@ -56,6 +62,7 @@ const PalimpsestAdmin = (function () {
   // Public API
   return {
     init: initializeAll,
+    cleanup: cleanupAll,
     isInitialized: () => initialized,
     updateSkin: updateSkin
   }
@@ -63,14 +70,16 @@ const PalimpsestAdmin = (function () {
 
 // Auto-initialize on first load and after View Transitions navigation
 if (typeof document !== 'undefined') {
-  document.addEventListener('astro:page-load', PalimpsestAdmin.init)
+  // Initial page load: run as early as possible
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!PalimpsestAdmin.isInitialized()) PalimpsestAdmin.init()
-    })
+    document.addEventListener('DOMContentLoaded', PalimpsestAdmin.init)
   } else {
-    if (!PalimpsestAdmin.isInitialized()) PalimpsestAdmin.init()
+    PalimpsestAdmin.init()
   }
+  // View Transition navigation only (does NOT fire on initial load)
+  document.addEventListener('astro:after-swap', PalimpsestAdmin.init)
+  // Cleanup before DOM swap to prevent listener leaks
+  document.addEventListener('astro:before-swap', PalimpsestAdmin.cleanup)
 }
 
 export default PalimpsestAdmin

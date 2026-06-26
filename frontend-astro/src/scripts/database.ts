@@ -1,3 +1,43 @@
+/*
+---
+name: database
+description: "Database settings page: display DB status and pending migrations, run migrations, export selected tables as JSON/ZIP, and import via drag-and-drop with preview and conflict resolution"
+type: script
+target:
+  layer: frontend
+  domain: api-client
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/settings-database.spec.ts
+functions:
+  - name: showStatus
+    line: 40
+    purpose: "Render an alert message into a named element with a given Bootstrap color variant"
+  - name: clearStatus
+    line: 51
+    purpose: "Clear the HTML content of a named status container element"
+  - name: setButtonLoading
+    line: 57
+    purpose: "Toggle a button between loading spinner state and original innerHTML text"
+  - name: escapeHtml
+    line: 71
+    purpose: "Escape HTML special characters for safe insertion into innerHTML"
+  - name: initDatabasePage
+    line: 84
+    purpose: "Page entry point: load DB status and bind export, import, and migration button handlers"
+  - name: loadDatabaseStatus
+    line: 115
+    purpose: "Fetch DB status and render version badge, tables list, last-migration time, and pending migrations alert"
+  - name: bindExportHandlers
+    line: 216
+    purpose: "Bind export button to collect checked tables and trigger API download with chosen format"
+  - name: bindImportHandlers
+    line: 263
+    purpose: "Bind drag-and-drop and file input for import preview and conflict-mode import execution"
+  - name: formatBytes
+    line: 518
+    purpose: "Format a byte count to human-readable B/KB/MB string"
+---
+*/
 /**
  * database.ts — Page handlers for Database management settings
  *

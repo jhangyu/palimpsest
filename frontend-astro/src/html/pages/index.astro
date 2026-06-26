@@ -1,4 +1,15 @@
 ---
+// ---
+// name: index
+// description: "Root index page: immediately redirects to /dashboard using meta refresh and JS fallback"
+// type: page
+// target:
+//   layer: frontend
+//   domain: dashboard
+// spec_doc: null
+// test_file: tests/stage2/e2e/stage1/smoke.spec.ts
+// route: /
+// ---
 import { getPathPrefix } from '../../utils/path.js'
 
 // Determine the target redirect URL with environment-specific path prefix

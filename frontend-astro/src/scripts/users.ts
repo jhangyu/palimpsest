@@ -1,3 +1,55 @@
+/*
+---
+name: users
+description: "User management pages: profile edit (full name, email, username, avatar, preferences), password change, and admin user list/add/edit with pagination and role management"
+type: script
+target:
+  layer: frontend
+  domain: auth
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/settings-users.spec.ts
+functions:
+  - name: showToast
+    line: 48
+    purpose: "Display a temporary toast notification at bottom-right with success or danger variant"
+  - name: setFieldError
+    line: 57
+    purpose: "Mark a form field as invalid and display an error message in .invalid-feedback"
+  - name: clearFieldError
+    line: 70
+    purpose: "Remove is-invalid state and clear error message from a form field"
+  - name: setButtonLoading
+    line: 78
+    purpose: "Toggle a submit button between spinner loading state and original innerHTML"
+  - name: initProfilePage
+    line: 95
+    purpose: "Load user profile and bind full-name, email, username, avatar, and preferences forms"
+  - name: populateProfileForm
+    line: 114
+    purpose: "Populate profile form fields, avatar preview image, and preferences selects from UserProfile"
+  - name: bindProfileForms
+    line: 177
+    purpose: "Bind submit handlers for full-name, email-change, and username-change forms"
+  - name: bindAvatarSection
+    line: 263
+    purpose: "Bind avatar file upload, delete avatar, and Gravatar toggle with live preview updates"
+  - name: bindPreferencesForm
+    line: 354
+    purpose: "Bind preferences form submit to update theme, locale, and timezone"
+  - name: initSecurityPage
+    line: 381
+    purpose: "Bind password change form with validation and password visibility toggle buttons"
+  - name: initUserListPage
+    line: 458
+    purpose: "Admin user list with search, pagination, block/unblock toggle, and delete actions"
+  - name: initAddUserPage
+    line: 646
+    purpose: "Admin create-user form with email, username, full name, and role checkbox assignment"
+  - name: initEditUserPage
+    line: 724
+    purpose: "Admin edit-user form loaded from ?id= URL param with status select and role management"
+---
+*/
 /**
  * users.ts — Page handlers for user management
  *
@@ -354,21 +406,6 @@ export async function initSecurityPage(): Promise<void> {
   const form = document.getElementById('passwordUpdateForm') as HTMLFormElement | null
   if (!form || form.dataset.inited) return
   form.dataset.inited = 'true'
-
-  // Wire password toggle buttons
-  document.querySelectorAll<HTMLElement>('.password-toggle').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const wrapper = btn.closest('.password-wrapper')
-      const input = wrapper?.querySelector<HTMLInputElement>('.password-input')
-      if (!input) return
-      const isHidden = input.type === 'password'
-      input.type = isHidden ? 'text' : 'password'
-      const icon = btn.querySelector('i')
-      if (icon) {
-        icon.className = isHidden ? 'ri-eye-line' : 'ri-eye-off-line'
-      }
-    })
-  })
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()

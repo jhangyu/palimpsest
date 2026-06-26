@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>Broken Structure Page</title></head>
+<body>
+  <!-- Structural failure: page has content but the expected selectors (.article-list, .article-item) are absent.
+       This simulates a site redesign that breaks our CSS selectors. -->
+  <main>
+    <div class="new-redesigned-wrapper">
+      <section class="news-feed">
+        <div class="news-card">
+          <a href="/news/item-1">News Item 1</a>
+        </div>
+        <div class="news-card">
+          <a href="/news/item-2">News Item 2</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

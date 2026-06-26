@@ -1208,6 +1208,7 @@ test.describe('Manage Feed Page — Preview Section', () => {
     await page.goto('/feeds/edit')
     await page.waitForLoadState('networkidle')
     await page.locator('tr[data-site-id]').first().locator('[data-action="edit"]').click()
+    await expect(page.locator('#editor-section')).not.toHaveClass(/d-none/, { timeout: 15000 })
     await page.locator('#btn-filter-preview').click()
     await expect(page.locator('#btn-filter-preview')).toHaveClass(/active/)
   })

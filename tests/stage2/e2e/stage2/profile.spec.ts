@@ -862,8 +862,26 @@ test.describe('Preferences — #preferences-form', () => {
   })
 
   test('P-31: Preferences pre-filled from profile data', async ({ page }) => {
+    // Mock GET /users/me to return known preferences — makes this test independent of P-30
+    await page.route('**/users/me', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1, email: 'user@test.com', username: 'testuser', full_name: 'Test User',
+            pending_email: null, avatar_source: 'none', status: 'active', roles: ['admin'],
+            email_verified_at: null,
+            preferences: { theme: 'dark', locale: 'zh-TW', timezone: 'Asia/Taipei' },
+            created_at: '2024-01-01', updated_at: '2024-01-01', last_login_at: null,
+          })
+        })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/users/profile', { waitUntil: 'networkidle' })
-    // Select values should match profile.preferences values
+    // Select values should be pre-filled from profile.preferences returned by API
     await expect(page.locator('#pref-theme')).toHaveValue('dark')
     await expect(page.locator('#pref-locale')).toHaveValue('zh-TW')
     await expect(page.locator('#pref-timezone')).toHaveValue('Asia/Taipei')

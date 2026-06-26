@@ -1,4 +1,15 @@
 ---
+// ---
+// name: settings-database
+// description: "Database management page: database status with table row counts and pending migration alert, data export (ZIP/JSON) with table selection, and data import with drag-drop upload, conflict resolution, and preview"
+// type: page
+// target:
+//   layer: frontend
+//   domain: settings
+// spec_doc: null
+// test_file: tests/stage2/e2e/stage2/settings-database.spec.ts
+// route: /settings/database
+// ---
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
 import { getPathPrefix } from '../../../utils/path.js'
@@ -288,7 +299,9 @@ const pageHeader = {
             id="import-status"
             class="ms-3 text-muted small align-self-center"
             style="display:none;"></span>
-          <small class="text-muted ms-auto align-self-center">Select a file, then click Preview to verify before importing.</small>
+          <small class="text-muted ms-auto align-self-center"
+            >Select a file, then click Preview to verify before importing.</small
+          >
         </div>
       </div>
     </div>

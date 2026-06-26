@@ -1,0 +1,86 @@
+{
+  "models": [
+    {
+      "id": "mock-fast-model",
+      "display_name": "Mock Fast Model"
+    }
+  ],
+  "generation_text": "{\"container\":\"div.article-grid.gap-4\",\"item\":\"> article.article-card\",\"title\":\"h2.article-title\",\"link\":\"a[href*='/post/']\"}",
+  "openai": {
+    "models": {
+      "object": "list",
+      "data": [
+        {
+          "id": "mock-fast-model",
+          "object": "model"
+        }
+      ]
+    },
+    "generation": {
+      "id": "chatcmpl-mock",
+      "object": "chat.completion",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"container\":\"div.article-grid.gap-4\",\"item\":\"> article.article-card\",\"title\":\"h2.article-title\",\"link\":\"a[href*='/post/']\"}"
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  },
+  "anthropic": {
+    "models": {
+      "data": [
+        {
+          "id": "mock-fast-model",
+          "display_name": "Mock Fast Model",
+          "type": "model"
+        }
+      ],
+      "has_more": false
+    },
+    "generation": {
+      "id": "msg_mock",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"container\":\"div.article-grid.gap-4\",\"item\":\"> article.article-card\",\"title\":\"h2.article-title\",\"link\":\"a[href*='/post/']\"}"
+        }
+      ],
+      "stop_reason": "end_turn"
+    }
+  },
+  "gemini": {
+    "models": {
+      "models": [
+        {
+          "name": "models/mock-fast-model",
+          "displayName": "Mock Fast Model",
+          "supportedGenerationMethods": [
+            "generateContent"
+          ]
+        }
+      ]
+    },
+    "generation": {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"container\":\"div.article-grid.gap-4\",\"item\":\"> article.article-card\",\"title\":\"h2.article-title\",\"link\":\"a[href*='/post/']\"}"
+              }
+            ],
+            "finishReason": "STOP"
+          }
+        }
+      ]
+    }
+  }
+}

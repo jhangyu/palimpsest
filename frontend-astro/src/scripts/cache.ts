@@ -1,3 +1,25 @@
+/*
+---
+name: cache
+description: "Simple in-memory TTL cache for API responses; avoids redundant fetches for infrequently-changing data such as site lists and provider lists"
+type: script
+target:
+  layer: frontend
+  domain: cache
+spec_doc: null
+test_file: null
+functions:
+  - name: getCached
+    line: 33
+    purpose: "Retrieve cached value by key; returns null if entry is missing or expired beyond TTL"
+  - name: setCache
+    line: 43
+    purpose: "Store a typed value in cache with the current timestamp"
+  - name: invalidateCache
+    line: 47
+    purpose: "Delete a specific cache entry by key, or clear all entries if key is omitted"
+---
+*/
 /**
  * cache.ts — Simple in-memory TTL cache for API responses.
  *

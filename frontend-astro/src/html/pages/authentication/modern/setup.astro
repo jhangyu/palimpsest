@@ -1,4 +1,15 @@
 ---
+// ---
+// name: setup
+// description: "First-run admin setup page: full name, email, username, and password form to create the initial admin account when no users exist; shows 'already done' alert if setup was completed"
+// type: page
+// target:
+//   layer: frontend
+//   domain: auth
+// spec_doc: null
+// test_file: tests/stage2/e2e/stage2/auth.spec.ts
+// route: /authentication/modern/setup
+// ---
 import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
 import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 ---

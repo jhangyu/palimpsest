@@ -1,6 +1,18 @@
 ---
+// ---
+// name: feeds-add
+// description: "Add new feed wizard: URL and site name input, AI-assisted list rule and content rule generation with live crawl preview, and save button to start crawling"
+// type: page
+// target:
+//   layer: frontend
+//   domain: feeds
+// spec_doc: null
+// test_file: tests/stage2/e2e/stage2/feeds.spec.ts
+// route: /feeds/add
+// ---
 import AdminLayout from '../../layouts/admin/admin-layout.astro'
 import PageHeader from '../../components/common/page-header.astro'
+import FeedRulesEditor from '../../components/feeds/FeedRulesEditor.astro'
 
 const headerProps = {
   title: 'Create New Feed',
@@ -42,13 +54,25 @@ const headerProps = {
             <!-- URL + Name -->
             <div class="row g-3 mb-3">
               <div class="col-md-8">
-                <label for="wizard-url" class="form-label">Target Website URL</label>
-                <input
-                  type="url"
-                  class="form-control"
-                  id="wizard-url"
-                  placeholder="https://example.com/blog"
-                />
+                <label for="wizard-url" class="form-label">Target Website URL / RSS</label>
+                <div class="d-flex align-items-center">
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="wizard-url"
+                    placeholder="https://example.com/blog"
+                  />
+                  <div id="source-type-toggle" class="btn-group btn-group-sm ms-2" role="group">
+                    <button
+                      type="button"
+                      id="source-type-html"
+                      class="btn btn-outline-secondary active">HTML</button
+                    >
+                    <button type="button" id="source-type-rss" class="btn btn-outline-secondary"
+                      >RSS</button
+                    >
+                  </div>
+                </div>
               </div>
               <div class="col-md-4">
                 <label for="wizard-name" class="form-label">Site Name</label>
@@ -63,107 +87,31 @@ const headerProps = {
 
             <hr />
 
-            <!-- Step 1: List Rules -->
-            <div class="mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label mb-0 fw-semibold">1. List Rules (AI Generation)</label>
-                <div class="d-flex gap-2">
-                  <button
-                    class="btn btn-sm btn-outline-secondary"
-                    id="btn-test-list"
-                    type="button"
-                    title="Test list extraction"
-                  >
-                    <i class="ri-file-list-line me-1"></i> Test List
-                  </button>
-                  <button class="btn btn-sm btn-primary" id="btn-analyze-list" type="button">
-                    <i class="ri-brain-line me-1"></i> Analyze List
-                  </button>
-                </div>
+            <FeedRulesEditor
+              cmListId="cm-list-rules"
+              cmContentId="cm-content-rules"
+              sampleUrlId="input-sample-url"
+            />
+
+            <!-- Page-specific footer: Debug switch, Test Both, Save -->
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-2">
+              <!-- Debug toggle (Bootstrap switch) -->
+              <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="wizard-debug" />
+                <label class="form-check-label d-flex align-items-center gap-1" for="wizard-debug">
+                  <i class="ri-bug-line"></i> Debug
+                </label>
               </div>
-              <p class="text-muted small mb-0">
-                Click Analyze to automatically extract list selectors from the Target URL above.
-              </p>
-            </div>
 
-            <hr />
-
-            <!-- Step 2: Content Rules -->
-            <div class="mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label mb-0 fw-semibold">2. Content Rules (AI Generation)</label>
-                <div class="d-flex gap-2">
-                  <button
-                    class="btn btn-sm btn-outline-secondary"
-                    id="btn-test-content"
-                    type="button"
-                    title="Test content extraction with sample URL"
-                  >
-                    <i class="ri-article-line me-1"></i> Test Content
-                  </button>
-                  <button class="btn btn-sm btn-primary" id="btn-analyze-content" type="button">
-                    <i class="ri-brain-line me-1"></i> Analyze Content
-                  </button>
-                </div>
-              </div>
-              <div class="mt-2">
-                <input
-                  type="url"
-                  class="form-control"
-                  id="wizard-sample-url"
-                  placeholder="Sample Article URL (e.g. https://example.com/blog/post-1)"
-                />
-              </div>
-            </div>
-
-            <hr />
-
-            <!-- Rules JSON Panel (visible by default) -->
-            <div id="rules-panel" class="mb-3">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">List Rules JSON</label>
-                  <div id="cm-wizard-list-rules" class="border rounded" style="min-height:200px">
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Content Rules JSON</label>
-                  <div id="cm-wizard-content-rules" class="border rounded" style="min-height:200px">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <hr />
-
-            <!-- Toggle Rules + Footer -->
-            <div class="d-flex justify-content-between align-items-center">
-              <button class="btn btn-sm btn-outline-secondary" id="btn-toggle-rules" type="button">
-                <i class="ri-code-line me-1"></i> Hide Rules JSON
+              <!-- Test Both -->
+              <button class="btn btn-primary" id="btn-test-both" type="button">
+                <i class="ri-file-list-line me-1"></i> Test Both
               </button>
 
-              <div class="d-flex align-items-center gap-3">
-                <!-- Debug toggle (Bootstrap switch) -->
-                <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
-                  <input class="form-check-input" type="checkbox" role="switch" id="wizard-debug" />
-                  <label
-                    class="form-check-label d-flex align-items-center gap-1"
-                    for="wizard-debug"
-                  >
-                    <i class="ri-bug-line"></i> Debug
-                  </label>
-                </div>
-
-                <!-- Test Both -->
-                <button class="btn btn-primary" id="btn-test-both" type="button">
-                  <i class="ri-file-list-line me-1"></i> Test Both
-                </button>
-
-                <!-- Save -->
-                <button class="btn btn-success" id="btn-save" type="button">
-                  <i class="ri-rocket-line me-1"></i> Start Crawling
-                </button>
-              </div>
+              <!-- Save -->
+              <button class="btn btn-success" id="btn-save" type="button">
+                <i class="ri-rocket-line me-1"></i> Start Crawling
+              </button>
             </div>
           </div>
         </div>
@@ -202,90 +150,6 @@ const headerProps = {
     </div>
   </div>
 </AdminLayout>
-
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
-/>
-
-<style is:global>
-  /* CodeMirror JSON editor — theme-aware base */
-  #cm-wizard-list-rules .CodeMirror,
-  #cm-wizard-content-rules .CodeMirror {
-    background-color: var(--bs-body-bg);
-    color: var(--bs-body-color);
-  }
-  #cm-wizard-list-rules .CodeMirror-gutters,
-  #cm-wizard-content-rules .CodeMirror-gutters {
-    background-color: var(--bs-tertiary-bg);
-    border-right-color: var(--bs-border-color);
-  }
-  #cm-wizard-list-rules .CodeMirror-linenumber,
-  #cm-wizard-content-rules .CodeMirror-linenumber {
-    color: var(--bs-secondary-color);
-  }
-  #cm-wizard-list-rules .CodeMirror-cursor,
-  #cm-wizard-content-rules .CodeMirror-cursor {
-    border-left-color: var(--bs-body-color);
-  }
-  #cm-wizard-list-rules .CodeMirror-selected,
-  #cm-wizard-content-rules .CodeMirror-selected {
-    background-color: var(--bs-primary-bg-subtle);
-  }
-
-  /* JSON token colors — light mode */
-  #cm-wizard-list-rules .cm-string,
-  #cm-wizard-content-rules .cm-string {
-    color: #0a3069;
-  }
-  #cm-wizard-list-rules .cm-string.cm-property,
-  #cm-wizard-content-rules .cm-string.cm-property {
-    color: #0550ae;
-  }
-  #cm-wizard-list-rules .cm-number,
-  #cm-wizard-content-rules .cm-number {
-    color: #0550ae;
-  }
-  #cm-wizard-list-rules .cm-atom,
-  #cm-wizard-content-rules .cm-atom {
-    color: #cf222e;
-  }
-  #cm-wizard-list-rules .CodeMirror-matchingbracket,
-  #cm-wizard-content-rules .CodeMirror-matchingbracket {
-    color: #1a7f37;
-    font-weight: bold;
-  }
-
-  /* JSON token colors — dark mode */
-  [data-bs-theme='dark'] #cm-wizard-list-rules .cm-string,
-  [data-bs-theme='dark'] #cm-wizard-content-rules .cm-string {
-    color: #a5d6ff;
-  }
-  [data-bs-theme='dark'] #cm-wizard-list-rules .cm-string.cm-property,
-  [data-bs-theme='dark'] #cm-wizard-content-rules .cm-string.cm-property {
-    color: #79c0ff;
-  }
-  [data-bs-theme='dark'] #cm-wizard-list-rules .cm-number,
-  [data-bs-theme='dark'] #cm-wizard-content-rules .cm-number {
-    color: #79c0ff;
-  }
-  [data-bs-theme='dark'] #cm-wizard-list-rules .cm-atom,
-  [data-bs-theme='dark'] #cm-wizard-content-rules .cm-atom {
-    color: #ff7b72;
-  }
-  [data-bs-theme='dark'] #cm-wizard-list-rules .CodeMirror-matchingbracket,
-  [data-bs-theme='dark'] #cm-wizard-content-rules .CodeMirror-matchingbracket {
-    color: #7ee787;
-    font-weight: bold;
-  }
-</style>
-
-<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
-></script>
-<script
-  is:inline
-  src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"
-></script>
 
 <script>
   import { initFeedWizard } from '@/scripts/feed-wizard'

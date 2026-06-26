@@ -1,3 +1,58 @@
+/*
+---
+name: feed-edit
+description: "Feed edit page: split-panel UI to select a site, edit crawl rules in CodeMirror, configure article filters, run AI analysis, preview crawl results, and save site changes"
+type: script
+target:
+  layer: frontend
+  domain: feed
+spec_doc: null
+test_file: tests/stage2/e2e/stage2/feeds.spec.ts
+functions:
+  - name: emptyEditData
+    line: 83
+    purpose: "Return a blank EditData object with default field values"
+  - name: getSiteIdFromUrl
+    line: 143
+    purpose: "Parse site ID from URL query params (?site= or ?id=)"
+  - name: initFeedEdit
+    line: 153
+    purpose: "Page entry point: resolve DOM refs, bind all event handlers, and load initial site list"
+  - name: fetchSites
+    line: 257
+    purpose: "Reload sites from API bypassing cache and re-render the selection table"
+  - name: renderTable
+    line: 274
+    purpose: "Render the site selection table with action buttons for each row"
+  - name: handleEdit
+    line: 339
+    purpose: "Load site details and populate the editor form and CodeMirror editors"
+  - name: handleDuplicate
+    line: 391
+    purpose: "Duplicate a site configuration via API and refresh the table"
+  - name: handleDelete
+    line: 401
+    purpose: "Delete a site after confirmation; clear editor if the deleted site was selected"
+  - name: handleManualCrawl
+    line: 416
+    purpose: "Trigger an immediate crawl for a site with spinner feedback on the action button"
+  - name: handleSave
+    line: 452
+    purpose: "Validate JSON rules and filter config, then save site edits via API"
+  - name: handleAnalyze
+    line: 498
+    purpose: "Invoke AI analysis for list or content rules and populate the CodeMirror editor"
+  - name: handleTest
+    line: 544
+    purpose: "Preview crawl with current rules and render results in the preview section"
+  - name: handleToggleRules
+    line: 601
+    purpose: "Toggle visibility of the rules panel and refresh CodeMirror editor instances"
+  - name: updateDebugUI
+    line: 615
+    purpose: "Update debug label color based on debug mode state"
+---
+*/
 import { api } from './api'
 import type { Site, FilterConfig } from './api'
 import { invalidateCache } from '@/scripts/cache'
@@ -14,16 +69,14 @@ import {
   getFilterConfig,
   createDefaultFilterConfig
 } from './filter-builder'
-
-// ---------------------------------------------------------------------------
-// CodeMirror minimal interface (loaded as global script, not typed package)
-// ---------------------------------------------------------------------------
-interface CodeMirrorEditor {
-  getValue(): string
-  setValue(value: string): void
-  refresh(): void
-  on(event: string, handler: () => void): void
-}
+import {
+  parseSafe,
+  applySourceTypeUi,
+  initCodeMirror,
+  type CodeMirrorEditor,
+  type SourceTypeState,
+  type SourceTypeElements
+} from './feed-rules-core'
 
 // ---------------------------------------------------------------------------
 // State
@@ -36,6 +89,8 @@ interface EditData {
   content_rules: string
   filter_rules: string
   sample_url: string
+  source_type: 'html' | 'rss'
+  rss_full_content: boolean
 }
 
 let sites: Site[] = []
@@ -45,6 +100,7 @@ let debugMode = false
 let rulesExpanded = true
 let crawlingId: number | null = null
 let saving = false
+let rssHasFullContent = false
 
 function emptyEditData(): EditData {
   return {
@@ -54,7 +110,9 @@ function emptyEditData(): EditData {
     list_rules: '',
     content_rules: '',
     filter_rules: '',
-    sample_url: ''
+    sample_url: '',
+    source_type: 'html',
+    rss_full_content: false
   }
 }
 
@@ -70,8 +128,6 @@ let inputUrl: HTMLInputElement
 let inputName: HTMLInputElement
 let inputFreq: HTMLInputElement
 let inputSampleUrl: HTMLInputElement
-let cmListRulesEl: HTMLElement
-let cmContentRulesEl: HTMLElement
 let cmListRules: CodeMirrorEditor | null = null
 let cmContentRules: CodeMirrorEditor | null = null
 let rulesPanel: HTMLElement
@@ -89,6 +145,15 @@ let previewBody: HTMLElement
 let testBothBtn: HTMLButtonElement
 let filterBuilderRoot: HTMLElement
 let filterPreviewBtn: HTMLButtonElement
+let forceRefreshBtn: HTMLButtonElement
+let forceRefreshConfirmBtn: HTMLButtonElement
+let sourceTypeHtml: HTMLButtonElement
+let sourceTypeRss: HTMLButtonElement
+let rssFullContentWrapper: HTMLElement
+let rssFullContentCheck: HTMLInputElement
+let rssFullContentInfo: HTMLElement
+let listRulesSection: HTMLElement
+let contentRulesSection: HTMLElement
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,14 +161,6 @@ let filterPreviewBtn: HTMLButtonElement
 
 function $(selector: string): HTMLElement {
   return document.querySelector(selector) as HTMLElement
-}
-
-function parseSafeJson(str: string): Record<string, unknown> {
-  try {
-    return JSON.parse(str)
-  } catch {
-    return {}
-  }
 }
 
 function getSiteIdFromUrl(): number | null {
@@ -131,8 +188,6 @@ export function initFeedEdit(): void {
   inputName = $('#input-name') as HTMLInputElement
   inputFreq = $('#input-freq') as HTMLInputElement
   inputSampleUrl = $('#input-sample-url') as HTMLInputElement
-  cmListRulesEl = $('#cm-list-rules')
-  cmContentRulesEl = $('#cm-content-rules')
   rulesPanel = $('#rules-panel')
   toggleRulesBtn = $('#btn-toggle-rules') as HTMLButtonElement
   saveBtn = $('#btn-save') as HTMLButtonElement
@@ -148,6 +203,15 @@ export function initFeedEdit(): void {
   testBothBtn = $('#btn-test-both') as HTMLButtonElement
   filterBuilderRoot = $('#filter-builder-root')
   filterPreviewBtn = $('#btn-filter-preview') as HTMLButtonElement
+  forceRefreshBtn = $('#btn-force-refresh') as HTMLButtonElement
+  forceRefreshConfirmBtn = $('#btn-force-refresh-confirm') as HTMLButtonElement
+  sourceTypeHtml = $('#source-type-html') as HTMLButtonElement
+  sourceTypeRss = $('#source-type-rss') as HTMLButtonElement
+  rssFullContentWrapper = $('#rss-full-content-wrapper') as HTMLElement
+  rssFullContentCheck = $('#rss-full-content-check') as HTMLInputElement
+  rssFullContentInfo = $('#rss-full-content-info') as HTMLElement
+  listRulesSection = $('#list-rules-section') as HTMLElement
+  contentRulesSection = $('#content-rules-section') as HTMLElement
 
   // Bind events
   refreshBtn.addEventListener('click', fetchSites)
@@ -164,25 +228,10 @@ export function initFeedEdit(): void {
   inputSampleUrl.addEventListener('input', () => {
     editData.sample_url = inputSampleUrl.value
   })
-  const CM = (window as unknown as Record<string, unknown>).CodeMirror as
-    | ((el: HTMLElement, opts: Record<string, unknown>) => CodeMirrorEditor)
-    | undefined
-  if (CM) {
-    const cmOpts = {
-      mode: { name: 'javascript', json: true },
-      theme: 'default',
-      lineNumbers: true,
-      lineWrapping: true,
-      tabSize: 2,
-      indentWithTabs: false,
-      matchBrackets: true,
-      readOnly: false
-    }
-    cmListRules = CM(cmListRulesEl, { ...cmOpts, value: '' })
-    cmContentRules = CM(cmContentRulesEl, { ...cmOpts, value: '' })
-    cmListRules.on('change', () => { editData.list_rules = cmListRules!.getValue() })
-    cmContentRules.on('change', () => { editData.content_rules = cmContentRules!.getValue() })
-  }
+  cmListRules = initCodeMirror('cm-list-rules', '')
+  cmContentRules = initCodeMirror('cm-content-rules', '')
+  cmListRules?.on('change', () => { editData.list_rules = cmListRules!.getValue() })
+  cmContentRules?.on('change', () => { editData.content_rules = cmContentRules!.getValue() })
 
   toggleRulesBtn.addEventListener('click', handleToggleRules)
   saveBtn.addEventListener('click', handleSave)
@@ -195,7 +244,35 @@ export function initFeedEdit(): void {
   })
   analyzeListBtn.addEventListener('click', () => handleAnalyze('list'))
   analyzeContentBtn.addEventListener('click', () => handleAnalyze('content'))
-  testListBtn.addEventListener('click', () => handleTest('list'))
+  testListBtn.addEventListener('click', async () => {
+    if (editData.source_type === 'rss') {
+      if (!editData.url) {
+        showError(previewBody, 'Please enter a Target URL first.')
+        return
+      }
+      previewSection.classList.remove('d-none')
+      showLoading(previewBody, 'list')
+      previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      try {
+        const result = await api.parseFeed(editData.url)
+        renderPreview(previewBody, result.items.map(item => ({
+          title: item.title,
+          url: item.url,
+          published_at: item.pub_date
+        })), 'list')
+        rssHasFullContent = result.has_full_content
+        if (rssHasFullContent && rssFullContentInfo) {
+          rssFullContentInfo.textContent = `Feed contains full article content (${result.item_count} items)`
+          rssFullContentInfo.style.display = ''
+        }
+        callApplySourceTypeUi()
+      } catch (e: unknown) {
+        showError(previewBody, (e instanceof Error ? e.message : 'Failed to parse RSS feed'))
+      }
+    } else {
+      handleTest('list')
+    }
+  })
   testContentBtn.addEventListener('click', () =>
     handleTest('content', editData.sample_url)
   )
@@ -207,6 +284,50 @@ export function initFeedEdit(): void {
     filterPreviewBtn.className = isActive
       ? 'btn btn-sm btn-secondary active'
       : 'btn btn-sm btn-outline-secondary'
+  })
+
+  // Force Refresh button → show scope selection modal
+  forceRefreshBtn?.addEventListener('click', () => {
+    if (!selectedSite) return
+    // Reset radio to default
+    const scopeCurrentRadio = document.getElementById('scopeCurrent') as HTMLInputElement | null
+    if (scopeCurrentRadio) scopeCurrentRadio.checked = true
+    const modalEl = document.getElementById('forceRefreshModal')
+    if (!modalEl) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const modal = (window as any).bootstrap.Modal.getOrCreateInstance(modalEl)
+    modal.show()
+  })
+
+  // Force Refresh modal confirm → call API
+  forceRefreshConfirmBtn?.addEventListener('click', () => {
+    if (!selectedSite) return
+    if (forceRefreshConfirmBtn) forceRefreshConfirmBtn.disabled = true
+    const scopeInput = document.querySelector('input[name="forceRefreshScope"]:checked') as HTMLInputElement | null
+    const scope = (scopeInput?.value as 'current' | 'all_db') || 'current'
+    const modalEl = document.getElementById('forceRefreshModal')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (modalEl) (window as any).bootstrap.Modal.getOrCreateInstance(modalEl).hide()
+    handleForceRefresh(selectedSite.id, scope)
+  })
+
+  // HTML/RSS toggle handlers
+  sourceTypeHtml?.addEventListener('click', () => {
+    editData.source_type = 'html'
+    editData.rss_full_content = false
+    if (rssFullContentCheck) rssFullContentCheck.checked = false
+    rssHasFullContent = false
+    callApplySourceTypeUi()
+  })
+
+  sourceTypeRss?.addEventListener('click', () => {
+    editData.source_type = 'rss'
+    callApplySourceTypeUi()
+  })
+
+  rssFullContentCheck?.addEventListener('change', () => {
+    editData.rss_full_content = rssFullContentCheck.checked
+    callApplySourceTypeUi()
   })
 
   // Initial data load
@@ -257,8 +378,11 @@ function renderTable(): void {
 
     const freq = site.refresh_frequency || 60
     const freqDisplay = freq >= 60 ? `${Math.round(freq / 60 * 10) / 10}h` : `${freq}min`
+    const typeBadge = site.source_type === 'rss'
+      ? ' <span class="badge bg-warning text-dark ms-1" style="font-size:0.7em">RSS</span>'
+      : ''
     tr.innerHTML = `
-      <td class="fw-medium">${escapeHtml(site.name)}</td>
+      <td class="fw-medium">${escapeHtml(site.name)}${typeBadge}</td>
       <td class="text-truncate" style="max-width:250px">
         <a href="${escapeAttr(site.url)}" target="_blank" rel="noreferrer" class="text-decoration-none text-body">
           ${escapeHtml(site.url)} <i class="ri-external-link-line ms-1 small"></i>
@@ -320,8 +444,15 @@ async function handleEdit(id: number): Promise<void> {
       list_rules: normalizeRules(site.list_rules),
       content_rules: normalizeRules(site.content_rules),
       filter_rules: filterConfig ? JSON.stringify(filterConfig) : '',
-      sample_url: ''
+      sample_url: '',
+      source_type: site.source_type || 'html',
+      rss_full_content: site.rss_full_content || false
     }
+
+    // Populate RSS UI state
+    if (rssFullContentCheck) rssFullContentCheck.checked = editData.rss_full_content
+    rssHasFullContent = editData.rss_full_content // assume full content if it was saved that way
+    callApplySourceTypeUi()
 
     // Populate form
     inputUrl.value = editData.url
@@ -415,23 +546,52 @@ async function handleManualCrawl(
   }
 }
 
+async function handleForceRefresh(
+  siteId: number,
+  scope: 'current' | 'all_db'
+): Promise<void> {
+  forceRefreshBtn.disabled = true
+  const originalHtml = forceRefreshBtn.innerHTML
+  forceRefreshBtn.innerHTML =
+    '<span class="spinner-border spinner-border-sm" role="status"></span>'
+
+  try {
+    await api.forceRefresh(siteId, scope)
+    alert('Force refresh started. Articles will be re-crawled in the background.')
+  } catch (err: unknown) {
+    alert('Force refresh failed: ' + (err as Error).message)
+  } finally {
+    forceRefreshBtn.innerHTML = originalHtml
+    forceRefreshBtn.disabled = false
+    if (forceRefreshConfirmBtn) forceRefreshConfirmBtn.disabled = false
+  }
+}
+
 async function handleSave(): Promise<void> {
   if (!selectedSite || saving) return
 
-  // Validate JSON
+  // Validate JSON — skip for RSS mode
   let listRules: unknown
   let contentRules: unknown
-  try {
-    listRules = JSON.parse(editData.list_rules)
-  } catch {
-    alert('Invalid JSON in List Rules.')
-    return
+  if (editData.source_type === 'rss') {
+    listRules = {}
+  } else {
+    try {
+      listRules = JSON.parse(editData.list_rules)
+    } catch {
+      alert('Invalid JSON in List Rules.')
+      return
+    }
   }
-  try {
-    contentRules = JSON.parse(editData.content_rules)
-  } catch {
-    alert('Invalid JSON in Content Rules.')
-    return
+  if (editData.source_type === 'rss' && editData.rss_full_content) {
+    contentRules = {}
+  } else {
+    try {
+      contentRules = JSON.parse(editData.content_rules)
+    } catch {
+      alert('Invalid JSON in Content Rules.')
+      return
+    }
   }
 
   saving = true
@@ -448,7 +608,9 @@ async function handleSave(): Promise<void> {
       refresh_frequency: editData.refresh_frequency,
       list_rules: listRules as Record<string, unknown>,
       content_rules: contentRules as Record<string, unknown>,
-      filter_rules: filterConfig
+      filter_rules: filterConfig,
+      source_type: editData.source_type,
+      rss_full_content: editData.rss_full_content
     })
     alert('Site updated successfully!')
     await fetchSites()
@@ -533,11 +695,12 @@ async function handleTest(
   try {
     const payload = {
       url: targetUrl,
-      list_rules: parseSafeJson(editData.list_rules),
-      content_rules: parseSafeJson(editData.content_rules),
+      list_rules: parseSafe(editData.list_rules),
+      content_rules: parseSafe(editData.content_rules),
       filter_rules: previewFilterConfig,
       mode,
-      target_url: customUrl || undefined
+      target_url: customUrl || undefined,
+      source_type: editData.source_type
     }
 
     const res = await api.previewCrawl(payload, debugMode)
@@ -564,17 +727,36 @@ async function handleTest(
   }
 }
 
+function callApplySourceTypeUi(): void {
+  const state: SourceTypeState = {
+    sourceType: editData.source_type as 'html' | 'rss',
+    rssFullContent: editData.rss_full_content,
+    rssHasFullContent: rssHasFullContent
+  }
+  const els: SourceTypeElements = {
+    sourceTypeHtml,
+    sourceTypeRss,
+    listRulesSection,
+    contentRulesSection,
+    analyzeListBtn,
+    testListBtn,
+    testBothBtn,
+    rssFullContentWrapper
+  }
+  applySourceTypeUi(state, els)
+}
+
 function handleToggleRules(): void {
   rulesExpanded = !rulesExpanded
   if (rulesExpanded) {
     rulesPanel.classList.remove('d-none')
     toggleRulesBtn.innerHTML =
-      '<i class="ri-code-line me-1"></i> Hide Rules'
+      '<i class="ri-code-line me-1"></i> Hide Rules JSON'
     setTimeout(() => { cmListRules?.refresh(); cmContentRules?.refresh() }, 10)
   } else {
     rulesPanel.classList.add('d-none')
     toggleRulesBtn.innerHTML =
-      '<i class="ri-code-line me-1"></i> Show Rules'
+      '<i class="ri-code-line me-1"></i> Show Rules JSON'
   }
 }
 

@@ -1,0 +1,41 @@
+{
+  "contract_version": 1,
+  "mode": "list",
+  "source": {
+    "implementation": "backend/core/ai.py:analyze_structure",
+    "route": "POST /analyze/list"
+  },
+  "prompt": {
+    "required_fragments": [
+      "You are a CSS selector expert.",
+      "extract the article listing structure",
+      "container: the DIRECT parent wrapping ALL article cards",
+      "item: the repeating direct child element",
+      "title: selector for the title element INSIDE each item",
+      "link: selector for the <a> tag INSIDE each item",
+      "Return ONLY raw JSON, no markdown, no explanation:",
+      "\"container\": \"...\"",
+      "\"item\": \"...\"",
+      "\"title\": \"...\"",
+      "\"link\": \"...\"",
+      "HTML:"
+    ],
+    "input_html": "<main><div class=\"article-grid gap-4\"><article class=\"article-card\"><a href=\"/post/1\"><h2 class=\"article-title\">First</h2></a></article></div></main>"
+  },
+  "normalized_rules": {
+    "container": "div.article-grid.gap-4",
+    "item": "> article.article-card",
+    "title": "h2.article-title",
+    "link": "a[href*='/post/']"
+  },
+  "route_response": {
+    "rules": {
+      "container": "div.article-grid.gap-4",
+      "item": "> article.article-card",
+      "title": "h2.article-title",
+      "link": "a[href*='/post/']"
+    },
+    "preview_html": "<main><div class=\"article-grid gap-4\"><article class=\"article-card\"><a href=\"/post/1\"><h2 class=\"article-title\">First</h2></a></article></div></main>",
+    "error": null
+  }
+}

@@ -1,8 +1,10 @@
 // sidebar-mini handling functionality
 export const initSidebarMini = () => {
   const sidebar = document.querySelector(".sidebar")
-  const mainContent = document.querySelector(".main-content")
   const sidebarMiniToggle = document.getElementById("toggle-mini-button")
+  if (!sidebarMiniToggle || sidebarMiniToggle.dataset.sidebarMiniInitialized) return
+  sidebarMiniToggle.dataset.sidebarMiniInitialized = "true"
+  const mainContent = document.querySelector(".main-content")
 
   const toggleSidebarMini = () => {
     // Toggle the sidebar-mini class
@@ -68,4 +70,9 @@ export const initSidebarMini = () => {
       })
     }
   })
+}
+
+export const cleanupSidebarMini = () => {
+  const sidebarMiniToggle = document.getElementById("toggle-mini-button")
+  if (sidebarMiniToggle) delete sidebarMiniToggle.dataset.sidebarMiniInitialized
 }

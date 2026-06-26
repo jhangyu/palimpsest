@@ -1,0 +1,139 @@
+{
+  "modules": [
+    {
+      "id": "cms",
+      "name": "Content Management",
+      "groups": [
+        {
+          "id": "pages",
+          "name": "Pages Management",
+          "permissions": [
+            { "id": "view_pages", "name": "View Pages" },
+            { "id": "add_pages", "name": "Create New Pages" },
+            { "id": "edit_pages", "name": "Edit Pages" },
+            { "id": "delete_pages", "name": "Delete Pages" },
+            { "id": "restore_pages", "name": "Restore Deleted Pages" },
+            { "id": "publish_pages", "name": "Publish/Unpublish Pages" }
+          ]
+        },
+        {
+          "id": "posts",
+          "name": "Posts Management",
+          "permissions": [
+            { "id": "view_posts", "name": "View Posts" },
+            { "id": "add_posts", "name": "Create New Posts" },
+            { "id": "edit_posts", "name": "Edit Posts" },
+            { "id": "delete_posts", "name": "Delete Posts" },
+            { "id": "restore_posts", "name": "Restore Deleted Posts" },
+            { "id": "publish_posts", "name": "Publish/Unpublish Posts" }
+          ]
+        },
+        {
+          "id": "media",
+          "name": "Media Library",
+          "permissions": [
+            { "id": "view_media", "name": "View Media Files" },
+            { "id": "upload_media", "name": "Upload Media Files" },
+            { "id": "edit_media", "name": "Edit Media Details" },
+            { "id": "delete_media", "name": "Delete Media Files" },
+            { "id": "restore_media", "name": "Restore Deleted Media" }
+          ]
+        },
+        {
+          "id": "categories",
+          "name": "Categories Management",
+          "permissions": [
+            { "id": "view_categories", "name": "View Categories" },
+            { "id": "add_categories", "name": "Create Categories" },
+            { "id": "edit_categories", "name": "Edit Categories" },
+            { "id": "delete_categories", "name": "Delete Categories" },
+            { "id": "restore_categories", "name": "Restore Categories" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seo",
+      "name": "Search Engine Optimization",
+      "groups": [
+        {
+          "id": "seo_settings",
+          "name": "SEO Settings",
+          "permissions": [
+            { "id": "view_seo_settings", "name": "View SEO Settings" },
+            { "id": "edit_seo_settings", "name": "Edit SEO Settings" },
+            { "id": "manage_meta_tags", "name": "Manage Meta Tags" },
+            { "id": "manage_sitemaps", "name": "Manage Sitemaps" }
+          ]
+        },
+        {
+          "id": "redirects",
+          "name": "URL Redirects",
+          "permissions": [
+            { "id": "view_redirects", "name": "View Redirects" },
+            { "id": "add_redirects", "name": "Add Redirects" },
+            { "id": "edit_redirects", "name": "Edit Redirects" },
+            { "id": "delete_redirects", "name": "Delete Redirects" }
+          ]
+        },
+        {
+          "id": "analytics",
+          "name": "Analytics",
+          "permissions": [
+            { "id": "view_analytics", "name": "View Analytics Dashboard" },
+            { "id": "export_analytics", "name": "Export Analytics Data" },
+            { "id": "manage_analytics_settings", "name": "Manage Analytics Settings" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "system",
+      "name": "System Administration",
+      "groups": [
+        {
+          "id": "users",
+          "name": "User Management",
+          "permissions": [
+            { "id": "view_users", "name": "View Users" },
+            { "id": "add_users", "name": "Create Users" },
+            { "id": "edit_users", "name": "Edit Users" },
+            { "id": "delete_users", "name": "Delete Users" },
+            { "id": "restore_users", "name": "Restore Users" },
+            { "id": "block_users", "name": "Block/Unblock Users" }
+          ]
+        },
+        {
+          "id": "roles",
+          "name": "Role Management",
+          "permissions": [
+            { "id": "view_roles", "name": "View Roles" },
+            { "id": "add_roles", "name": "Create Roles" },
+            { "id": "edit_roles", "name": "Edit Roles" },
+            { "id": "delete_roles", "name": "Delete Roles" },
+            { "id": "assign_permissions", "name": "Assign Role Permissions" }
+          ]
+        },
+        {
+          "id": "settings",
+          "name": "System Settings",
+          "permissions": [
+            { "id": "view_settings", "name": "View System Settings" },
+            { "id": "edit_settings", "name": "Edit System Settings" },
+            { "id": "manage_backups", "name": "Manage System Backups" },
+            { "id": "manage_cache", "name": "Manage System Cache" }
+          ]
+        },
+        {
+          "id": "logs",
+          "name": "System Logs",
+          "permissions": [
+            { "id": "view_logs", "name": "View System Logs" },
+            { "id": "delete_logs", "name": "Delete System Logs" },
+            { "id": "export_logs", "name": "Export System Logs" }
+          ]
+        }
+      ]
+    }
+  ]
+}

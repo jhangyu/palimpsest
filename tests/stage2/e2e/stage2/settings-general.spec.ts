@@ -469,7 +469,11 @@ test.describe('Notifications — API Integration', () => {
   })
 
   test('6.28 Saved preference persists after page reload', async ({ page }) => {
+    const meLoadedPromise = page.waitForResponse(resp =>
+      resp.url().includes('/users/me') && resp.request().method() === 'GET'
+    )
     await page.goto('/settings')
+    await meLoadedPromise
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
     await page.locator('#notif-fail-crawl').uncheck()
 
@@ -500,7 +504,13 @@ test.describe('Notifications — API Integration', () => {
         await route.continue()
       }
     }, { times: 1 })
+    // The page-load GET /users/me mock (times:1) fires on goto; wait for it
+    // before interacting with checkboxes so toggles are in a stable state.
+    const meLoadedPromise = page.waitForResponse(resp =>
+      resp.url().includes('/users/me') && resp.request().method() === 'GET'
+    )
     await page.goto('/settings')
+    await meLoadedPromise
     await page.locator('a[href="#notifications-section"][data-bs-toggle="tab"]').click()
 
     await page.locator('#notif-fail-crawl').uncheck()

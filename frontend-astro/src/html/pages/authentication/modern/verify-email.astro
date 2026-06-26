@@ -1,4 +1,15 @@
 ---
+// ---
+// name: verify-email
+// description: "Email verification page: reads token from URL query param, POSTs to /auth/verify-email, and shows success or error state with redirect to login"
+// type: page
+// target:
+//   layer: frontend
+//   domain: auth
+// spec_doc: null
+// test_file: null
+// route: /authentication/modern/verify-email
+// ---
 import AuthenticationLayout from '../../../layouts/admin/authentication-layout.astro'
 import { getAssetPrefix, getPathPrefix } from '../../../../utils/path.js'
 ---

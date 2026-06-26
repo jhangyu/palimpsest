@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>404 Not Found</title></head>
+<body>
+  <!-- HTTP error page: this simulates what a 404 response body looks like.
+       The server returned this HTML with a 4xx/5xx status code.
+       parse_listing() with normal selectors will return [] from this page,
+       but the root cause is HTTP failure, not selector failure.
+       The distinction matters for consecutive_failure_count logic:
+       HTTP failures should NOT increment the counter (future behavior).
+       Current behavior (to be characterized): fetch_page() returns None on
+       HTTP error, so parse_listing() is never called. -->
+  <main>
+    <h1>404 Not Found</h1>
+    <p>The requested page could not be found. It may have been moved or deleted.</p>
+    <a href="/">Return to Homepage</a>
+  </main>
+</body>
+</html>
