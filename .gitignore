@@ -54,7 +54,10 @@ Thumbs.db
 backend/debug/
 frontend-astro.bak/
 frontend-astro/test-results/
+frontend-astro/playwright-report/
 .codebase-memory/
+.claude/
+.claudito/
 
 # Original template for layout reference
 template_reference/
