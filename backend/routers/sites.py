@@ -68,6 +68,10 @@ from rfeed import Item, Feed, Enclosure
 from sqlalchemy import text
 
 from core.ai import analyze_with_providers
+from core.crawl_frequency import (
+    update_site_crawl_schedule,
+    calculate_site_auto_refresh_frequency_minutes,
+)
 from core.crawler import crawl_site_logic, force_refresh_all_articles, _utcnow_iso as _utcnow_iso_impl
 from core.scraper import fetch_page
 from core.debug import create_debug_writer
@@ -96,6 +100,7 @@ class SiteCreate(BaseModel):
     url: str
     name: str
     refresh_frequency: Optional[int] = 60
+    refresh_frequency_mode: Literal["manual", "auto"] = "manual"
     scrape_method: Optional[str] = "scrapling"
     filter_rules: Optional[dict] = None
     source_type: str = 'html'
@@ -119,6 +124,7 @@ class SiteUpdate(BaseModel):
     url: Optional[str] = None
     name: Optional[str] = None
     refresh_frequency: Optional[int] = None
+    refresh_frequency_mode: Optional[Literal["manual", "auto"]] = None
     list_rules: Optional[dict] = None
     content_rules: Optional[dict] = None
     filter_rules: Optional[dict] = None
@@ -206,23 +212,35 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
 
     _kek_backend = kek_backend
 
-    crawl_result = await crawl_site_logic(
-        site_id=site_id,
-        url=url,
-        list_rules=list_rules,
-        content_rules=content_rules,
-        filter_rules=filter_rules,
-        db=db,
-        debug_writer=debug_writer,
-        force_update=force_update,
-        scrape_method=scrape_method,
-        owner_user_id=owner_user_id,
-        ai_tables=_ai_tables,
-        kek_backend=_kek_backend,
-        source_type=source_type,
-        rss_full_content=rss_full_content,
-        skip_empty_content=skip_empty_content,
-    )
+    crawl_exception = None
+    try:
+        crawl_result = await crawl_site_logic(
+            site_id=site_id,
+            url=url,
+            list_rules=list_rules,
+            content_rules=content_rules,
+            filter_rules=filter_rules,
+            db=db,
+            debug_writer=debug_writer,
+            force_update=force_update,
+            scrape_method=scrape_method,
+            owner_user_id=owner_user_id,
+            ai_tables=_ai_tables,
+            kek_backend=_kek_backend,
+            source_type=source_type,
+            rss_full_content=rss_full_content,
+            skip_empty_content=skip_empty_content,
+        )
+    except Exception as e:
+        crawl_exception = e
+        try:
+            await db.rollback()
+        except Exception as rollback_error:
+            log_with_time(f"[CrawlAttempt] Failed to rollback after crawl exception: {rollback_error}")
+        crawl_result = {"status": "fail", "articles_found": 0, "articles_saved": 0,
+                        "articles_updated": 0, "articles_failed": 0,
+                        "content_fetch_failed": 0, "parse_failed": 0,
+                        "error_message": str(e)}
 
     if crawl_result is None:
         crawl_result = {"status": "fail", "articles_found": 0, "articles_saved": 0,
@@ -248,6 +266,16 @@ async def _record_crawl_attempt(site_id: int, trigger_type: str, url: str, list_
             await db.commit()
         except Exception as e:
             log_with_time(f"[CrawlAttempt] Failed to update attempt record: {e}")
+
+    try:
+        await update_site_crawl_schedule(db, site_id, datetime.now(timezone.utc))
+    except Exception as e:
+        log_with_time(f"[CrawlAttempt] Failed to update crawl schedule: {e}")
+
+    if crawl_exception is not None:
+        raise crawl_exception
+
+    return crawl_result
 
 
 # --- Shared helper for analyze endpoints ---
@@ -454,6 +482,7 @@ async def create_site(
         filter_rules=site.filter_rules,
         consecutive_failure_count=0,
         refresh_frequency=site.refresh_frequency,
+        refresh_frequency_mode=site.refresh_frequency_mode,
         scrape_method=site.scrape_method or "scrapling",
         owner_user_id=current_user["id"],
         source_type=site.source_type,
@@ -514,6 +543,15 @@ async def update_site(site_id: int, update_data: SiteUpdate, current_user: dict 
     if values.get('source_type') == 'html':
         values['rss_full_content'] = False
 
+    if 'refresh_frequency' in values or 'refresh_frequency_mode' in values:
+        values['next_crawl_at'] = None
+
+    # When switching to auto mode, immediately calculate the estimated interval
+    # from existing article timestamps so the UI doesn't show "Auto pending".
+    if values.get('refresh_frequency_mode') == 'auto':
+        auto_minutes = await calculate_site_auto_refresh_frequency_minutes(db, site_id)
+        values['auto_refresh_frequency_minutes'] = auto_minutes
+
     query = sites.update().where(sites.c.id == site_id).values(**values)
     await db.execute(query)
     await db.commit()
@@ -538,6 +576,10 @@ async def duplicate_site(site_id: int, current_user: dict = Depends(require_user
         content_rules=site['content_rules'],
         filter_rules=site.get('filter_rules'),
         refresh_frequency=site['refresh_frequency'],
+        refresh_frequency_mode=site.get('refresh_frequency_mode', 'manual'),
+        auto_refresh_frequency_minutes=None,
+        next_crawl_at=None,
+        last_crawled_at=None,
         consecutive_failure_count=0,
         scrape_method=site['scrape_method'] or "scrapling",
         owner_user_id=current_user["id"],
@@ -555,7 +597,8 @@ async def list_sites(current_user: dict = Depends(require_user), db=Depends(get_
     """列出所有網站（只返回清單需要的欄位，排除 list_rules/content_rules 大型 JSON）"""
     rows = (await db.execute(
         text(
-            "SELECT id, name, url, refresh_frequency, scrape_method, "
+            "SELECT id, name, url, refresh_frequency, refresh_frequency_mode, "
+            "auto_refresh_frequency_minutes, next_crawl_at, last_crawled_at, scrape_method, "
             "consecutive_failure_count, owner_user_id, source_type, website_url FROM sites"
         )
     )).mappings().all()

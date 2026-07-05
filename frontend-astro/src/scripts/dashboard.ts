@@ -86,6 +86,33 @@ function renderMetricCards(container: HTMLElement, sites: Site[]): void {
   `
 }
 
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function formatMinutes(minutes: number): string {
+  if (minutes >= 1440) return `${formatNumber(minutes / 1440)}d`
+  if (minutes >= 60) return `${formatNumber(minutes / 60)}h`
+  return `${formatNumber(minutes)}min`
+}
+
+function formatHoursMins(minutes: number): string {
+  if (minutes >= 60) {
+    const hrs = Math.floor(minutes / 60)
+    const mins = (minutes % 60).toFixed(2)
+    return `${hrs}hr ${mins}min`
+  }
+  return `${minutes.toFixed(2)}min`
+}
+
+function formatRefreshDisplay(site: Site): string {
+  if ((site.refresh_frequency_mode ?? 'manual') === 'auto') {
+    const autoMinutes = site.auto_refresh_frequency_minutes ?? null
+    return autoMinutes ? `Auto ${formatHoursMins(autoMinutes)}` : 'Auto pending'
+  }
+  return `Every ${formatMinutes(site.refresh_frequency || 60)}`
+}
+
 function renderFeedTable(container: HTMLElement, sites: Site[]): void {
   if (sites.length === 0) {
     container.innerHTML = `
@@ -99,8 +126,7 @@ function renderFeedTable(container: HTMLElement, sites: Site[]): void {
   const rows = sites
     .map((site) => {
       const rssUrl = `/rss/${normalizeUrl(site.name)}`
-      const freq = site.refresh_frequency || 60
-      const freqDisplay = freq >= 60 ? `${Math.round(freq / 60 * 10) / 10}h` : `${freq}min`
+      const freqDisplay = formatRefreshDisplay(site)
       return `
       <tr>
         <td>
@@ -112,7 +138,7 @@ function renderFeedTable(container: HTMLElement, sites: Site[]): void {
           </a>
         </td>
         <td>
-          <span class="badge text-bg-light text-dark">Every ${freqDisplay}</span>
+          <span class="badge text-bg-light text-dark">${freqDisplay}</span>
         </td>
         <td>
           <div class="d-flex gap-1">

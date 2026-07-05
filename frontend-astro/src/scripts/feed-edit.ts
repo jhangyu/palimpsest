@@ -54,7 +54,7 @@ functions:
 ---
 */
 import { api } from './api'
-import type { Site, FilterConfig } from './api'
+import type { Site, FilterConfig, RefreshFrequencyMode } from './api'
 import { invalidateCache } from '@/scripts/cache'
 import { escapeHtml, escapeAttr } from '@/scripts/utils'
 import {
@@ -85,6 +85,7 @@ interface EditData {
   name: string
   url: string
   refresh_frequency: number
+  refresh_frequency_mode: RefreshFrequencyMode
   list_rules: string
   content_rules: string
   filter_rules: string
@@ -107,6 +108,7 @@ function emptyEditData(): EditData {
     name: '',
     url: '',
     refresh_frequency: 60,
+    refresh_frequency_mode: 'auto',
     list_rules: '',
     content_rules: '',
     filter_rules: '',
@@ -127,6 +129,9 @@ let editorTitle: HTMLElement
 let inputUrl: HTMLInputElement
 let inputName: HTMLInputElement
 let inputFreq: HTMLInputElement
+let inputFreqMode: HTMLSelectElement
+let manualFreqWrapper: HTMLElement
+let autoFreqStatus: HTMLElement
 let inputSampleUrl: HTMLInputElement
 let cmListRules: CodeMirrorEditor | null = null
 let cmContentRules: CodeMirrorEditor | null = null
@@ -169,6 +174,61 @@ function getSiteIdFromUrl(): number | null {
   return id ? parseInt(id, 10) : null
 }
 
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function formatMinutes(minutes: number): string {
+  if (minutes >= 1440) return `${formatNumber(minutes / 1440)}d`
+  if (minutes >= 60) return `${formatNumber(minutes / 60)}h`
+  return `${formatNumber(minutes)}min`
+}
+
+function formatHoursMins(minutes: number): string {
+  if (minutes >= 60) {
+    const hrs = Math.floor(minutes / 60)
+    const mins = (minutes % 60).toFixed(2)
+    return `${hrs}hr ${mins}min`
+  }
+  return `${minutes.toFixed(2)}min`
+}
+
+function getAutoFrequencyMinutes(site: Site): number | null {
+  return site.auto_refresh_frequency_minutes ?? null
+}
+
+function formatRefreshDisplay(site: Site): string {
+  const mode = site.refresh_frequency_mode ?? 'manual'
+  if (mode === 'auto') {
+    const autoMinutes = getAutoFrequencyMinutes(site)
+    return autoMinutes ? `Auto ${formatHoursMins(autoMinutes)}` : 'Auto pending'
+  }
+  return formatMinutes(site.refresh_frequency || 60)
+}
+
+function formatAutoStatus(site: Site): string {
+  const autoMinutes = getAutoFrequencyMinutes(site)
+  const parts = [autoMinutes ? `Auto currently estimates ${formatHoursMins(autoMinutes)} between crawls.` : 'Auto frequency is pending until enough crawl data is available.']
+  if (site.last_crawled_at) parts.push(`Last crawled: ${new Date(site.last_crawled_at).toLocaleString()}.`)
+  if (site.next_crawl_at) parts.push(`Next crawl: ${new Date(site.next_crawl_at).toLocaleString()}.`)
+  return parts.join(' ')
+}
+
+function updateRefreshFrequencyUi(): void {
+  const isAuto = editData.refresh_frequency_mode === 'auto'
+  inputFreqMode.value = editData.refresh_frequency_mode
+  manualFreqWrapper.classList.toggle('d-none', isAuto)
+  autoFreqStatus.classList.toggle('d-none', !isAuto)
+  inputFreq.disabled = isAuto
+  if (isAuto && selectedSite) {
+    autoFreqStatus.textContent = formatAutoStatus(selectedSite)
+  } else if (isAuto) {
+    autoFreqStatus.textContent = 'Auto frequency is pending until enough crawl data is available.'
+  } else {
+    autoFreqStatus.textContent = ''
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -187,6 +247,9 @@ export function initFeedEdit(): void {
   inputUrl = $('#input-url') as HTMLInputElement
   inputName = $('#input-name') as HTMLInputElement
   inputFreq = $('#input-freq') as HTMLInputElement
+  inputFreqMode = $('#input-freq-mode') as HTMLSelectElement
+  manualFreqWrapper = $('#manual-freq-wrapper')
+  autoFreqStatus = $('#auto-freq-status')
   inputSampleUrl = $('#input-sample-url') as HTMLInputElement
   rulesPanel = $('#rules-panel')
   toggleRulesBtn = $('#btn-toggle-rules') as HTMLButtonElement
@@ -224,6 +287,10 @@ export function initFeedEdit(): void {
   })
   inputFreq.addEventListener('input', () => {
     editData.refresh_frequency = parseInt(inputFreq.value, 10) || 60
+  })
+  inputFreqMode.addEventListener('change', () => {
+    editData.refresh_frequency_mode = inputFreqMode.value === 'manual' ? 'manual' : 'auto'
+    updateRefreshFrequencyUi()
   })
   inputSampleUrl.addEventListener('input', () => {
     editData.sample_url = inputSampleUrl.value
@@ -376,8 +443,7 @@ function renderTable(): void {
     }
     tr.dataset.siteId = String(site.id)
 
-    const freq = site.refresh_frequency || 60
-    const freqDisplay = freq >= 60 ? `${Math.round(freq / 60 * 10) / 10}h` : `${freq}min`
+    const freqDisplay = formatRefreshDisplay(site)
     const typeBadge = site.source_type === 'rss'
       ? ' <span class="badge bg-warning text-dark ms-1" style="font-size:0.7em">RSS</span>'
       : ''
@@ -441,6 +507,7 @@ async function handleEdit(id: number): Promise<void> {
       name: site.name,
       url: site.url,
       refresh_frequency: site.refresh_frequency || 60,
+      refresh_frequency_mode: site.refresh_frequency_mode ?? 'manual',
       list_rules: normalizeRules(site.list_rules),
       content_rules: normalizeRules(site.content_rules),
       filter_rules: filterConfig ? JSON.stringify(filterConfig) : '',
@@ -458,6 +525,7 @@ async function handleEdit(id: number): Promise<void> {
     inputUrl.value = editData.url
     inputName.value = editData.name
     inputFreq.value = String(editData.refresh_frequency)
+    updateRefreshFrequencyUi()
     inputSampleUrl.value = ''
     if (cmListRules) cmListRules.setValue(editData.list_rules)
     if (cmContentRules) cmContentRules.setValue(editData.content_rules)
@@ -605,7 +673,8 @@ async function handleSave(): Promise<void> {
     await api.updateSite(selectedSite.id, {
       name: editData.name,
       url: editData.url,
-      refresh_frequency: editData.refresh_frequency,
+      refresh_frequency: editData.refresh_frequency || 60,
+      refresh_frequency_mode: editData.refresh_frequency_mode,
       list_rules: listRules as Record<string, unknown>,
       content_rules: contentRules as Record<string, unknown>,
       filter_rules: filterConfig,

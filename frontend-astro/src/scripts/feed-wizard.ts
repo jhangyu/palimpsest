@@ -383,7 +383,14 @@ export function initFeedWizard(): void {
     )
     try {
       await api.createSite({
-        site: { url, name, refresh_frequency: 60, source_type: sourceType, rss_full_content: rssFullContent },
+        site: {
+          url,
+          name,
+          refresh_frequency: 60,
+          refresh_frequency_mode: 'auto',
+          source_type: sourceType,
+          rss_full_content: rssFullContent
+        },
         rules: {
           list_rules: parsedList,
           content_rules: parsedContent

@@ -112,17 +112,26 @@ const headerProps = {
             </div>
 
             <!-- Refresh Frequency -->
-            <div class="mb-3 d-flex align-items-center gap-3">
-              <label for="input-freq" class="form-label mb-0">Refresh Frequency (minutes)</label>
-              <input
-                id="input-freq"
-                type="number"
-                class="form-control"
-                style="width:100px"
-                min="5"
-                max="1440"
-              />
-              <small class="text-muted">Range: 5 - 1440 (1 day)</small>
+            <div class="mb-3">
+              <label for="input-freq-mode" class="form-label">Refresh Frequency</label>
+              <div class="d-flex flex-wrap align-items-center gap-3">
+                <select id="input-freq-mode" class="form-select" style="width:160px">
+                  <option value="auto">Auto</option>
+                  <option value="manual">Manual</option>
+                </select>
+                <div id="manual-freq-wrapper" class="d-flex align-items-center gap-2">
+                  <input
+                    id="input-freq"
+                    type="number"
+                    class="form-control"
+                    style="width:100px"
+                    min="5"
+                    max="1440"
+                  />
+                  <small class="text-muted">minutes (5 - 1440)</small>
+                </div>
+                <small id="auto-freq-status" class="text-muted"></small>
+              </div>
             </div>
 
             <hr />

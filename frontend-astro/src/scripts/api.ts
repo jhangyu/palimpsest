@@ -120,11 +120,17 @@ export interface FilterConfig {
 
 // --- Site Types ---
 
+export type RefreshFrequencyMode = 'manual' | 'auto'
+
 export interface Site {
   id: number
   name: string
   url: string
   refresh_frequency: number
+  refresh_frequency_mode?: RefreshFrequencyMode
+  auto_refresh_frequency_minutes?: number | null
+  next_crawl_at?: string | null
+  last_crawled_at?: string | null
   list_rules: Record<string, unknown>
   content_rules: Record<string, unknown>
   filter_rules?: FilterConfig | null
@@ -164,6 +170,8 @@ export interface CreateSitePayload {
     url: string
     name: string
     refresh_frequency: number
+    refresh_frequency_mode?: RefreshFrequencyMode
+    auto_refresh_frequency_minutes?: number | null
     scrape_method?: string
     source_type?: 'html' | 'rss'
     rss_full_content?: boolean

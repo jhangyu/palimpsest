@@ -394,3 +394,119 @@ async def test_rss_feed_not_found(client, db):
             "DELETE FROM rss_query_events WHERE site_identifier = :si",
             {"si": unique_slug},
         )
+
+# ---------------------------------------------------------------------------
+# Auto crawl frequency field tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_site_auto_mode(auth_client, db):
+    """POST /sites/ with refresh_frequency_mode=auto."""
+    from core.db import sites
+
+    csrf = auth_client.cookies.get("csrf_token", "")
+    sfx = uuid.uuid4().hex[:6]
+    name = f"AutoModeTest_{sfx}"
+
+    payload = {
+        "site": {
+            "url": "https://example.com/auto",
+            "name": name,
+            "refresh_frequency": 60,
+            "refresh_frequency_mode": "auto",
+            "scrape_method": "scrapling",
+        },
+        "rules": {"list_rules": {}, "content_rules": {}},
+    }
+
+    resp = await auth_client.post(
+        "/sites/",
+        json=payload,
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    site_id = data["id"]
+
+    try:
+        row = await db.fetch_one(sites.select().where(sites.c.id == site_id))
+        assert row is not None
+        assert row["refresh_frequency_mode"] == "auto"
+        assert row["next_crawl_at"] is not None
+    finally:
+        await _delete_site(auth_client, site_id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_list_sites_includes_new_fields(auth_client):
+    """GET /sites/ includes refresh_frequency_mode and crawl timestamps."""
+    sfx = uuid.uuid4().hex[:6]
+    site_id = await _create_site(auth_client, f"ListFields_{sfx}")
+
+    try:
+        resp = await auth_client.get("/sites/")
+        assert resp.status_code == 200, resp.text
+        items = resp.json()
+        assert isinstance(items, list)
+
+        target = next((item for item in items if item["id"] == site_id), None)
+        assert target is not None, "Created site not found in listing"
+        assert "refresh_frequency_mode" in target
+        assert "auto_refresh_frequency_minutes" in target
+        assert "next_crawl_at" in target
+        assert "last_crawled_at" in target
+    finally:
+        await _delete_site(auth_client, site_id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_site_refresh_frequency_mode(auth_client):
+    """PUT /sites/{id} with refresh_frequency_mode update."""
+    sfx = uuid.uuid4().hex[:6]
+    site_id = await _create_site(auth_client, f"UpdateFreqMode_{sfx}")
+
+    try:
+        csrf = auth_client.cookies.get("csrf_token", "")
+        resp = await auth_client.put(
+            f"/sites/{site_id}",
+            json={"refresh_frequency_mode": "auto"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["status"] == "updated"
+    finally:
+        await _delete_site(auth_client, site_id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_duplicate_site_resets_crawl_schedule_fields(auth_client):
+    """POST /sites/{id}/duplicate resets crawl schedule fields."""
+    sfx = uuid.uuid4().hex[:6]
+    site_id = await _create_site(auth_client, f"DupFreq_{sfx}")
+
+    csrf = auth_client.cookies.get("csrf_token", "")
+    dup_resp = await auth_client.post(
+        f"/sites/{site_id}/duplicate",
+        headers={"X-CSRF-Token": csrf},
+    )
+
+    new_id: int | None = None
+    try:
+        assert dup_resp.status_code == 200, dup_resp.text
+        dup_data = dup_resp.json()
+        new_id = dup_data["id"]
+        assert new_id != site_id
+
+        detail_resp = await auth_client.get(f"/sites/{new_id}")
+        assert detail_resp.status_code == 200, detail_resp.text
+        detail = detail_resp.json()
+        assert "next_crawl_at" in detail
+        assert "last_crawled_at" in detail
+        assert detail["auto_refresh_frequency_minutes"] is None
+        assert detail["next_crawl_at"] is None
+        assert detail["last_crawled_at"] is None
+    finally:
+        await _delete_site(auth_client, site_id)
+        if new_id is not None:
+            await _delete_site(auth_client, new_id)

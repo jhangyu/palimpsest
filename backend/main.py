@@ -10,12 +10,9 @@ target:
 spec_doc: null
 test_file: null
 functions:
-  - name: _run_schema_migration_on_conn
-    line: 98
-    purpose: "DDL helper — ALTER TABLE, CREATE TABLE (auth), indexes, role seeding on a sync connection"
   - name: _run_all_migrations
-    line: 278
-    purpose: "Run all DDL migrations (schema, AI providers, crawl-repair, filter_rules) via async engine"
+    line: 96
+    purpose: "Run all DDL migrations via versioned runner (core.migrations)"
   - name: _run_startup_backfills
     line: 318
     purpose: "Non-critical startup backfills (user secret keys, site owners, repair states) as background task"
@@ -71,7 +68,6 @@ from dateutil import parser as dateutil_parser
 # --- Core module imports ---
 from core.auth import cleanup_expired_sessions, cleanup_expired_tokens
 from core.ai_provider_migrations import (
-    SCHEMA_EXPANSION_STATEMENTS,
     backfill_existing_user_secret_keys,
     backfill_site_owners,
 )
@@ -90,259 +86,72 @@ from routers._deps import log_with_time
 from routers.sites import _record_crawl_attempt, _background_tasks
 
 # ---------------------------------------------------------------------------
-# _run_all_migrations  (async, uses existing async engine via run_sync)
-# ---------------------------------------------------------------------------
-
-
-def _run_schema_migration_on_conn(connection) -> None:
-    """Adapter: runs _run_schema_migration DDL on an existing sync connection.
-
-    _run_schema_migration() expects an engine and opens its own connection.
-    This wrapper provides the same DDL logic but on a pre-existing connection,
-    for use with async engine's conn.run_sync().
-    """
-    from sqlalchemy import text as sa_text
-    from datetime import datetime, timezone as _tz
-
-    # Add new columns to articles if they don't exist
-    for col, col_type in [("created_at", "VARCHAR"), ("updated_at", "VARCHAR"), ("word_count", "INTEGER")]:
-        try:
-            connection.execute(sa_text(f"ALTER TABLE articles ADD COLUMN IF NOT EXISTS {col} {col_type}"))
-        except Exception as e:
-            log_with_time(f"[Migration] Column articles.{col} migration note: {e}")
-
-    # DD-10: Migrate articles timestamp columns from VARCHAR to TIMESTAMPTZ
-    for col in ("published_at", "created_at", "updated_at"):
-        try:
-            connection.execute(sa_text(
-                f"ALTER TABLE articles ALTER COLUMN {col} TYPE TIMESTAMPTZ "
-                f"USING {col}::timestamptz"
-            ))
-        except Exception as e:
-            # Column may already be TIMESTAMPTZ — safe to ignore
-            err_str = str(e).lower()
-            if "already" not in err_str and "same type" not in err_str:
-                log_with_time(f"[Migration] articles.{col} TIMESTAMPTZ migration note: {e}")
-
-    # --- Auth tables (CREATE TABLE IF NOT EXISTS) ---
-    auth_table_stmts = [
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR NOT NULL UNIQUE,
-            email_normalized VARCHAR NOT NULL UNIQUE,
-            pending_email VARCHAR,
-            pending_email_normalized VARCHAR,
-            username VARCHAR NOT NULL UNIQUE,
-            username_normalized VARCHAR NOT NULL UNIQUE,
-            full_name VARCHAR,
-            password_hash TEXT NOT NULL,
-            status VARCHAR NOT NULL DEFAULT 'active',
-            email_verified_at TIMESTAMPTZ,
-            avatar_mime_type VARCHAR,
-            avatar_bytes BYTEA,
-            avatar_size_bytes INTEGER,
-            avatar_hash VARCHAR,
-            avatar_source VARCHAR NOT NULL DEFAULT 'none',
-            avatar_updated_at TIMESTAMPTZ,
-            preferences JSON NOT NULL DEFAULT '{}',
-            created_at TIMESTAMPTZ NOT NULL,
-            updated_at TIMESTAMPTZ NOT NULL,
-            last_login_at TIMESTAMPTZ
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS roles (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR NOT NULL UNIQUE,
-            description TEXT,
-            created_at TIMESTAMPTZ NOT NULL
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS user_roles (
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
-            PRIMARY KEY (user_id, role_id)
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS auth_sessions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            token_hash VARCHAR NOT NULL UNIQUE,
-            user_agent TEXT,
-            ip_address VARCHAR,
-            created_at TIMESTAMPTZ NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            revoked_at TIMESTAMPTZ
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            token_hash VARCHAR NOT NULL UNIQUE,
-            created_at TIMESTAMPTZ NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            used_at TIMESTAMPTZ
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS email_verification_tokens (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            token_hash VARCHAR NOT NULL UNIQUE,
-            email VARCHAR NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            used_at TIMESTAMPTZ
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS auth_rate_limits (
-            id SERIAL PRIMARY KEY,
-            scope VARCHAR NOT NULL,
-            subject_hash VARCHAR NOT NULL,
-            attempts INTEGER NOT NULL DEFAULT 0,
-            window_started_at TIMESTAMPTZ NOT NULL,
-            locked_until TIMESTAMPTZ,
-            updated_at TIMESTAMPTZ NOT NULL,
-            UNIQUE(scope, subject_hash)
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS schema_versions (
-            id SERIAL PRIMARY KEY,
-            version VARCHAR NOT NULL UNIQUE,
-            description VARCHAR NOT NULL,
-            applied_at TIMESTAMPTZ NOT NULL
-        )
-        """,
-    ]
-
-    for stmt in auth_table_stmts:
-        try:
-            connection.execute(sa_text(stmt))
-        except Exception as e:
-            log_with_time(f"[Migration] Auth table creation note: {e}")
-
-    # Create indexes if not exist
-    index_stmts = [
-        # Existing indexes
-        "CREATE INDEX IF NOT EXISTS idx_articles_site_id ON articles(site_id)",
-        "CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at)",
-        "CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at)",
-        "CREATE INDEX IF NOT EXISTS idx_rss_query_events_requested_at ON rss_query_events(requested_at)",
-        "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_started_at ON crawl_attempts(started_at)",
-        "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_site_started ON crawl_attempts(site_id, started_at)",
-        # Auth indexes
-        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at, revoked_at)",
-        "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, expires_at, used_at)",
-        "CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user ON email_verification_tokens(user_id, expires_at, used_at)",
-        "CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_scope_locked ON auth_rate_limits(scope, locked_until)",
-    ]
-
-    for stmt in index_stmts:
-        try:
-            connection.execute(sa_text(stmt))
-        except Exception as e:
-            log_with_time(f"[Migration] Index creation note: {e}")
-
-    # Partial unique indexes (PostgreSQL-specific)
-    partial_idx_stmts = [
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pending_email_normalized ON users(pending_email_normalized) WHERE pending_email_normalized IS NOT NULL",
-    ]
-    for stmt in partial_idx_stmts:
-        try:
-            connection.execute(sa_text(stmt))
-        except Exception as e:
-            log_with_time(f"[Migration] Partial unique index note: {e}")
-
-    # Seed roles if not exist
-    try:
-        now_ts = datetime.now(_tz.utc)
-        connection.execute(sa_text(
-            "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
-        ), {"name": "admin", "desc": "Administrator role with full access", "ts": now_ts})
-        connection.execute(sa_text(
-            "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
-        ), {"name": "user", "desc": "Standard user role", "ts": now_ts})
-    except Exception as e:
-        log_with_time(f"[Migration] Role seeding note: {e}")
-
-    log_with_time("[Migration] Schema migration completed.")
 
 
 async def _run_all_migrations() -> None:
     """Run all DDL migrations using the existing async engine.
 
-    Uses conn.run_sync() to run sync DDL functions within the async engine's
-    connection, eliminating the need for a separate sync PostgreSQL driver.
+    On a fresh database (no schema_versions table), metadata.create_all seeds
+    every table first so the versioned migrations have a base to work from.
+    On subsequent starts create_all is skipped — the migration runner and
+    crawl_repair phase are idempotent, and checking/applying only unapplied
+    versions avoids ~35 redundant DB round-trips per start.
     """
+    from core.migrations import run_migrations
+
+    # ------------------------------------------------------------------
+    # Phase 0: is this a fresh database?
+    # ------------------------------------------------------------------
+    async with engine.connect() as check_conn:
+        def _has_schema_versions(sync_conn):
+            result = sync_conn.execute(text(
+                "SELECT EXISTS (SELECT FROM information_schema.tables "
+                "WHERE table_name = 'schema_versions')"
+            ))
+            return result.scalar()
+        is_fresh = not await check_conn.run_sync(_has_schema_versions)
+
+    if is_fresh:
+        async with engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+        log_with_time("[Migration] Fresh database — tables created from metadata.")
+
+    # ------------------------------------------------------------------
+    # Phase 1: versioned migrations (skips already-applied versions)
+    # ------------------------------------------------------------------
     async with engine.begin() as conn:
-        # Create tables if not exist
-        await conn.run_sync(metadata.create_all)
+        await conn.run_sync(run_migrations)
 
-        # Run schema migration (ALTER TABLE statements, auth tables, indexes, role seeding)
-        await conn.run_sync(_run_schema_migration_on_conn)
-
-        # AI provider schema expansion
-        for stmt_text in SCHEMA_EXPANSION_STATEMENTS:
-            try:
-                await conn.execute(text(stmt_text))
-            except Exception as e:
-                log_with_time(f"[Migration] AI provider schema expansion note: {e}")
-        log_with_time("[Migration] AI provider schema expansion completed.")
-
-        # Crawl repair tables
-        from core.crawl_repair_models import migrate_crawl_repair_tables
-        await conn.run_sync(migrate_crawl_repair_tables)
-        log_with_time("[Migration] Crawl repair schema expansion completed.")
-
-    # Post-commit migrations: crawl_repair_tables commits the transaction,
-    # so subsequent DDL must use a fresh connection.
-    async with engine.begin() as conn2:
-        # Filter rules column
-        try:
-            await conn2.execute(text("ALTER TABLE sites ADD COLUMN IF NOT EXISTS filter_rules JSONB"))
-        except Exception as e:
-            log_with_time(f"[Migration] filter_rules column note: {e}")
-        log_with_time("[Migration] Filter rules schema migration completed.")
-
-        # RSS input source columns
-        try:
-            await conn2.execute(text(
-                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS source_type VARCHAR NOT NULL DEFAULT 'html'"
+    # ------------------------------------------------------------------
+    # Phase 2: crawl_repair (commits internally, tracked via schema_versions)
+    # ------------------------------------------------------------------
+    async with engine.connect() as conn2:
+        def _crawl_repair_applied(sync_conn):
+            result = sync_conn.execute(text(
+                "SELECT EXISTS (SELECT 1 FROM schema_versions WHERE version = '0.3.0')"
             ))
-        except Exception as e:
-            log_with_time(f"[Migration] source_type column note: {e}")
-        try:
+            return result.scalar()
+        already_applied = await conn2.run_sync(_crawl_repair_applied)
+
+        if not already_applied:
+            from core.crawl_repair_models import migrate_crawl_repair_tables
+
+            await conn2.run_sync(migrate_crawl_repair_tables)
+
+            now = datetime.now(timezone.utc)
             await conn2.execute(text(
-                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS rss_full_content BOOLEAN NOT NULL DEFAULT FALSE"
-            ))
-        except Exception as e:
-            log_with_time(f"[Migration] rss_full_content column note: {e}")
-        try:
-            await conn2.execute(text(
-                "ALTER TABLE sites ADD COLUMN IF NOT EXISTS website_url VARCHAR"
-            ))
-        except Exception as e:
-            log_with_time(f"[Migration] website_url column note: {e}")
-        try:
-            await conn2.execute(text("""
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_sites_source_type') THEN
-        ALTER TABLE sites ADD CONSTRAINT ck_sites_source_type CHECK (source_type IN ('html', 'rss'));
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_sites_rss_full_content') THEN
-        ALTER TABLE sites ADD CONSTRAINT ck_sites_rss_full_content CHECK (rss_full_content = FALSE OR source_type = 'rss');
-    END IF;
-END $$
-"""))
-        except Exception as e:
-            log_with_time(f"[Migration] RSS source constraints note: {e}")
-        log_with_time("[Migration] RSS input source columns migration completed.")
+                "INSERT INTO schema_versions (version, description, applied_at) "
+                "VALUES (:v, :d, :ts)"
+                " ON CONFLICT (version) DO NOTHING"
+            ), {
+                "v": "0.3.0",
+                "d": "Crawl repair tables, auto-repair site columns, attempt outcome columns, constraints",
+                "ts": now,
+            })
+            await conn2.commit()
+            log_with_time("[Migration] crawl_repair (v0.3.0) applied.")
+        else:
+            log_with_time("[Migration] crawl_repair (v0.3.0) already applied, skipping.")
 
     log_with_time("[Migration] All migrations completed.")
 
@@ -456,10 +265,16 @@ async def _backfill_articles():
 # ---------------------------------------------------------------------------
 
 async def scheduled_crawl_job():
-    """排程任務：取出所有網站並並行執行爬蟲（最多 5 個同時進行）"""
+    """Scheduled crawl job: crawl only feeds whose next crawl time is due."""
     print("[Scheduler] Running scheduled crawl...")
+    now = datetime.now(timezone.utc)
     async with async_session_factory() as session:
         all_sites = await get_sites_with_owner_status(session)
+    due_sites = [
+        site for site in all_sites
+        if site.get('next_crawl_at') is None or site['next_crawl_at'] <= now
+    ]
+    print(f"[Scheduler] {len(due_sites)} of {len(all_sites)} site(s) are due.")
     semaphore = asyncio.Semaphore(5)
 
     async def crawl_with_limit(site):
@@ -488,7 +303,7 @@ async def scheduled_crawl_job():
             except Exception as e:
                 print(f"[Scheduler] Error crawling site {site['id']}: {e}")
 
-    await asyncio.gather(*[crawl_with_limit(s) for s in all_sites])
+    await asyncio.gather(*[crawl_with_limit(s) for s in due_sites])
 
 
 # ---------------------------------------------------------------------------

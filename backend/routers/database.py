@@ -9,9 +9,6 @@ target:
 spec_doc: null
 test_file: tests/stage1/test_database_router.py
 functions:
-  - name: _run_schema_migration
-    line: 55
-    purpose: "Sync idempotent schema upgrade helper (ALTER TABLE, CREATE TABLE, indexes, role seeding)"
   - name: database_status
     line: 233
     purpose: "GET /settings/database/status — return schema version, table row counts, pending migrations"
@@ -43,7 +40,7 @@ from fastapi.responses import StreamingResponse
 
 from core.db import get_db, schema_versions
 
-from routers._deps import require_admin, _csrf_dependency, log_with_time
+from routers._deps import require_admin, _csrf_dependency
 from services.export_service import (
     _MAX_IMPORT_FILE_SIZE,
     prepare_export,
@@ -62,183 +59,6 @@ APP_VERSION = "0.1.0"
 MIGRATIONS = [
     # {"version": "0.2.0", "description": "Add xyz column", "up": async_migration_fn},
 ]
-
-# --- Schema Migration ---
-
-def _run_schema_migration(engine):
-    """Idempotent schema upgrade for existing databases."""
-    from sqlalchemy import text as sa_text
-
-    with engine.connect() as conn:
-        # Add new columns to articles if they don't exist
-        for col, col_type in [("created_at", "VARCHAR"), ("updated_at", "VARCHAR"), ("word_count", "INTEGER")]:
-            try:
-                conn.execute(sa_text(f"ALTER TABLE articles ADD COLUMN IF NOT EXISTS {col} {col_type}"))
-            except Exception as e:
-                log_with_time(f"[Migration] Column articles.{col} migration note: {e}")
-
-        # DD-10: Migrate articles timestamp columns from VARCHAR to TIMESTAMPTZ
-        for col in ("published_at", "created_at", "updated_at"):
-            try:
-                conn.execute(sa_text(
-                    f"ALTER TABLE articles ALTER COLUMN {col} TYPE TIMESTAMPTZ "
-                    f"USING {col}::timestamptz"
-                ))
-            except Exception as e:
-                # Column may already be TIMESTAMPTZ — safe to ignore
-                err_str = str(e).lower()
-                if "already" not in err_str and "same type" not in err_str:
-                    log_with_time(f"[Migration] articles.{col} TIMESTAMPTZ migration note: {e}")
-
-        # --- Auth tables (CREATE TABLE IF NOT EXISTS) ---
-        auth_table_stmts = [
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR NOT NULL UNIQUE,
-                email_normalized VARCHAR NOT NULL UNIQUE,
-                pending_email VARCHAR,
-                pending_email_normalized VARCHAR,
-                username VARCHAR NOT NULL UNIQUE,
-                username_normalized VARCHAR NOT NULL UNIQUE,
-                full_name VARCHAR,
-                password_hash TEXT NOT NULL,
-                status VARCHAR NOT NULL DEFAULT 'active',
-                email_verified_at TIMESTAMPTZ,
-                avatar_mime_type VARCHAR,
-                avatar_bytes BYTEA,
-                avatar_size_bytes INTEGER,
-                avatar_hash VARCHAR,
-                avatar_source VARCHAR NOT NULL DEFAULT 'none',
-                avatar_updated_at TIMESTAMPTZ,
-                preferences JSON NOT NULL DEFAULT '{}',
-                created_at TIMESTAMPTZ NOT NULL,
-                updated_at TIMESTAMPTZ NOT NULL,
-                last_login_at TIMESTAMPTZ
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS roles (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR NOT NULL UNIQUE,
-                description TEXT,
-                created_at TIMESTAMPTZ NOT NULL
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS user_roles (
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
-                PRIMARY KEY (user_id, role_id)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS auth_sessions (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                token_hash VARCHAR NOT NULL UNIQUE,
-                user_agent TEXT,
-                ip_address VARCHAR,
-                created_at TIMESTAMPTZ NOT NULL,
-                expires_at TIMESTAMPTZ NOT NULL,
-                revoked_at TIMESTAMPTZ
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                token_hash VARCHAR NOT NULL UNIQUE,
-                created_at TIMESTAMPTZ NOT NULL,
-                expires_at TIMESTAMPTZ NOT NULL,
-                used_at TIMESTAMPTZ
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS email_verification_tokens (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                token_hash VARCHAR NOT NULL UNIQUE,
-                email VARCHAR NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL,
-                expires_at TIMESTAMPTZ NOT NULL,
-                used_at TIMESTAMPTZ
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS auth_rate_limits (
-                id SERIAL PRIMARY KEY,
-                scope VARCHAR NOT NULL,
-                subject_hash VARCHAR NOT NULL,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                window_started_at TIMESTAMPTZ NOT NULL,
-                locked_until TIMESTAMPTZ,
-                updated_at TIMESTAMPTZ NOT NULL,
-                UNIQUE(scope, subject_hash)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS schema_versions (
-                id SERIAL PRIMARY KEY,
-                version VARCHAR NOT NULL UNIQUE,
-                description VARCHAR NOT NULL,
-                applied_at TIMESTAMPTZ NOT NULL
-            )
-            """,
-        ]
-
-        for stmt in auth_table_stmts:
-            try:
-                conn.execute(sa_text(stmt))
-            except Exception as e:
-                log_with_time(f"[Migration] Auth table creation note: {e}")
-
-        # Create indexes if not exist
-        index_stmts = [
-            # Existing indexes
-            "CREATE INDEX IF NOT EXISTS idx_articles_site_id ON articles(site_id)",
-            "CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at)",
-            "CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at)",
-            "CREATE INDEX IF NOT EXISTS idx_rss_query_events_requested_at ON rss_query_events(requested_at)",
-            "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_started_at ON crawl_attempts(started_at)",
-            "CREATE INDEX IF NOT EXISTS idx_crawl_attempts_site_started ON crawl_attempts(site_id, started_at)",
-            # Auth indexes
-            "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at, revoked_at)",
-            "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, expires_at, used_at)",
-            "CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user ON email_verification_tokens(user_id, expires_at, used_at)",
-            "CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_scope_locked ON auth_rate_limits(scope, locked_until)",
-        ]
-
-        for stmt in index_stmts:
-            try:
-                conn.execute(sa_text(stmt))
-            except Exception as e:
-                log_with_time(f"[Migration] Index creation note: {e}")
-
-        # Partial unique indexes (PostgreSQL-specific)
-        partial_idx_stmts = [
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pending_email_normalized ON users(pending_email_normalized) WHERE pending_email_normalized IS NOT NULL",
-        ]
-        for stmt in partial_idx_stmts:
-            try:
-                conn.execute(sa_text(stmt))
-            except Exception as e:
-                log_with_time(f"[Migration] Partial unique index note: {e}")
-
-        # Seed roles if not exist
-        try:
-            now_str = datetime.now(timezone.utc).isoformat()
-            conn.execute(sa_text(
-                "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
-            ), {"name": "admin", "desc": "Administrator role with full access", "ts": now_str})
-            conn.execute(sa_text(
-                "INSERT INTO roles (name, description, created_at) VALUES (:name, :desc, :ts) ON CONFLICT (name) DO NOTHING"
-            ), {"name": "user", "desc": "Standard user role", "ts": now_str})
-        except Exception as e:
-            log_with_time(f"[Migration] Role seeding note: {e}")
-
-        conn.commit()
-    log_with_time("[Migration] Schema migration completed.")
 
 
 # --- Endpoints ---

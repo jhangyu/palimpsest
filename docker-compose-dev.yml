@@ -62,7 +62,12 @@ services:
   # Palimpsest Application
   # ---------------------------------------------------------------------------
   app:
-    image: jhangyu/palimpsest:0.02
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PALIMPSEST_VERSION: 0.1.8-e2e
+    image: palimpsest:0.1.8-e2e
     container_name: palimpsest-app
     environment:
       # --- Database ---

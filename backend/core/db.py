@@ -66,6 +66,10 @@ sites = sqlalchemy.Table(
     # NEW: For self-healing mechanism
     sqlalchemy.Column("consecutive_failure_count", sqlalchemy.Integer, default=0),
     sqlalchemy.Column("refresh_frequency", sqlalchemy.Integer, default=60), # In minutes
+    sqlalchemy.Column("refresh_frequency_mode", sqlalchemy.String, default="manual", server_default="manual"),
+    sqlalchemy.Column("auto_refresh_frequency_minutes", sqlalchemy.Float, nullable=True),
+    sqlalchemy.Column("next_crawl_at", sqlalchemy.DateTime(timezone=True), nullable=True),
+    sqlalchemy.Column("last_crawled_at", sqlalchemy.DateTime(timezone=True), nullable=True),
     sqlalchemy.Column("scrape_method", sqlalchemy.String, default="scrapling"),
     sqlalchemy.Column("owner_user_id", sqlalchemy.Integer, nullable=True),
     # RSS input source columns
