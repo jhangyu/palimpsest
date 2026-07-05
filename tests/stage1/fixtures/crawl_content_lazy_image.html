@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><title>Article with Lazy-Loaded Image</title></head>
+<body>
+  <article>
+    <h1 class="article-title">Test Article: Lazy-Loaded Image Placeholder</h1>
+    <time class="pub-date" datetime="2024-03-20">2024-03-20</time>
+    <span class="author">John Smith</span>
+    <div class="article-body">
+      <p>This is the first paragraph of an article that contains a lazy-loaded image.
+      The image tag below uses a placeholder src and stores the real URL in a
+      data-original attribute. After normalization, the parser should return the
+      real URL from data-original rather than the placeholder.</p>
+      <p>The second paragraph adds more content to ensure word count exceeds
+      thresholds so the article is considered valid and not thin content.</p>
+      <p>Third paragraph provides additional substance matching what a real-world
+      news article would contain after lazy-load normalization runs correctly.</p>
+    </div>
+    <img class="article-image" src="/images/lazyload.png" data-original="https://example.com/images/real-lazy-article-photo.jpg" alt="Article image" loading="lazy">
+  </article>
+</body>
+</html>

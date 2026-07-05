@@ -140,6 +140,140 @@ except Exception as e:
     import traceback; traceback.print_exc()
     fail_count += 1
 
+# ─── Test 5: normalize_lazy_images_in_html — data-original ──────────────────
+print("\n=== Test 5: normalize_lazy_images_in_html — data-original ===")
+try:
+    from core.sanitizer import normalize_lazy_images_in_html
+
+    html = '''<article>
+<img src="/images/preimg.png" data-original="https://yti.yam.com/20260625/09511958.jpg" alt="test" loading="lazy">
+</article>'''
+    result = normalize_lazy_images_in_html(html)
+
+    assert '/images/preimg.png' not in (result_bs := __import__('bs4').BeautifulSoup(result, 'html.parser')).find('img').get('src', ''), \
+        f"FAIL: placeholder /images/preimg.png still in src: {result_bs.find('img').get('src')}"
+    assert 'https://yti.yam.com/20260625/09511958.jpg' in result_bs.find('img').get('src', ''), \
+        "FAIL: data-original URL not resolved to src"
+    print("PASS")
+    pass_count += 1
+except AssertionError as e:
+    print(f"FAIL: {e}")
+    fail_count += 1
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback; traceback.print_exc()
+    fail_count += 1
+
+# ─── Test 6: normalize_lazy_images_in_html — data-src ────────────────────────
+print("\n=== Test 6: normalize_lazy_images_in_html — data-src ===")
+try:
+    from core.sanitizer import normalize_lazy_images_in_html
+
+    html = '''<article>
+<img src="/images/lazyload.png" data-src="https://cdn.example.com/photo2.jpg" alt="test2" loading="lazy">
+</article>'''
+    result = normalize_lazy_images_in_html(html)
+    from bs4 import BeautifulSoup as _BS
+    img = _BS(result, 'html.parser').find('img')
+
+    assert '/images/lazyload.png' not in img.get('src', ''), \
+        f"FAIL: placeholder /images/lazyload.png still in src: {img.get('src')}"
+    assert 'https://cdn.example.com/photo2.jpg' in img.get('src', ''), \
+        "FAIL: data-src URL not resolved to src"
+    print("PASS")
+    pass_count += 1
+except AssertionError as e:
+    print(f"FAIL: {e}")
+    fail_count += 1
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback; traceback.print_exc()
+    fail_count += 1
+
+# ─── Test 7: normalize_lazy_images_in_html — data-lazy-src ───────────────────
+print("\n=== Test 7: normalize_lazy_images_in_html — data-lazy-src ===")
+try:
+    from core.sanitizer import normalize_lazy_images_in_html
+
+    html = '''<article>
+<img src="/images/preimg.png" data-lazy-src="https://cdn.example.com/lazy-photo.jpg" alt="test3">
+</article>'''
+    result = normalize_lazy_images_in_html(html)
+    from bs4 import BeautifulSoup as _BS
+    img = _BS(result, 'html.parser').find('img')
+
+    assert '/images/preimg.png' not in img.get('src', ''), \
+        f"FAIL: placeholder still in src: {img.get('src')}"
+    assert 'https://cdn.example.com/lazy-photo.jpg' in img.get('src', ''), \
+        "FAIL: data-lazy-src URL not resolved to src"
+    print("PASS")
+    pass_count += 1
+except AssertionError as e:
+    print(f"FAIL: {e}")
+    fail_count += 1
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback; traceback.print_exc()
+    fail_count += 1
+
+# ─── Test 8: normalize_lazy_images_in_html — data-lazy ───────────────────────
+print("\n=== Test 8: normalize_lazy_images_in_html — data-lazy ===")
+try:
+    from core.sanitizer import normalize_lazy_images_in_html
+
+    html = '''<article>
+<img src="/images/placeholder.svg" data-lazy="https://cdn.example.com/lazy-loaded.jpg" alt="test4">
+</article>'''
+    result = normalize_lazy_images_in_html(html)
+    from bs4 import BeautifulSoup as _BS
+    img = _BS(result, 'html.parser').find('img')
+
+    assert '/images/placeholder.svg' not in img.get('src', ''), \
+        f"FAIL: placeholder still in src: {img.get('src')}"
+    assert 'https://cdn.example.com/lazy-loaded.jpg' in img.get('src', ''), \
+        "FAIL: data-lazy URL not resolved to src"
+    print("PASS")
+    pass_count += 1
+except AssertionError as e:
+    print(f"FAIL: {e}")
+    fail_count += 1
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback; traceback.print_exc()
+    fail_count += 1
+
+# ─── Test 9: normalize_lazy_images_in_html — all four attrs, priority order ──
+print("\n=== Test 9: normalize_lazy_images_in_html — all four attrs ===")
+try:
+    from core.sanitizer import normalize_lazy_images_in_html
+
+    html = '''<article>
+<img src="/images/preimg.png"
+     data-original="https://cdn.example.com/original.jpg"
+     data-src="https://cdn.example.com/src.jpg"
+     data-lazy-src="https://cdn.example.com/lazy-src.jpg"
+     data-lazy="https://cdn.example.com/lazy.jpg"
+     alt="test">
+</article>'''
+    result = normalize_lazy_images_in_html(html)
+    from bs4 import BeautifulSoup as _BS
+    img = _BS(result, 'html.parser').find('img')
+
+    # data-original has highest priority (first in LAZY_SRC_ATTRS)
+    assert '/images/preimg.png' not in img.get('src', ''), \
+        f"FAIL: placeholder still in src: {img.get('src')}"
+    assert img.get('src') == 'https://cdn.example.com/original.jpg', \
+        f"FAIL: expected data-original URL (highest priority), got: {img.get('src')}"
+    print("PASS")
+    pass_count += 1
+except AssertionError as e:
+    print(f"FAIL: {e}")
+    fail_count += 1
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback; traceback.print_exc()
+    fail_count += 1
+
 # ─── Summary ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*50}")
 print(f"SUMMARY: {pass_count} PASS, {fail_count} FAIL, {skip_count} SKIP")

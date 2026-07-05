@@ -35,7 +35,7 @@ from .vue_parser import (
     extract_image_from_vue_data,
     extract_author_from_vue_data,
 )
-from .sanitizer import sanitize_content_html
+from .sanitizer import sanitize_content_html, normalize_lazy_images_in_html
 
 __all__ = ['normalize_selector', 'extract_article_info', 'parse_listing', 'parse_article']
 
@@ -174,6 +174,14 @@ def parse_article(page, content_rules: dict, article_url: str) -> tuple[str, str
     if isinstance(page, str):
         from scrapling.parser import Selector
         page = Selector(page)
+
+    # Normalize lazy images in raw HTML before extraction so content_rules.image
+    # sees the resolved src URL instead of a placeholder (e.g. lazyload.png).
+    raw_html = page.html_content if hasattr(page, 'html_content') else str(page)
+    normalized_html = normalize_lazy_images_in_html(raw_html)
+    if normalized_html != raw_html:
+        from scrapling.parser import Selector
+        page = Selector(normalized_html)
 
     is_vue_template = content_rules.get('is_vue_template', False)
     content_text = ""

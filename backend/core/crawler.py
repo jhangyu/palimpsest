@@ -723,7 +723,7 @@ async def crawl_site_logic(
                 if parsed_date:
                     pub_date = parsed_date
 
-                # RSS fallback: if content rules didn't extract pub_date / author,
+                # RSS fallback: if content rules didn't extract pub_date / author / image_url,
                 # use values from the RSS feed item as a fallback.
                 if source_type == "rss" and rss_items_by_url:
                     rss_item = rss_items_by_url.get(a_url)
@@ -732,6 +732,8 @@ async def crawl_site_logic(
                             pub_date = rss_item.pub_date
                         if not author and rss_item.author:
                             author = rss_item.author
+                        if not image_url and rss_item.image_url:
+                            image_url = rss_item.image_url
 
                 pub_date = _parse_pub_date(pub_date)
 

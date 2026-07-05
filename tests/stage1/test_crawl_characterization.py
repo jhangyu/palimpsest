@@ -325,6 +325,28 @@ class TestContentExtraction:
         assert content_text != "Parsing failed"
         assert len(content_text) > 80
 
+    # AR-CONTENT-005: parse_article resolves lazy-load image placeholder to real URL
+    def test_lazy_image_placeholder_resolved_to_real_url(self):
+        """parse_article() returns real data-original URL as image_url, not
+        the placeholder src, while content_text remains non-empty and valid."""
+        html = _load_fixture("crawl_content_lazy_image.html")
+        page = _make_page(html)
+        content_text, pub_date, image_url, author = parse_article(
+            page, _CONTENT_RULES, "https://example.com/article/lazy-image"
+        )
+
+        # Content must be non-empty and valid (not a sentinel)
+        assert content_text != ""
+        assert content_text != "Parsing failed"
+        assert len(content_text) > 80, f"content_text too short: {len(content_text)} chars"
+
+        # Image URL must be the real data-original URL, not the placeholder
+        assert image_url is not None, "image_url should not be None"
+        assert image_url == "https://example.com/images/real-lazy-article-photo.jpg", \
+            f"expected data-original URL, got: {image_url}"
+        assert "/images/lazyload.png" not in image_url, \
+            f"placeholder /images/lazyload.png leaked into image_url: {image_url}"
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # AR-WC: Word count / content threshold characterization

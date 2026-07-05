@@ -93,6 +93,19 @@ def _resolve_lazy_images(soup) -> None:
                 break
 
 
+def normalize_lazy_images_in_html(html: str) -> str:
+    """Normalize lazy-loaded images in raw HTML by resolving data-* src attributes
+    to real src so that downstream selectors (e.g. content_rules.image) see the
+    resolved URL instead of a placeholder.
+
+    Reuses the shared _resolve_lazy_images() helper — same attribute priority
+    (data-original, data-src, data-lazy-src, data-lazy).
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    _resolve_lazy_images(soup)
+    return str(soup)
+
+
 def sanitize_image_url(url: str) -> str:
     """
     清理圖片 URL，移除 .jpg/.png/.webp 副檔名後的 query string 和 fragment。
