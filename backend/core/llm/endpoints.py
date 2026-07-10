@@ -39,6 +39,30 @@ ANTHROPIC_MODELS_PATH = "/v1/models"
 ANTHROPIC_GENERATION_PATH = "/v1/messages"
 GEMINI_MODELS_PATH = "/v1beta/models"
 
+# Users often paste a full generation or models URL into "base URL".
+# Strip these known trailing endpoint suffixes so adapters can append
+# /v1/models, /v1/chat/completions, etc. without producing nested paths.
+# Longer suffixes first.
+_KNOWN_ENDPOINT_SUFFIXES = (
+    "/v1/chat/completions",
+    "/chat/completions",
+    "/v1/messages",
+    "/messages",
+    "/v1beta/models",
+    "/v1/models",
+)
+
+
+def _strip_known_endpoint_suffix(path: str) -> str:
+    normalized = path.rstrip("/")
+    if not normalized:
+        return ""
+    lower = normalized.lower()
+    for suffix in _KNOWN_ENDPOINT_SUFFIXES:
+        if lower.endswith(suffix):
+            return normalized[: -len(suffix)].rstrip("/")
+    return normalized
+
 
 def normalize_base_url(base_url: str) -> str:
     if (
@@ -82,7 +106,7 @@ def normalize_base_url(base_url: str) -> str:
         if port is None or port == default_port
         else f"{canonical_host}:{port}"
     )
-    path = parsed.path.rstrip("/")
+    path = _strip_known_endpoint_suffix(parsed.path)
     return urlunsplit((scheme, netloc, path, "", ""))
 
 

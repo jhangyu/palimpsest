@@ -146,7 +146,22 @@ function stateChangingHeaders(extra: Record<string, string> = {}): HeadersInit {
 async function extractErrorBody(res: Response): Promise<{ message: string; code?: string }> {
   try {
     const body = await res.json()
-    return { message: body.detail || `HTTP ${res.status}`, code: body.code }
+    const detail = body?.detail
+    if (typeof detail === 'string' && detail.trim()) {
+      return { message: detail, code: body.code }
+    }
+    if (detail && typeof detail === 'object') {
+      const code = typeof detail.code === 'string' ? detail.code : body.code
+      const message =
+        typeof detail.message === 'string' && detail.message.trim()
+          ? detail.message
+          : (typeof detail.detail === 'string' ? detail.detail : `HTTP ${res.status}`)
+      return { message, code }
+    }
+    if (typeof body?.message === 'string' && body.message.trim()) {
+      return { message: body.message, code: body.code }
+    }
+    return { message: `HTTP ${res.status}`, code: body?.code }
   } catch {
     return { message: `HTTP ${res.status}` }
   }
@@ -307,7 +322,9 @@ async function reorderProviders(
   })
   await throwOnErrorWithCode(res)
   invalidateCache('providers')
-  return res.json()
+  const data = await res.json()
+  // Backend returns { providers: [...] }; accept bare arrays for robustness.
+  return Array.isArray(data) ? data : (data.providers ?? [])
 }
 
 async function discoverModels(payload: {
@@ -364,6 +381,25 @@ function protocolBadgeClass(protocol: string): string {
   }
   return map[protocol] ?? 'text-bg-secondary'
 }
+
+const PROTOCOL_DEFAULTS: Record<string, { baseUrl: string; modelPlaceholder: string }> = {
+  openai: {
+    baseUrl: 'https://api.openai.com/v1',
+    modelPlaceholder: 'e.g. gpt-4o'
+  },
+  anthropic: {
+    baseUrl: 'https://api.anthropic.com',
+    modelPlaceholder: 'e.g. claude-sonnet-4-6'
+  },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    modelPlaceholder: 'e.g. gemini-2.5-flash'
+  }
+}
+
+const KNOWN_DEFAULT_BASE_URLS = new Set(
+  Object.values(PROTOCOL_DEFAULTS).map((item) => item.baseUrl)
+)
 
 function truncateUrl(url: string, max = 40): string {
   if (url.length <= max) return url
@@ -575,7 +611,8 @@ function buildProviderModalHtml(
                 </div>
                 <div class="col-12">
                   <label class="form-label required" for="prov-base-url">Base URL</label>
-                  <input type="url" class="form-control" id="prov-base-url" value="${baseUrlVal}" placeholder="https://api.openai.com/v1" required autocomplete="off" />
+                  <input type="url" class="form-control" id="prov-base-url" value="${baseUrlVal}" placeholder="${escapeAttr(PROTOCOL_DEFAULTS[protocolVal]?.baseUrl || PROTOCOL_DEFAULTS.openai.baseUrl)}" required autocomplete="off" />
+                  <div class="form-text">Provider root only (e.g. <code>https://host/v1</code>). Do not paste full paths like <code>/chat/completions</code>.</div>
                 </div>
                 ${apiKeySection}
                 <div class="col-12">
@@ -592,7 +629,7 @@ function buildProviderModalHtml(
                       <option value="">— select a model —</option>
                     </select>
                   </div>
-                  <input type="text" class="form-control" id="prov-model" value="${modelVal}" placeholder="e.g. gpt-4o" required autocomplete="off" />
+                  <input type="text" class="form-control" id="prov-model" value="${modelVal}" placeholder="${escapeAttr(PROTOCOL_DEFAULTS[protocolVal]?.modelPlaceholder || PROTOCOL_DEFAULTS.openai.modelPlaceholder)}" required autocomplete="off" />
                   <div class="form-text">Type a model name or use Scan Models to discover available models.</div>
                 </div>
                 <div class="col-md-4">
@@ -669,6 +706,24 @@ function openProviderModal(
   const scanBtn = modalEl.querySelector('#prov-scan-models-btn') as HTMLButtonElement
   const scanSpinner = modalEl.querySelector('#prov-scan-spinner') as HTMLElement
   const scanStatus = modalEl.querySelector('#prov-scan-status') as HTMLElement
+  const protocolSelect = modalEl.querySelector('#prov-protocol') as HTMLSelectElement
+  const baseUrlInput = modalEl.querySelector('#prov-base-url') as HTMLInputElement
+
+  const applyProtocolHints = (protocol: string, forceBaseUrl = false): void => {
+    const defaults = PROTOCOL_DEFAULTS[protocol] || PROTOCOL_DEFAULTS.openai
+    baseUrlInput.placeholder = defaults.baseUrl
+    modelInput.placeholder = defaults.modelPlaceholder
+    const currentBase = baseUrlInput.value.trim()
+    if (forceBaseUrl || !currentBase || KNOWN_DEFAULT_BASE_URLS.has(currentBase)) {
+      baseUrlInput.value = defaults.baseUrl
+    }
+  }
+
+  // Keep base URL / placeholders aligned with selected protocol for new providers.
+  applyProtocolHints(protocolSelect.value, !isEdit && !baseUrlInput.value.trim())
+  protocolSelect.addEventListener('change', () => {
+    applyProtocolHints(protocolSelect.value, !isEdit)
+  })
 
   // Toggle API key visibility
   if (apiKeyToggleBtn && apiKeyInput && apiKeyToggleIcon) {
@@ -1194,8 +1249,11 @@ export async function initAIServicePage(): Promise<void> {
   // Module-level provider cache for action lookups
   let providers: AIProvider[] = []
 
-  const loadProviders = async () => {
+  const loadProviders = async (opts?: { force?: boolean }) => {
     try {
+      if (opts?.force) {
+        invalidateCache('providers')
+      }
       providers = await listProviders()
       renderProviderList(container, providers)
     } catch (err) {
@@ -1252,32 +1310,39 @@ export async function initAIServicePage(): Promise<void> {
           target.classList.remove('disabled')
         }
       }
-    } else if (action === 'move-up') {
+    } else if (action === 'move-up' || action === 'move-down') {
       const idx = providers.findIndex((p) => p.id === providerId)
-      if (idx <= 0) return
+      if (idx < 0) return
+      if (action === 'move-up' && idx <= 0) return
+      if (action === 'move-down' && idx >= providers.length - 1) return
+
       const newOrder = providers.map((p) => p.id)
-      ;[newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]]
-      // Use max revision across providers as a collective revision stamp
-      const revision = Math.max(...providers.map((p) => p.revision))
+      const swapWith = action === 'move-up' ? idx - 1 : idx + 1
+      ;[newOrder[idx], newOrder[swapWith]] = [newOrder[swapWith], newOrder[idx]]
+
+      // Collection-level OCC stamp: max revision observed in the current list.
+      const revision = Math.max(0, ...providers.map((p) => Number(p.revision) || 0))
+      const moveBtn = target as HTMLButtonElement
+      moveBtn.disabled = true
       try {
-        await reorderProviders(newOrder, revision)
-        await loadProviders()
-      } catch (err) {
-        if (!handleRevisionConflict(err, loadProviders)) {
-          showToast(err instanceof Error ? err.message : 'Failed to reorder.', 'danger')
+        // Optimistic local swap so UI reacts immediately.
+        providers = newOrder
+          .map((id) => providers.find((p) => p.id === id))
+          .filter((p): p is AIProvider => Boolean(p))
+        renderProviderList(container, providers)
+
+        const reordered = await reorderProviders(newOrder, revision)
+        if (reordered.length > 0) {
+          providers = reordered
         }
-      }
-    } else if (action === 'move-down') {
-      const idx = providers.findIndex((p) => p.id === providerId)
-      if (idx < 0 || idx >= providers.length - 1) return
-      const newOrder = providers.map((p) => p.id)
-      ;[newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]]
-      const revision = Math.max(...providers.map((p) => p.revision))
-      try {
-        await reorderProviders(newOrder, revision)
-        await loadProviders()
+        // Always re-fetch from network so persisted order wins over cache/stale UI.
+        await loadProviders({ force: true })
+        showToast('Provider order updated.')
+        loadRuntimeStatus().catch(() => undefined)
       } catch (err) {
-        if (!handleRevisionConflict(err, loadProviders)) {
+        // Revert optimistic UI, then let conflict handler refresh if needed.
+        await loadProviders({ force: true })
+        if (!handleRevisionConflict(err, () => loadProviders({ force: true }))) {
           showToast(err instanceof Error ? err.message : 'Failed to reorder.', 'danger')
         }
       }

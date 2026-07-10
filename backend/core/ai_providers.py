@@ -525,7 +525,13 @@ async def reorder_providers(
     ordered_ids: list[int],
     revision: int,
 ) -> dict:
-    """Atomic reorder: validate all IDs belong to user, no duplicates, no missing."""
+    """Atomic reorder: validate all IDs belong to user, no duplicates, no missing.
+
+    OCC for reorder is collection-level: clients send the max revision observed
+    across the current provider list. Individual rows may have different
+    revisions after independent edits; requiring every row to equal the same
+    value made reorder fail after any single provider update.
+    """
     # Validate no duplicates
     if len(ordered_ids) != len(set(ordered_ids)):
         raise ValueError("duplicate provider IDs in reorder list")
@@ -550,13 +556,13 @@ async def reorder_providers(
             parts.append(f"unknown IDs: {sorted(extra)}")
         raise ValueError(f"reorder list mismatch: {'; '.join(parts)}")
 
-    # Verify revision on all rows
-    for r in rows:
-        if r["revision"] != revision:
-            raise ProviderRevisionConflictError(
-                f"provider {r['id']} revision mismatch: "
-                f"expected {revision}, found {r['revision']}"
-            )
+    # Collection-level OCC: client must present the latest known max revision.
+    current_revision = max((int(r["revision"]) for r in rows), default=0)
+    if revision != current_revision:
+        raise ProviderRevisionConflictError(
+            f"provider collection revision mismatch: "
+            f"expected {revision}, found {current_revision}"
+        )
 
     now = _now()
     for priority, pid in enumerate(ordered_ids):
@@ -569,6 +575,10 @@ async def reorder_providers(
             )
             .values(priority=priority, updated_at=now, revision=row["revision"] + 1)
         )
+
+    # Persist priority changes. Without this commit, the request session rolls
+    # back on close and reorder appears to succeed then reverts on reload.
+    await db.commit()
 
     return await list_user_providers(db, tables, user_id=user_id)
 

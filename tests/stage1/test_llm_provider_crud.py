@@ -896,6 +896,36 @@ class TestReorderProviders:
         assert labels == ["B", "A"]
 
     @pytest.mark.asyncio
+    async def test_reorder_with_divergent_revisions_uses_max(self, seeded_db, tables, backend):
+        """Editing one provider must not block reordering the collection."""
+        p1 = await create_provider(
+            seeded_db, tables, backend,
+            user_id=1, label="A", protocol="openai",
+            base_url="https://api.openai.com", model="gpt-4",
+            api_key="sk-aaaa1111bbbb2222cccc",
+        )
+        p2 = await create_provider(
+            seeded_db, tables, backend,
+            user_id=1, label="B", protocol="openai",
+            base_url="https://api.openai.com", model="gpt-4",
+            api_key="sk-dddd3333eeee4444ffff",
+        )
+        updated = await update_provider(
+            seeded_db, tables, backend,
+            provider_id=p1["id"], user_id=1, revision=1, label="A2",
+        )
+        assert updated["revision"] == 2
+
+        result = await reorder_providers(
+            seeded_db, tables,
+            user_id=1,
+            ordered_ids=[p2["id"], p1["id"]],
+            revision=2,  # max(p1=2, p2=1)
+        )
+        labels = [p["label"] for p in result["providers"]]
+        assert labels == ["B", "A2"]
+
+    @pytest.mark.asyncio
     async def test_reorder_duplicate_ids(self, seeded_db, tables, backend):
         p1 = await create_provider(
             seeded_db, tables, backend,

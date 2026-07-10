@@ -31,6 +31,8 @@ from typing import Any
 
 from .base import (
     BaseHTTPProvider,
+    CONNECTION_TEST_MAX_TOKENS,
+    CONNECTION_TEST_PROMPT,
     UNKNOWN_CAPABILITIES,
     _optional_string,
     require_nonempty_text,
@@ -135,9 +137,7 @@ class OpenAIProvider(BaseHTTPProvider):
         choice = choices[0]
         if not isinstance(choice, dict) or not isinstance(choice.get("message"), dict):
             raise response_shape_error()
-        text = require_nonempty_text(
-            _openai_content_text(choice["message"].get("content"))
-        )
+        text = require_nonempty_text(_openai_message_text(choice["message"]))
         return LLMResponse(
             text=text,
             model=request.model,
@@ -150,9 +150,9 @@ class OpenAIProvider(BaseHTTPProvider):
         model = require_model(config)
         await self.generate(
             LLMGenerationRequest(
-                prompt="Respond with OK.",
+                prompt=CONNECTION_TEST_PROMPT,
                 model=model,
-                max_tokens=1,
+                max_tokens=CONNECTION_TEST_MAX_TOKENS,
             ),
             config,
             api_key,
@@ -168,16 +168,42 @@ class OpenAIProvider(BaseHTTPProvider):
 
 
 def _openai_content_text(content: Any) -> str:
+    if content is None:
+        return ""
     if isinstance(content, str):
         return content.strip()
     if isinstance(content, list):
-        parts = [
-            part.get("text", "")
-            for part in content
-            if isinstance(part, dict) and part.get("type") in (None, "text")
-        ]
-        return "".join(part for part in parts if isinstance(part, str)).strip()
+        parts: list[str] = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            part_type = part.get("type")
+            if part_type in (None, "text", "output_text"):
+                text = part.get("text")
+                if isinstance(text, str) and text:
+                    parts.append(text)
+            elif isinstance(part.get("content"), str) and part["content"]:
+                parts.append(part["content"])
+        return "".join(parts).strip()
     raise response_shape_error()
+
+
+def _openai_message_text(message: dict[str, Any]) -> str:
+    """Extract visible text from OpenAI-compatible chat message payloads.
+
+    Some gateways/models return null/empty ``content`` while still providing
+    usable text via ``output_text``, ``refusal``, or content part arrays.
+    """
+    for key in ("content", "output_text", "refusal", "text"):
+        if key not in message:
+            continue
+        try:
+            text = _openai_content_text(message.get(key))
+        except ProviderError:
+            continue
+        if text:
+            return text
+    return ""
 
 
 def _capabilities_for_model(

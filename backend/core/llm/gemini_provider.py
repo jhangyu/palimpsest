@@ -31,6 +31,8 @@ from typing import Any
 
 from .base import (
     BaseHTTPProvider,
+    CONNECTION_TEST_MAX_TOKENS,
+    CONNECTION_TEST_PROMPT,
     THINKING_BUDGETS,
     UNKNOWN_CAPABILITIES,
     _optional_string,
@@ -170,9 +172,9 @@ class GeminiProvider(BaseHTTPProvider):
         model = canonicalize_gemini_model(require_model(config))
         await self.generate(
             LLMGenerationRequest(
-                prompt="Respond with OK.",
+                prompt=CONNECTION_TEST_PROMPT,
                 model=model,
-                max_tokens=1,
+                max_tokens=CONNECTION_TEST_MAX_TOKENS,
             ),
             config,
             api_key,

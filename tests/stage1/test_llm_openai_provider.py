@@ -20,7 +20,7 @@ functions:
     fixtures: []
   - name: test_openai_test_connection_uses_minimal_generation
     line: 101
-    purpose: "Verifies test_connection sends max_tokens=1 without reasoning_effort and returns ok=True"
+    purpose: "Verifies test_connection sends max_tokens=32 without reasoning_effort and returns ok=True"
     fixtures: []
   - name: test_openai_unknown_model_omits_reasoning_fields
     line: 126
@@ -145,7 +145,7 @@ async def test_openai_test_connection_uses_minimal_generation() -> None:
         )
 
     assert health.ok is True
-    assert body["max_tokens"] == 1
+    assert body["max_tokens"] == 32
     assert "reasoning_effort" not in body
 
 

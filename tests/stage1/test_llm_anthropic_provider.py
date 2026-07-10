@@ -32,7 +32,7 @@ functions:
     fixtures: []
   - name: test_anthropic_test_connection_uses_required_max_tokens
     line: 200
-    purpose: "Verifies test_connection sends max_tokens=1 without thinking fields and returns ok=True"
+    purpose: "Verifies test_connection sends max_tokens=32 without thinking fields and returns ok=True"
     fixtures: []
 run:
   command: "PYTHONPATH=.:backend:tests/stage1 python -m pytest tests/stage1/test_llm_anthropic_provider.py -v"
@@ -240,5 +240,5 @@ async def test_anthropic_test_connection_uses_required_max_tokens() -> None:
         )
 
     assert health.ok is True
-    assert body["max_tokens"] == 1
+    assert body["max_tokens"] == 32
     assert "thinking" not in body

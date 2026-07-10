@@ -78,6 +78,27 @@ from core.llm.models import (
             "/v1beta/models",
             "https://generativelanguage.googleapis.com/v1beta/models",
         ),
+        # Users often paste full generation/model URLs as "base URL".
+        (
+            "https://llmapi.example.com/v1/chat/completions",
+            "/v1/models",
+            "https://llmapi.example.com/v1/models",
+        ),
+        (
+            "https://llmapi.example.com/v1/chat/completions",
+            "/v1/chat/completions",
+            "https://llmapi.example.com/v1/chat/completions",
+        ),
+        (
+            "https://api.anthropic.com/v1/messages",
+            "/v1/models",
+            "https://api.anthropic.com/v1/models",
+        ),
+        (
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            "/v1beta/models",
+            "https://generativelanguage.googleapis.com/v1beta/models",
+        ),
     ],
 )
 def test_join_api_path_does_not_duplicate_version(
@@ -138,6 +159,21 @@ def test_provider_config_normalizes_base_url() -> None:
     config = ProviderConfig(base_url=" HTTPS://API.Example.COM:443/v1/ ")
 
     assert config.base_url == "https://api.example.com/v1"
+
+
+def test_provider_config_strips_generation_endpoint_from_base_url() -> None:
+    config = ProviderConfig(
+        base_url="https://llmapi.example.com/v1/chat/completions"
+    )
+
+    # Strip the generation path; adapters re-append /v1/models etc.
+    assert config.base_url == "https://llmapi.example.com"
+    assert join_api_path(config.base_url, "/v1/models") == (
+        "https://llmapi.example.com/v1/models"
+    )
+    assert join_api_path(config.base_url, "/v1/chat/completions") == (
+        "https://llmapi.example.com/v1/chat/completions"
+    )
 
 
 @pytest.mark.parametrize(

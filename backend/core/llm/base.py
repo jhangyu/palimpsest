@@ -57,6 +57,12 @@ UNKNOWN_CAPABILITIES = ProviderCapabilities(
 
 THINKING_BUDGETS: dict[str, int] = {"low": 1024, "medium": 4096, "high": 8192}
 
+# Connection tests must leave room for reasoning/thinking models that spend
+# internal tokens before emitting visible text. max_tokens=1 commonly yields
+# an HTTP 200 with empty content and surfaces as provider_empty_response.
+CONNECTION_TEST_PROMPT = "Respond with OK."
+CONNECTION_TEST_MAX_TOKENS = 32
+
 
 def _optional_string(value: Any) -> str | None:
     return value if isinstance(value, str) else None

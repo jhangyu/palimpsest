@@ -16,7 +16,7 @@ functions:
     fixtures: []
   - name: test_gemini_test_connection_is_minimal_and_thinking_off
     line: 85
-    purpose: "Verifies test_connection sends maxOutputTokens=1 without thinkingConfig and returns ok=True"
+    purpose: "Verifies test_connection sends maxOutputTokens=32 without thinkingConfig and returns ok=True"
     fixtures: []
   - name: test_gemini_3_uses_thinking_level_and_unknown_omits_thinking
     line: 111
@@ -126,7 +126,7 @@ async def test_gemini_test_connection_is_minimal_and_thinking_off() -> None:
 
     assert health.ok is True
     config = body["generationConfig"]
-    assert config["maxOutputTokens"] == 1
+    assert config["maxOutputTokens"] == 32
     assert "thinkingConfig" not in config
 
 

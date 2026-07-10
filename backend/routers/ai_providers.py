@@ -68,6 +68,7 @@ from core.ai_providers import (
     ProviderLabelConflictError,
     ProviderOwnershipError,
 )
+from core.llm.models import ProviderError
 from core.auth import verify_password, check_rate_limit, record_attempt
 from core.db import get_db, ai_tables, auth_rate_limits
 
@@ -152,6 +153,30 @@ async def discover_ai_models(req: DiscoverModelsRequest, current_user: dict = De
         raise HTTPException(status_code=404, detail="Provider not found")
     except ProviderOwnershipError:
         raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_request", "message": str(exc)},
+        )
+    except ProviderError as exc:
+        # Use 400 for credential_error so the SPA does not treat it as session 401.
+        status = 502
+        if exc.code == "credential_error":
+            status = 400
+        elif exc.status_code == 404 or exc.code == "model_discovery_unavailable":
+            status = 404
+        elif exc.code == "provider_rate_limited":
+            status = 429
+        elif exc.code in (
+            "network_policy_error",
+            "invalid_parameter",
+            "unsupported_parameter",
+        ):
+            status = 400
+        raise HTTPException(
+            status_code=status,
+            detail={"code": exc.code, "message": exc.message},
+        )
 
 @router.put("/order", dependencies=[Depends(_csrf_dependency)])
 async def reorder_ai_providers(req: ReorderProvidersRequest, current_user: dict = Depends(require_user), db=Depends(get_db)):
