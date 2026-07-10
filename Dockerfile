@@ -59,7 +59,7 @@ FROM python-deps AS runtime
 ARG PALIMPSEST_VERSION="0.1.8-e2e"
 
 LABEL org.opencontainers.image.title="Palimpsest" \
-      org.opencontainers.image.version="0.1.8" \
+      org.opencontainers.image.version="0.1.9" \
       org.opencontainers.image.description="AI-powered full-text RSS content management system" \
       org.opencontainers.image.source="https://github.com/jhangyu/palimpsest" \
       org.opencontainers.image.licenses="MIT"
