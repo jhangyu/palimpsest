@@ -25,12 +25,13 @@ run:
 ---
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select, desc
 
-from core.db import get_db, sites, crawl_attempts, crawl_repair_tables
+from core.db import get_db, sites, crawl_attempts, crawl_repair_tables, users
 from routers._deps import require_user
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -65,6 +66,7 @@ def _to_iso(t) -> str:
 async def get_notifications(
     limit: int = Query(default=20, ge=1, le=50),
     types: Optional[str] = Query(default=None),
+    since: Optional[str] = Query(default=None),
     current_user: dict = Depends(require_user),
     db=Depends(get_db),
 ):
@@ -74,6 +76,14 @@ async def get_notifications(
     type_filter: Optional[set] = None
     if types:
         type_filter = {t.strip() for t in types.split(",") if t.strip()}
+
+    # Determine the "read" cutoff timestamp.
+    # Prefer explicit ?since= query param; otherwise fall back to user preferences.
+    last_read_at: Optional[str] = since
+    if not last_read_at:
+        prefs = current_user.get("preferences") or {}
+        notif_prefs = prefs.get("notifications") if isinstance(prefs, dict) else {}
+        last_read_at = notif_prefs.get("last_read_at") if isinstance(notif_prefs, dict) else None
 
     crawl_repair_attempts_table = crawl_repair_tables.crawl_repair_attempts
 
@@ -149,7 +159,33 @@ async def get_notifications(
     if type_filter:
         results = [r for r in results if r["fail_type"] in type_filter]
 
-    # 6. Sort by time descending
+    # 6. Filter out events on or before last_read_at (user has already seen them)
+    if last_read_at:
+        results = [r for r in results if r["time"] > last_read_at]
+
+    # 7. Sort by time descending
     results.sort(key=lambda x: x["time"], reverse=True)
 
     return results
+
+
+@router.put("/read")
+async def mark_notifications_read(
+    request: Request,
+    current_user: dict = Depends(require_user),
+    db=Depends(get_db),
+):
+    """Mark all current notifications as read by persisting the current UTC timestamp."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    prefs = dict(current_user.get("preferences") or {})
+    notif_prefs = dict(prefs.get("notifications") or {})
+    notif_prefs["last_read_at"] = now_iso
+    prefs["notifications"] = notif_prefs
+
+    await db.execute(
+        users.update().where(users.c.id == current_user["id"]).values(
+            preferences=prefs,
+        )
+    )
+    await db.commit()
+    return {"status": "ok", "last_read_at": now_iso}

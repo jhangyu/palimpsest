@@ -75,6 +75,13 @@ function relativeTime(isoString: string): string {
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
+function getCsrfToken(): string {
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('csrf_token='))
+  return match ? decodeURIComponent(match.split('=')[1]) : ''
+}
+
 async function fetchNotifications(): Promise<Notification[]> {
   try {
     const res = await fetch('/api/notifications?limit=10', { credentials: 'same-origin' })
@@ -83,6 +90,23 @@ async function fetchNotifications(): Promise<Notification[]> {
   } catch {
     return []
   }
+}
+
+async function markAllRead(): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const csrf = getCsrfToken()
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  try {
+    await fetch('/api/notifications/read', {
+      method: 'PUT',
+      headers,
+      credentials: 'same-origin'
+    })
+  } catch {
+    // Silently ignore — refresh will still reflect current state
+  }
+  // Re-fetch to apply the new last_read_at filter
+  await refresh()
 }
 
 async function fetchPrefs(): Promise<NotificationPrefs> {
@@ -161,6 +185,17 @@ export function initNotificationDropdown(): void {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
+  }
+
+  // Wire up "Mark all as read" button
+  const markAllBtn = document.querySelector<HTMLButtonElement>(
+    '.notifications-dropdown [aria-label="Mark all as read"]'
+  )
+  // Remove old listener to avoid duplicates on SPA re-navigation
+  const newBtn = markAllBtn?.cloneNode(true) as HTMLButtonElement | null
+  if (newBtn && markAllBtn?.parentNode) {
+    markAllBtn.parentNode.replaceChild(newBtn, markAllBtn)
+    newBtn.addEventListener('click', () => { void markAllRead() })
   }
 
   // Initial fetch
